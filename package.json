@@ -1,0 +1,37 @@
+{
+  "name": "lb-frozen",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LB Frozen E-commerce Platform Monorepo",
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev:server": "pnpm --filter @lb-frozen/server dev",
+    "dev:storepage": "pnpm --filter @lb-frozen/storepage dev",
+    "dev:admin": "pnpm --filter @lb-frozen/admin dev",
+    "build:server": "pnpm --filter @lb-frozen/server build",
+    "build:storepage": "pnpm --filter @lb-frozen/storepage build",
+    "build:admin": "pnpm --filter @lb-frozen/admin build",
+    "install:all": "pnpm -r install"
+  },
+  "keywords": [
+    "ecommerce",
+    "medusa",
+    "nextjs",
+    "monorepo"
+  ],
+  "author": "",
+  "license": "UNLICENSED",
+  "pnpm": {
+    "overrides": {
+      "next": "^15.5.9",
+      "axios": "^1.7.9",
+      "glob": "^10.5.0",
+      "esbuild": "^0.25.0",
+      "prismjs": "^1.30.0",
+      "on-headers": "^1.1.0"
+    },
+    "patchedDependencies": {
+      "@medusajs/payment-stripe@2.10.2": "server/patches/@medusajs__payment-stripe@2.10.2.patch"
+    }
+  }
+}

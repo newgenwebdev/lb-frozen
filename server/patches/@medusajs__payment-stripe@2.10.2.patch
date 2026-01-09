@@ -1,0 +1,30 @@
+diff --git a/dist/utils/get-smallest-unit.js b/dist/utils/get-smallest-unit.js
+index ec188d926850459a9de9552effd03d9b9f1e0c93..bad3e926ee869557e7fe33aa890cda11c89dc75d 100644
+--- a/dist/utils/get-smallest-unit.js
++++ b/dist/utils/get-smallest-unit.js
+@@ -41,18 +41,15 @@ function getCurrencyMultiplier(currency) {
+  * @param {BigNumberInput} amount - The amount to be converted.
+  * @param {string} currency - The currency code (e.g., 'USD', 'JOD').
+  * @returns {number} - The converted amount in the smallest currency unit.
++ *
++ * FIX: Medusa v2 already stores amounts in the smallest currency unit (cents).
++ * The original code incorrectly multiplied by 100 again, causing 100x overcharges.
++ * Bug reference: https://github.com/medusajs/medusa/issues/13160
+  */
+ function getSmallestUnit(amount, currency) {
+-    const multiplier = getCurrencyMultiplier(currency);
+-    let amount_ = Math.round(new utils_1.BigNumber(utils_1.MathBN.mult(amount, multiplier)).numeric) /
+-        multiplier;
+-    const smallestAmount = new utils_1.BigNumber(utils_1.MathBN.mult(amount_, multiplier));
+-    let numeric = smallestAmount.numeric;
+-    // Check if the currency requires rounding to the nearest ten
+-    if (multiplier === 1e3) {
+-        numeric = Math.ceil(numeric / 10) * 10;
+-    }
+-    return parseInt(numeric.toString().split(".").shift(), 10);
++    // FIX: Medusa already passes amounts in cents, don't multiply again
++    // Just round to integer and return
++    return Math.round(new utils_1.BigNumber(amount).numeric);
+ }
+ /**
+  * Converts an amount from the smallest currency unit to the standard unit based on currency.

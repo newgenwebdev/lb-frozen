@@ -1,0 +1,39 @@
+{
+  "name": "@lb-frozen/admin",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3001",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^3.10.0",
+    "@tanstack/react-query": "^5.90.10",
+    "axios": "^1.13.2",
+    "clsx": "^2.1.1",
+    "geist": "^1.5.1",
+    "jwt-decode": "^4.0.0",
+    "next": "^16.0.10",
+    "papaparse": "^5.5.3",
+    "react": "^19.2.3",
+    "react-datepicker": "^9.0.0",
+    "react-dom": "^19.2.3",
+    "react-hook-form": "^7.69.0",
+    "recharts": "^3.4.1",
+    "zod": "^4.1.12",
+    "zustand": "^5.0.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/papaparse": "^5.5.0",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "^16.0.10",
+    "tailwindcss": "^4",
+    "typescript": "^5.9.3"
+  }
+}

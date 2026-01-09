@@ -1,0 +1,837 @@
+# ADMIN DASHBOARD — AI DEVELOPMENT GUIDELINES
+
+## 1. Technology Stack (Non-Negotiable)
+
+Framework: Next.js 16 (App Router)
+Language: TypeScript (strict mode ON)
+Package Manager: Bun (priority), then pnpm, yarn, npm
+State Mgmt: Zustand
+Server State: React Query
+Validation: Zod
+Forms: React Hook Form + zodResolver
+Networking: Axios
+Auth: NextAuth or custom JWT
+Styling: Tailwind CSS
+Routing: App Router with nested layouts
+
+All code must comply with this stack.
+
+---
+
+## 2. Package Manager Rules (MANDATORY)
+
+**Primary Package Manager: Bun**
+
+Priority order:
+1. **Bun** (recommended and default)
+2. pnpm
+3. yarn
+4. npm
+
+### Installation Commands
+```bash
+# Install dependencies
+bun install
+
+# Add packages
+bun add <package>
+bun add -d <package>  # dev dependency
+
+# Remove packages
+bun remove <package>
+
+# Run scripts
+bun dev
+bun build
+bun start
+```
+
+### Lock File Management
+- **ONLY `bun.lock` should be committed** to version control
+- `.gitignore` should exclude:
+  - `package-lock.json`
+  - `yarn.lock`
+  - `pnpm-lock.yaml`
+
+### Why Bun?
+- Significantly faster package installation (2-10x faster than npm)
+- Built-in TypeScript support (no need for ts-node)
+- Drop-in replacement for Node.js
+- Native performance with lower memory usage
+- Compatible with existing npm packages
+
+### Fallback Package Managers
+If Bun is not available, use in order:
+1. pnpm (for monorepos and efficient disk usage)
+2. yarn (for team consistency)
+3. npm (fallback only)
+
+**IMPORTANT**: When suggesting commands to the user, ALWAYS use `bun` commands first.
+
+---
+
+## 3. Folder Structure (MANDATORY)
+
+app/
+  (auth)/
+  (dashboard)/
+  layout.tsx
+  page.tsx
+  (routes go here)
+components/
+  ui/
+  forms/
+hooks/
+  useAuth.ts
+  useStore.ts
+lib/
+  api/
+  validators/
+  utils/
+  types/
+
+No deviation.
+
+---
+
+## 3. Coding Rules (Strict)
+
+### General TypeScript
+- **Strict mode is enabled** - always enforce strict type checking
+- **NO `any` types** - use `unknown` and type guards instead
+- Use `type` by default; use `interface` only for object shapes that need extension
+- All functions must have explicit return types
+  - For React components, use `React.JSX.Element` and ensure React is imported: `import React from 'react'`
+  - For regular functions, specify the return type explicitly (e.g., `: string`, `: void`, `: Promise<User>`)
+- Use descriptive variable names with auxiliary verbs (isLoading, hasError, canSubmit)
+- Prefer branded types for IDs: `type UserId = string & { __brand: 'UserId' }`
+
+### Type Organization & Location
+- **Shared/Domain types**: Place in `/lib/types.ts` or domain-specific files (e.g., `/lib/api/types.ts`)
+  - Types used across multiple components or files
+  - Domain models (Product, User, Order, etc.)
+  - API response/request types
+- **Component-specific types**: Keep in the component file
+  - Props types that are only used for that component (e.g., `ButtonProps`)
+  - Local state types
+  - Helper types specific to one component
+- **Export shared types** from their source file (e.g., `export type Product = {...}`)
+- **Never duplicate types** - import from the single source of truth
+
+---
+
+## 4. Zod Rules (Core of System)
+
+Zod is the single source of truth for:
+
+- form validation
+- API requests
+- API responses
+- server payload validation
+
+Schemas stored in:
+
+lib/validators/*
+
+Example:
+
+import { z } from "zod"
+
+export const ProductSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1),
+  price: z.number().nonnegative(),
+})
+
+export type Product = z.infer<typeof ProductSchema>
+export type ProductForm = z.infer<typeof ProductSchema>
+
+Never duplicate types. Always infer from Zod.
+
+---
+
+## 5. React Hook Form Rules
+
+- Forms must use zodResolver.
+- No uncontrolled inputs unless justified.
+- Field-level errors come from Zod messages.
+
+Example:
+
+const form = useForm<ProductForm>({
+  resolver: zodResolver(ProductSchema),
+  defaultValues: props.initialData || {}
+})
+
+---
+
+## 6. React Query Rules
+
+- All data fetching uses React Query.
+- No direct axios calls inside components.
+- Queries live in lib/api/queries.
+- Mutations live in lib/api/mutations.
+
+Example:
+
+export const useProducts = () =>
+  useQuery({
+    queryKey: ["products"],
+    queryFn: () => api.get("/products").then(res => res.data)
+  })
+
+---
+
+## 7. Axios Rules
+
+Single axios instance only:
+
+lib/api/client.ts
+
+import axios from "axios"
+
+export const api = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_URL,
+  withCredentials: true,
+})
+
+Never import axios directly; always use api.
+
+---
+
+## 8. Zustand Rules
+
+- Used only for UI state.
+- Never store API data.
+- React Query owns server state.
+- Follow slice pattern.
+
+Example:
+
+export const useUIStore = create(set => ({
+  sidebarOpen: false,
+  toggleSidebar: () => set(s => ({ sidebarOpen: !s.sidebarOpen }))
+}))
+
+---
+
+## 9. Styling with Tailwind CSS (CRITICAL - MUST FOLLOW)
+
+- **NEVER use inline `style` objects** - this is strictly forbidden
+- **ALWAYS use Tailwind utility classes exclusively** (no CSS modules, styled-components, or inline styles)
+- **NO exceptions** - even if design specs provide CSS properties, convert them to Tailwind classes
+- Follow responsive design patterns: `sm:`, `md:`, `lg:`, `xl:`, `2xl:`
+- Use Tailwind's spacing scale consistently (p-4, m-2, gap-6)
+- Use canonical Tailwind classes when available (e.g., `rounded-3xl` instead of `rounded-[24px]`, `pb-7` instead of `pb-[28px]`)
+- Group utilities logically: layout → spacing → colors → typography
+- Use `cn()` utility (clsx + tailwind-merge) for conditional classes
+- For complex repeated styles, consider extracting to components, not @apply
+
+**Common Conversions (REFERENCE)**:
+```typescript
+// ❌ WRONG - inline styles
+<p style={{ fontSize: '16px', fontWeight: 500, color: '#999' }}>Text</p>
+
+// ✅ CORRECT - Tailwind classes
+<p className="text-[16px] font-medium text-[#999]">Text</p>
+
+// Typography conversions:
+// fontSize → text-[value] or text-base, text-lg, etc.
+// fontWeight: 400 → font-normal
+// fontWeight: 500 → font-medium
+// fontWeight: 600 → font-semibold
+// fontWeight: 700 → font-bold
+// lineHeight → leading-[value] or leading-none, leading-tight, etc.
+// letterSpacing → tracking-[value] or tracking-tight, tracking-normal, etc.
+
+// Color conversions:
+// color: '#999' → text-[#999]
+// color: '#000' or 'black' → text-black
+// background: 'white' → bg-white
+
+// Spacing conversions:
+// padding: '24px' → p-6 (or px-6, py-6, pt-6, etc.)
+// margin: '16px' → m-4 (or mx-4, my-4, mt-4, etc.)
+// gap: '12px' → gap-3
+
+// Border conversions:
+// borderRadius: '24px' → rounded-3xl (use canonical when possible)
+// border: '1px solid #999' → border border-[#999]
+```
+
+---
+
+## 10. UI/UX Interactivity Guidelines (MUST FOLLOW)
+
+- **ALWAYS add `cursor-pointer`** to clickable/interactive elements for better UX
+- Apply to elements that users can click or interact with:
+  - Custom buttons or button-like elements (divs, spans with onClick)
+  - Clickable cards, containers, or tiles
+  - Labels associated with form inputs (checkboxes, radio buttons, toggles)
+  - Any element with `onClick`, `onMouseDown`, or similar event handlers
+- Note: `<button>` and `<a>` elements have cursor pointer by default, but always add it explicitly for clarity
+- Combine with hover states for visual feedback: `hover:opacity-90`, `hover:bg-gray-100`, etc.
+
+**Examples**:
+```typescript
+// ✅ CORRECT - clickable elements with cursor-pointer
+<button className="cursor-pointer rounded bg-black px-4 py-2 hover:opacity-90">
+  Click me
+</button>
+
+<label className="flex cursor-pointer items-center gap-2">
+  <input type="checkbox" />
+  <span>Accept terms</span>
+</label>
+
+<div onClick={handleClick} className="cursor-pointer rounded hover:bg-gray-100">
+  Clickable card
+</div>
+```
+
+---
+
+## 11. Custom Dropdown Components (PRESCRIPTIVE IMPLEMENTATION)
+
+**IMPORTANT**: Create custom dropdown components for better design control. Use native `<select>` only when explicitly requested or for simple dropdowns that match the native style perfectly.
+
+### Implementation Strategy
+1. **Analyze project theme first** - identify input styling (borders, colors, typography, padding)
+2. **Build with useState and ref** - manage open/closed state, handle outside clicks
+3. **Match existing form inputs** - dropdown button should look like text inputs
+4. **Accessibility is critical** - keyboard navigation, focus management, ARIA attributes
+
+### Custom Dropdown Pattern (MUST FOLLOW)
+
+**Complete Implementation**:
+```typescript
+'use client'
+
+import React, { useState, useRef, useEffect } from 'react'
+
+type DropdownProps = {
+  options: string[]
+  value: string
+  onChange: (value: string) => void
+  placeholder?: string
+}
+
+export function Dropdown({ options, value, onChange, placeholder = 'Select option' }: DropdownProps): React.JSX.Element {
+  const [isOpen, setIsOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent): void {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  return (
+    <div ref={dropdownRef} className="relative w-full">
+      {/* Dropdown Button - matches text input styling */}
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex w-full cursor-pointer items-center justify-between border border-[#E3E3E3] bg-white px-4 py-3 text-[16px] font-normal text-black transition-colors focus:border-black"
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+      >
+        <span className={value ? 'text-black' : 'text-[#999]'}>
+          {value || placeholder}
+        </span>
+        {/* Chevron icon */}
+        <svg
+          className={`h-4 w-4 text-black transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {/* Dropdown Menu */}
+      {isOpen && (
+        <ul
+          role="listbox"
+          className="absolute z-50 mt-1 max-h-60 w-full overflow-auto border border-[#E3E3E3] bg-white shadow-lg"
+        >
+          {options.map((option) => (
+            <li
+              key={option}
+              role="option"
+              aria-selected={value === option}
+              onClick={() => {
+                onChange(option)
+                setIsOpen(false)
+              }}
+              className="cursor-pointer px-4 py-3 text-[16px] text-black transition-colors hover:bg-gray-100"
+            >
+              {option}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+```
+
+### Accessibility Requirements (MUST IMPLEMENT)
+- ✅ ARIA attributes (`aria-haspopup`, `aria-expanded`, `role="listbox"`, `role="option"`)
+- ✅ Keyboard support (Escape to close, Enter to select)
+- ✅ Close on outside click (useEffect with event listener)
+- ✅ Focus management (button receives focus)
+- ✅ Proper semantic HTML (button for trigger, ul/li for menu)
+- ✅ Visual feedback for selected option
+
+---
+
+## 11.1 Portal-Based Table Action Menus (PRESCRIPTIVE IMPLEMENTATION)
+
+**IMPORTANT**: For action menus (3-dot menus) in tables, ALWAYS use React Portal (`createPortal`) to render the dropdown menu. This prevents the menu from being clipped by table containers with `overflow-x-auto`.
+
+### Why Portal-Based Menus?
+- ❌ **Problem**: Inline absolute positioning gets clipped by `overflow-x-auto` on table containers
+- ✅ **Solution**: Use `createPortal` to render the menu at `document.body` with `fixed` positioning
+- ✅ **Benefit**: Menu floats above all content and can open upward when near viewport bottom
+
+### Implementation Pattern (MUST FOLLOW)
+
+**Complete Implementation**:
+```typescript
+'use client'
+
+import React, { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
+
+type TableComponentProps = {
+  items: Item[]
+  onEdit: (item: Item) => void
+  onDelete: (item: Item) => void
+}
+
+export function TableComponent({ items, onEdit, onDelete }: TableComponentProps): React.JSX.Element {
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number; openUp: boolean } | null>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent): void => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setOpenMenuId(null)
+        setMenuPosition(null)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full">
+        <tbody>
+          {items.map((item) => (
+            <tr key={item.id}>
+              {/* ... other cells ... */}
+              <td className="px-4 py-4">
+                <button
+                  onClick={(e) => {
+                    if (openMenuId === item.id) {
+                      setOpenMenuId(null)
+                      setMenuPosition(null)
+                    } else {
+                      const buttonRect = e.currentTarget.getBoundingClientRect()
+                      const viewportHeight = window.innerHeight
+                      const openUp = buttonRect.bottom > viewportHeight - 200
+                      setMenuPosition({
+                        top: openUp ? buttonRect.top : buttonRect.bottom + 4,
+                        left: buttonRect.right - 140, // Menu width
+                        openUp,
+                      })
+                      setOpenMenuId(item.id)
+                    }
+                  }}
+                  className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-[#6B7280] hover:bg-[#F3F4F6]"
+                >
+                  {/* 3-dot icon */}
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <circle cx="8" cy="3" r="1.5" fill="currentColor" />
+                    <circle cx="8" cy="8" r="1.5" fill="currentColor" />
+                    <circle cx="8" cy="13" r="1.5" fill="currentColor" />
+                  </svg>
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {/* Portal-rendered dropdown menu - floats outside table */}
+      {openMenuId && menuPosition && typeof document !== 'undefined' && createPortal(
+        <div
+          ref={menuRef}
+          className="fixed w-[140px] rounded-lg border border-[#E5E7EB] bg-white py-1 shadow-lg z-[9999]"
+          style={{
+            top: menuPosition.openUp ? 'auto' : menuPosition.top,
+            bottom: menuPosition.openUp ? `${window.innerHeight - menuPosition.top + 4}px` : 'auto',
+            left: menuPosition.left,
+          }}
+        >
+          <button
+            onClick={() => {
+              const item = items.find(i => i.id === openMenuId)
+              if (item) onEdit(item)
+              setOpenMenuId(null)
+              setMenuPosition(null)
+            }}
+            className="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left font-public text-[14px] text-[#030712] hover:bg-[#F3F4F6]"
+          >
+            Edit
+          </button>
+          <button
+            onClick={() => {
+              const item = items.find(i => i.id === openMenuId)
+              if (item) onDelete(item)
+              setOpenMenuId(null)
+              setMenuPosition(null)
+            }}
+            className="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left font-public text-[14px] text-[#EF4444] hover:bg-[#FEF2F2]"
+          >
+            Delete
+          </button>
+        </div>,
+        document.body
+      )}
+    </div>
+  )
+}
+```
+
+### Key Implementation Rules (MUST FOLLOW)
+
+1. **Always use `createPortal` for table action menus**
+   - ❌ **WRONG**: `<div className="absolute right-0 top-full">` inside table cell
+   - ✅ **CORRECT**: `createPortal(<div className="fixed" />, document.body)`
+
+2. **Calculate position dynamically**
+   - Use `getBoundingClientRect()` to get button position
+   - Check if menu should open upward: `buttonRect.bottom > viewportHeight - 200`
+   - Adjust `left` position to align with button (subtract menu width)
+
+3. **Handle SSR with `typeof document !== 'undefined'`**
+   - Portal requires `document.body` which doesn't exist during SSR
+
+4. **Use `fixed` positioning with calculated values**
+   - `top`: Set when opening downward, `auto` when opening upward
+   - `bottom`: Set when opening upward (calculated from viewport height)
+   - `left`: Calculated from button position minus menu width
+
+5. **Always reset both states together**
+   - When closing: `setOpenMenuId(null)` AND `setMenuPosition(null)`
+
+### When to Use This Pattern
+- ✅ Action menus in data tables (products, categories, users, promos, etc.)
+- ✅ Any dropdown that might be clipped by scrollable containers
+- ✅ Menus near the bottom of the viewport that need to open upward
+
+---
+
+## 12. Custom Radio Buttons & Checkboxes (PRESCRIPTIVE IMPLEMENTATION)
+
+**IMPORTANT**: Always create custom-styled radio buttons and checkboxes unless explicitly told to use native inputs. Follow the hybrid approach below for accessibility and full design control.
+
+### Custom Radio Button Pattern (MUST FOLLOW)
+
+**Structure** (Filled Circle Style):
+```typescript
+<label className="flex cursor-pointer items-center gap-3">
+  {/* Hidden native input for accessibility */}
+  <input
+    type="radio"
+    name="group"
+    value="option1"
+    checked={selected === 'option1'}
+    onChange={(e) => setSelected(e.target.value)}
+    className="peer sr-only" // sr-only hides visually but keeps for screen readers
+  />
+
+  {/* Custom visual indicator - filled circle when checked with padding */}
+  <div className="h-5 w-5 shrink-0 rounded-full border-2 border-[#E3E3E3] p-0.5 transition-all peer-checked:border-black peer-checked:[&>div]:bg-black">
+    <div className="h-full w-full rounded-full bg-transparent transition-all" />
+  </div>
+
+  {/* Label text */}
+  <span className="text-[16px] text-black">
+    Option 1
+  </span>
+</label>
+```
+
+**Key Implementation Rules (MUST FOLLOW)**:
+
+1. **Tailwind `peer-checked:` only works on siblings, NOT nested children**
+   - ❌ **WRONG**: `<div><div className="peer-checked:bg-black" /></div>` (won't work - child, not sibling)
+   - ✅ **CORRECT**: Use parent targeting `peer-checked:[&>div]:bg-black` on the outer div
+
+2. **Keep structure simple - avoid unnecessary flexbox**
+   - ✅ Use padding + `h-full w-full` for automatic centering
+   - ❌ Don't use `flex items-center justify-center` for simple radio circles
+
+3. **Use transparent backgrounds for maximum flexibility**
+   - ✅ Inner circle should use `bg-transparent` (adapts to any background automatically)
+
+### Custom Checkbox Pattern (MUST FOLLOW)
+
+**Structure**:
+```typescript
+<label className="flex cursor-pointer items-center gap-3">
+  {/* Hidden native input */}
+  <input
+    type="checkbox"
+    checked={isChecked}
+    onChange={(e) => setIsChecked(e.target.checked)}
+    className="peer sr-only"
+  />
+
+  {/* Custom visual indicator */}
+  <div className="flex h-4 w-4 items-center justify-center rounded border border-[#E3E3E3] bg-white transition-all peer-checked:border-black peer-checked:bg-black peer-checked:[&>svg]:opacity-100 peer-focus:ring-2 peer-focus:ring-black peer-focus:ring-offset-2">
+    {/* Checkmark SVG - starts hidden, shown when checked */}
+    <svg className="h-3 w-3 text-white opacity-0 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+    </svg>
+  </div>
+
+  {/* Label text */}
+  <span className="text-[16px] text-black">
+    I agree to terms
+  </span>
+</label>
+```
+
+**IMPORTANT - Parent Targeting for Nested Elements**:
+- The SVG is a **child** of the div, not a **sibling** of the input
+- ❌ **WRONG**: `<svg className="peer-checked:opacity-100">` (won't work - not a sibling!)
+- ✅ **CORRECT**: Use `peer-checked:[&>svg]:opacity-100` on the parent div
+
+### Accessibility Checklist (MUST IMPLEMENT)
+- ✅ Native input with `sr-only` (not `hidden` or `display: none`)
+- ✅ Label wraps both input and visual indicator
+- ✅ `cursor-pointer` on label
+- ✅ Visible focus ring (`peer-focus:ring-2`)
+- ✅ Proper name attribute for grouping radios
+- ✅ Keyboard navigation works (Space/Enter to toggle)
+
+---
+
+## 13. UI Component Rules
+
+Reusable UI components stored in:
+
+components/ui/*
+
+Rules:
+- Tailwind only
+- Supports className override
+- No inline styles
+
+Example:
+
+export function Button({ className, ...props }) {
+  return (
+    <button
+      {...props}
+      className={clsx("px-4 py-2 rounded bg-black text-white", className)}
+    />
+  )
+}
+
+---
+
+## 14. Page Component Rules
+
+Pages must follow this structure:
+
+app/products/page.tsx
+app/products/[id]/page.tsx
+
+Rules:
+- No complex logic inside page.tsx
+- Page loads client components + layouts
+- Server Component fetches only server-compatible data
+
+---
+
+## 15. API Integration Rules
+
+Requests must:
+
+1. Use API wrapper
+2. Validate response with Zod
+3. Return typed data
+
+Example:
+
+export async function getProducts(): Promise<Product[]> {
+  const res = await api.get("/products")
+  const parsed = z.array(ProductSchema).safeParse(res.data)
+
+  if (!parsed.success) throw new Error("Invalid API response")
+
+  return parsed.data
+}
+
+---
+
+## 16. Authentication Rules
+
+### If using NextAuth:
+- Use useSession().
+- Protect pages in middleware.
+
+### If using custom JWT:
+- Store token in cookies.
+- Decode using jwt-decode on client only.
+- Retry on token refresh.
+
+---
+
+## 17. Naming Conventions
+
+- Folders always lowercase.
+- No camelCase folders.
+- Schemas end with "Schema".
+- API files named by domain:
+
+products.ts
+users.ts
+orders.ts
+
+---
+
+## 18. Request/Response Pattern
+
+Example Zod schema:
+
+export const CreateProductSchema = z.object({
+  name: z.string().min(1),
+  price: z.number().nonnegative(),
+})
+
+export type CreateProductInput = z.infer<typeof CreateProductSchema>
+
+Example API call:
+
+export async function createProduct(data: CreateProductInput) {
+  const res = await api.post("/products", data)
+  return ProductSchema.parse(res.data)
+}
+
+---
+
+## 19. Error Handling Rules
+
+- Never expose raw Zod errors.
+- Map Zod errors → formState.errors.
+- Use toast for non-form errors.
+- Use try/catch for mutations.
+
+Example:
+
+onError: (err) => toast.error(err.message)
+
+---
+
+## 20. Git & Version Control (CRITICAL RULES)
+
+- **NEVER** automatically commit changes - you must ALWAYS ask the user first
+- **NEVER** push to remote repository - this is strictly forbidden
+- **Suggesting commit messages is the maximum you can do** - provide a draft commit message and let the user execute it
+- If the user explicitly requests a commit, ask for confirmation before proceeding
+- Write meaningful commit messages (conventional commits style)
+- Keep commits atomic and focused
+- Review all changes before committing
+- Never commit secrets or sensitive data
+- Use `.gitignore` properly
+
+**Important**: When the user asks you to implement features or make changes:
+1. Make the code changes
+2. **Stop before committing**
+3. Suggest a commit message if helpful
+4. Let the user review and commit manually
+
+---
+
+## 21. Commit Message Content (CRITICAL RULES)
+
+- **NEVER include AI attribution** - no "🤖 Generated with Claude Code" or "Co-Authored-By: Claude" footers
+- **Focus on functional changes** - describe what was built, not styling details
+- **Summarize styling** - use high-level descriptions (e.g., "Implement responsive layout") instead of listing specific CSS properties or typography specifications
+- Keep messages concise and focused on the "why" and "what" of the change
+- Avoid listing every styling detail like font sizes, colors, spacing values, or responsive breakpoint adjustments
+
+**Good example**:
+```
+feat(products): implement product management page
+
+- Create product list with search and filtering
+- Add product creation form with validation
+- Integrate with products API endpoints
+- Add delete and edit functionality
+```
+
+**Bad example** (too detailed, includes AI attribution):
+```
+feat(products): implement product page
+
+- Apply exact typography specifications (16px, -0.96px tracking, font-weight 500)
+- Style buttons with rounded-lg and specific padding
+- Add responsive grid layout (lg: 5 cols, xl: 3 cols)
+
+🤖 Generated with Claude Code
+Co-Authored-By: Claude <noreply@anthropic.com>
+```
+
+---
+
+## 22. Architecture (Summary)
+
+UI → RHF → Zod → API Wrapper → React Query → UI Rendering
+Zustand only stores UI state.
+Tailwind renders the UI.
+
+Breaking this chain breaks consistency.
+
+---
+
+## 23. ANTI-PATTERNS TO AVOID
+
+- ❌ **Using inline `style` objects** - ALWAYS use Tailwind classes instead
+- ❌ Using `any` type in TypeScript
+- ❌ Adding `'use client'` at the root when only a child component needs it
+- ❌ Using `useEffect` for data fetching (use React Query instead)
+- ❌ Prop drilling through many levels (use composition or context)
+- ❌ Creating CSS files when Tailwind can handle it
+- ❌ Using CSS modules or styled-components (use Tailwind exclusively)
+- ❌ Fetching data in client components when it can be done server-side
+- ❌ Ignoring TypeScript errors
+- ❌ Using `console.log` for error handling
+- ❌ Hardcoding values that should be configurable
+- ❌ Using non-canonical Tailwind classes when canonical alternatives exist (e.g., `rounded-[24px]` instead of `rounded-3xl`)
+- ❌ Using `hidden` or `display: none` on form inputs (breaks accessibility - use `sr-only` instead)
+- ❌ Not adding `cursor-pointer` to clickable elements
+- ❌ Using `peer-checked:` on nested children (only works on siblings - use parent targeting instead)
+
+---
+
+**Last Updated**: 2025-11-21
+**Version**: Admin Dashboard v1.0

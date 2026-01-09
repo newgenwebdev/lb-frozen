@@ -1,0 +1,824 @@
+# AI Coding Guidelines for LB Frozen Project
+
+## Project Context
+- **Framework**: Next.js 16.0.1 with App Router
+- **React**: Version 19.2.0
+- **TypeScript**: Version 5 with strict mode enabled
+- **Styling**: Tailwind CSS 4
+- **Purpose**: Modern full-stack web application
+
+---
+
+## CRITICAL RULES (MUST FOLLOW)
+
+### TypeScript Standards
+- **Strict mode is enabled** - always enforce strict type checking
+- **NO `any` types** - use `unknown` and type guards instead
+- Use `type` by default; use `interface` only for object shapes that need extension
+- All functions must have explicit return types
+  - For React components, use `React.JSX.Element` and ensure React is imported: `import React from 'react'`
+  - For regular functions, specify the return type explicitly (e.g., `: string`, `: void`, `: Promise<User>`)
+- Use descriptive variable names with auxiliary verbs (isLoading, hasError, canSubmit)
+- Prefer branded types for IDs: `type UserId = string & { __brand: 'UserId' }`
+
+### Type Organization & Location
+- **Shared/Domain types**: Place in `/lib/types.ts` or domain-specific files (e.g., `/lib/api/types.ts`)
+  - Types used across multiple components or files
+  - Domain models (Product, User, Order, etc.)
+  - API response/request types
+- **Component-specific types**: Keep in the component file
+  - Props types that are only used for that component (e.g., `ButtonProps`)
+  - Local state types
+  - Helper types specific to one component
+- **Export shared types** from their source file (e.g., `export type Product = {...}`)
+- **Never duplicate types** - import from the single source of truth
+- Organize types logically:
+  - `/lib/types.ts` - Global application types
+  - `/lib/api/types.ts` - API-related types (Medusa, external APIs)
+  - `/lib/api/adapter.ts` - Frontend-adapted types from API types
+
+### Next.js App Router Conventions
+- **Server Components by default** - all components in `app/` are Server Components unless marked with `'use client'`
+- **Client Components only when necessary** - use `'use client'` ONLY for:
+  - Interactive features (onClick, onChange, etc.)
+  - Browser APIs (window, document, localStorage)
+  - React hooks (useState, useEffect, useContext)
+  - Third-party libraries that require client-side rendering
+- Use `layout.tsx` for shared UI patterns
+- Use `loading.tsx` for loading states (Suspense boundaries)
+- Use `error.tsx` for error boundaries
+- Use `route.ts` for API endpoints (not pages)
+- Implement `generateMetadata()` for SEO in pages
+
+### File Naming & Organization
+- **Directories**: kebab-case (`auth-form/`, `user-profile/`)
+- **Components**: PascalCase (`Button.tsx`, `UserCard.tsx`)
+- **Utilities/Hooks**: camelCase (`formatDate.ts`, `useAuth.ts`)
+- **Route Groups**: Use parentheses for grouping without affecting URL (`(auth)/login`)
+- Export components as **named exports**, not default exports (except for pages/layouts)
+
+---
+
+## STRONG RECOMMENDATIONS (SHOULD FOLLOW)
+
+### React Best Practices
+- Prefer functional components with arrow functions
+- Minimize use of `useEffect` - consider data fetching at the server level
+- Minimize `useState` - use URL state or server state when possible
+- Use composition over prop drilling
+- Keep components small and focused (single responsibility)
+- Export order: components, subcomponents, helpers, constants, then types
+
+### Component Development
+```typescript
+// Good example structure
+type ButtonProps = {
+  variant: 'primary' | 'secondary'
+  onClick: () => void
+  children: React.ReactNode
+}
+
+export const Button = ({ variant, onClick, children }: ButtonProps) => {
+  return (
+    <button
+      onClick={onClick}
+      className={variant === 'primary' ? 'bg-blue-500' : 'bg-gray-500'}
+    >
+      {children}
+    </button>
+  )
+}
+```
+
+### Project Structure (MUST FOLLOW)
+```
+app/
+  layout.tsx           # Root layout with metadata
+  page.tsx             # Home page
+  (auth)/              # Route group (no URL segment)
+    login/
+      page.tsx
+    register/
+      page.tsx
+  dashboard/
+    page.tsx
+    layout.tsx
+  api/
+    users/
+      route.ts         # API endpoint
+
+components/            # ALL components go here (centralized)
+  ui/                  # Reusable UI components
+    Button.tsx
+    Card.tsx
+    Input.tsx
+    Modal.tsx
+    Badge.tsx
+  layout/              # Layout components
+    Header.tsx
+    Footer.tsx
+    Sidebar.tsx
+  forms/               # Form components
+    LoginForm.tsx
+    SignupForm.tsx
+  products/            # Product-related components
+    ProductCard.tsx
+    ProductList.tsx
+    ProductFilter.tsx
+  users/               # User-related components
+    UserProfile.tsx
+    UserAvatar.tsx
+    UserList.tsx
+
+lib/                   # Utilities, helpers, types
+  utils.ts
+  constants.ts
+  types.ts
+  db.ts                # Database client
+
+hooks/                 # Custom React hooks
+  useAuth.ts
+
+styles/
+  globals.css
+```
+
+### Component Organization Rules
+- **ALL components** must be in the `/components` directory
+- Organize components by **category** or **domain** (ui, layout, forms, products, users, etc.)
+- **Never** create component folders inside `app/` routes
+- Shared/reusable components go in `/components/ui/`
+- Domain-specific components go in `/components/[domain]/` (e.g., `/components/products/`)
+- Layout components go in `/components/layout/`
+
+### Styling with Tailwind CSS (CRITICAL - MUST FOLLOW)
+- **NEVER use inline `style` objects** - this is strictly forbidden
+- **ALWAYS use Tailwind utility classes exclusively** (no CSS modules, styled-components, or inline styles)
+- **NO exceptions** - even if design specs provide CSS properties, convert them to Tailwind classes
+- Follow responsive design patterns: `sm:`, `md:`, `lg:`, `xl:`, `2xl:`
+- Use Tailwind's spacing scale consistently (p-4, m-2, gap-6)
+- Use canonical Tailwind classes when available (e.g., `rounded-3xl` instead of `rounded-[24px]`, `pb-7` instead of `pb-[28px]`)
+- Group utilities logically: layout → spacing → colors → typography
+- Use `cn()` utility (clsx + tailwind-merge) for conditional classes
+- For complex repeated styles, consider extracting to components, not @apply
+
+**Common Conversions (REFERENCE)**:
+```typescript
+// ❌ WRONG - inline styles
+<p style={{ fontSize: '16px', fontWeight: 500, color: '#999' }}>Text</p>
+
+// ✅ CORRECT - Tailwind classes
+<p className="text-[16px] font-medium text-[#999]">Text</p>
+
+// Typography conversions:
+// fontSize → text-[value] or text-base, text-lg, etc.
+// fontWeight: 400 → font-normal
+// fontWeight: 500 → font-medium
+// fontWeight: 600 → font-semibold
+// fontWeight: 700 → font-bold
+// lineHeight → leading-[value] or leading-none, leading-tight, etc.
+// letterSpacing → tracking-[value] or tracking-tight, tracking-normal, etc.
+// fontFamily → font-inter, font-sans, etc.
+
+// Color conversions:
+// color: '#999' → text-[#999]
+// color: '#000' or 'black' → text-black
+// background: 'white' → bg-white
+// background: 'rgba(255,255,255,0.1)' → bg-white/10
+
+// Spacing conversions:
+// padding: '24px' → p-6 (or px-6, py-6, pt-6, etc.)
+// margin: '16px' → m-4 (or mx-4, my-4, mt-4, etc.)
+// gap: '12px' → gap-3
+
+// Border conversions:
+// borderRadius: '24px' → rounded-3xl (use canonical when possible)
+// border: '1px solid #999' → border border-[#999]
+```
+
+### UI/UX Interactivity Guidelines (MUST FOLLOW)
+- **ALWAYS add `cursor-pointer`** to clickable/interactive elements for better UX
+- Apply to elements that users can click or interact with:
+  - Custom buttons or button-like elements (divs, spans with onClick)
+  - Clickable cards, containers, or tiles
+  - Labels associated with form inputs (checkboxes, radio buttons, toggles)
+  - Any element with `onClick`, `onMouseDown`, or similar event handlers
+- Note: `<button>` and `<a>` elements have cursor pointer by default, but always add it explicitly for clarity
+- Combine with hover states for visual feedback: `hover:opacity-90`, `hover:bg-gray-100`, etc.
+
+**Examples**:
+```typescript
+// ✅ CORRECT - clickable elements with cursor-pointer
+<button className="cursor-pointer rounded bg-black px-4 py-2 hover:opacity-90">
+  Click me
+</button>
+
+<label className="flex cursor-pointer items-center gap-2">
+  <input type="checkbox" />
+  <span>Accept terms</span>
+</label>
+
+<div onClick={handleClick} className="cursor-pointer rounded hover:bg-gray-100">
+  Clickable card
+</div>
+
+// ❌ WRONG - missing cursor-pointer on clickable elements
+<div onClick={handleClick} className="rounded hover:bg-gray-100">
+  Clickable card
+</div>
+```
+
+### Custom Dropdown Components (PRESCRIPTIVE IMPLEMENTATION)
+
+**IMPORTANT**: Create custom dropdown components for better design control. Use native `<select>` only when explicitly requested or for simple dropdowns that match the native style perfectly.
+
+#### Implementation Strategy
+1. **Analyze project theme first** - identify input styling (borders, colors, typography, padding)
+2. **Build with useState and ref** - manage open/closed state, handle outside clicks
+3. **Match existing form inputs** - dropdown button should look like text inputs
+4. **Accessibility is critical** - keyboard navigation, focus management, ARIA attributes
+
+#### Custom Dropdown Pattern (MUST FOLLOW)
+
+**Complete Implementation**:
+```typescript
+'use client'
+
+import React, { useState, useRef, useEffect } from 'react'
+
+type DropdownProps = {
+  options: string[]
+  value: string
+  onChange: (value: string) => void
+  placeholder?: string
+}
+
+export function Dropdown({ options, value, onChange, placeholder = 'Select option' }: DropdownProps): React.JSX.Element {
+  const [isOpen, setIsOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent): void {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // Keyboard navigation
+  function handleKeyDown(event: React.KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      setIsOpen(false)
+    }
+  }
+
+  return (
+    <div ref={dropdownRef} className="relative w-full">
+      {/* Dropdown Button - matches text input styling */}
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        onKeyDown={handleKeyDown}
+        className="flex w-full cursor-pointer items-center justify-between border border-[#E3E3E3] bg-white px-4 py-3 font-inter text-[16px] font-normal leading-[100%] tracking-[-0.32px] text-black outline-none transition-colors focus:border-black"
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+      >
+        <span className={value ? 'text-black' : 'text-[#999]'}>
+          {value || placeholder}
+        </span>
+        {/* Chevron icon */}
+        <svg
+          className={`h-4 w-4 text-black transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {/* Dropdown Menu */}
+      {isOpen && (
+        <ul
+          role="listbox"
+          className="absolute z-50 mt-1 max-h-60 w-full overflow-auto border border-[#E3E3E3] bg-white shadow-lg"
+        >
+          {options.map((option) => (
+            <li
+              key={option}
+              role="option"
+              aria-selected={value === option}
+              onClick={() => {
+                onChange(option)
+                setIsOpen(false)
+              }}
+              className="cursor-pointer px-4 py-3 font-inter text-[16px] font-normal leading-[100%] tracking-[-0.32px] text-black transition-colors hover:bg-gray-100"
+            >
+              {option}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+```
+
+#### Inline Dropdown (Without Separate Component)
+
+```typescript
+'use client'
+
+const [country, setCountry] = useState('')
+const [isOpen, setIsOpen] = useState(false)
+const dropdownRef = useRef<HTMLDivElement>(null)
+
+// Close on outside click
+useEffect(() => {
+  function handleClickOutside(event: MouseEvent): void {
+    if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      setIsOpen(false)
+    }
+  }
+  document.addEventListener('mousedown', handleClickOutside)
+  return () => document.removeEventListener('mousedown', handleClickOutside)
+}, [])
+
+const countries = ['United States', 'Canada', 'United Kingdom']
+
+return (
+  <div ref={dropdownRef} className="relative w-full">
+    <button
+      type="button"
+      onClick={() => setIsOpen(!isOpen)}
+      className="flex w-full cursor-pointer items-center justify-between border border-[#E3E3E3] bg-white px-4 py-3 font-inter text-[16px] font-normal leading-[100%] tracking-[-0.32px] text-black outline-none transition-colors focus:border-black"
+    >
+      <span className={country ? 'text-black' : 'text-[#999]'}>
+        {country || 'Select country'}
+      </span>
+      <svg className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+      </svg>
+    </button>
+
+    {isOpen && (
+      <ul className="absolute z-50 mt-1 max-h-60 w-full overflow-auto border border-[#E3E3E3] bg-white shadow-lg">
+        {countries.map((c) => (
+          <li
+            key={c}
+            onClick={() => {
+              setCountry(c)
+              setIsOpen(false)
+            }}
+            className="cursor-pointer px-4 py-3 transition-colors hover:bg-gray-100"
+          >
+            {c}
+          </li>
+        ))}
+      </ul>
+    )}
+  </div>
+)
+```
+
+#### Key Implementation Details
+
+**Button Styling** (must match text inputs):
+- Same border: `border border-[#E3E3E3]`
+- Same padding: `px-4 py-3`
+- Same typography: `font-inter text-[16px] tracking-[-0.32px]`
+- Same transitions: `transition-colors focus:border-black`
+- Cursor pointer: `cursor-pointer`
+
+**Chevron Icon**:
+- Rotate on open: `${isOpen ? 'rotate-180' : ''}`
+- Smooth transition: `transition-transform`
+- Proper sizing: `h-4 w-4`
+
+**Dropdown Menu**:
+- Position: `absolute z-50 mt-1`
+- Full width: `w-full`
+- Max height with scroll: `max-h-60 overflow-auto`
+- Shadow: `shadow-lg`
+- Matching border: `border border-[#E3E3E3]`
+
+**List Items**:
+- Hover state: `hover:bg-gray-100`
+- Cursor pointer: `cursor-pointer`
+- Same padding as button: `px-4 py-3`
+- Smooth transition: `transition-colors`
+
+#### Accessibility Requirements (MUST IMPLEMENT)
+- ✅ ARIA attributes (`aria-haspopup`, `aria-expanded`, `role="listbox"`, `role="option"`)
+- ✅ Keyboard support (Escape to close, Enter to select)
+- ✅ Close on outside click (useEffect with event listener)
+- ✅ Focus management (button receives focus)
+- ✅ Proper semantic HTML (button for trigger, ul/li for menu)
+- ✅ Visual feedback for selected option
+
+#### State Management
+```typescript
+// Single dropdown
+const [selected, setSelected] = useState('')
+const [isOpen, setIsOpen] = useState(false)
+const dropdownRef = useRef<HTMLDivElement>(null)
+
+// Multiple dropdowns
+const [country, setCountry] = useState('')
+const [province, setProvince] = useState('')
+const [countryOpen, setCountryOpen] = useState(false)
+const [provinceOpen, setProvinceOpen] = useState(false)
+```
+
+#### Common Mistakes to Avoid
+- ❌ Not handling outside clicks (menu stays open)
+- ❌ Forgetting z-index (menu appears behind other elements)
+- ❌ Missing keyboard support (Escape key)
+- ❌ Not matching input styling (inconsistent design)
+- ❌ No visual feedback on hover
+- ❌ Missing aria attributes (poor accessibility)
+- ❌ Not rotating chevron icon on open/close
+
+### Custom Radio Buttons & Checkboxes (PRESCRIPTIVE IMPLEMENTATION)
+
+**IMPORTANT**: Always create custom-styled radio buttons and checkboxes unless explicitly told to use native inputs. Follow the hybrid approach below for accessibility and full design control.
+
+#### Implementation Strategy
+1. **Analyze project theme first** - identify colors, borders, sizing, typography
+2. **Use hybrid approach** - hide native input with `sr-only`, create custom visual indicator
+3. **Use Tailwind's `peer` utility** - sync visual state with native input state
+4. **Include all interactive states** - default, hover, focus, checked, disabled
+
+#### Custom Radio Button Pattern (MUST FOLLOW)
+
+**Structure** (Filled Circle Style):
+```typescript
+<label className="flex cursor-pointer items-center gap-3">
+  {/* Hidden native input for accessibility */}
+  <input
+    type="radio"
+    name="group"
+    value="option1"
+    checked={selected === 'option1'}
+    onChange={(e) => setSelected(e.target.value)}
+    className="peer sr-only" // sr-only hides visually but keeps for screen readers
+  />
+
+  {/* Custom visual indicator - filled circle when checked with padding */}
+  {/* Note: Replace border-black/bg-black with your project's theme colors */}
+  <div className="h-5 w-5 shrink-0 rounded-full border-2 border-[#E3E3E3] p-0.5 transition-all peer-checked:border-black peer-checked:[&>div]:bg-black">
+    <div className="h-full w-full rounded-full bg-transparent transition-all" />
+  </div>
+
+  {/* Label text */}
+  <span className="font-inter text-[16px] tracking-[-0.32px] text-black">
+    Option 1
+  </span>
+</label>
+```
+
+**Theme Color Flexibility**:
+- Replace `border-black` / `bg-black` with your project's primary/accent colors
+- Examples: `border-primary`, `bg-primary`, `border-blue-600`, `bg-blue-600`
+- Inner circle background should match the page/container background (e.g., `bg-white`, `bg-gray-50`)
+- Keep `border-[#E3E3E3]` for unchecked border (or adapt to theme)
+
+**Key Implementation Rules (MUST FOLLOW)**:
+
+1. **Tailwind `peer-checked:` only works on siblings, NOT nested children**
+   - ❌ **WRONG**: `<div><div className="peer-checked:bg-black" /></div>` (won't work - child, not sibling)
+   - ✅ **CORRECT**: Use parent targeting `peer-checked:[&>div]:bg-black` on the outer div
+
+2. **Keep structure simple - avoid unnecessary flexbox**
+   - ✅ Use padding + `h-full w-full` for automatic centering
+   - ❌ Don't use `flex items-center justify-center` for simple radio circles
+   - Simple padding approach is more reliable and easier to maintain
+
+3. **Use transparent backgrounds for maximum flexibility**
+   - ✅ Inner circle should use `bg-transparent` (adapts to any background automatically)
+   - This allows the radio button to work on any colored background without changes
+   - When checked, it fills with your theme color via `peer-checked:[&>div]:bg-black`
+   - **Colors should be theme-flexible**: Replace `border-black`, `bg-black` with your project's theme colors
+
+**Alternative: Dot Inside Style** (if needed):
+```typescript
+<div className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-[#E3E3E3] transition-all peer-checked:border-black peer-focus:ring-2 peer-focus:ring-black peer-focus:ring-offset-2">
+  <div className="h-2.5 w-2.5 rounded-full bg-transparent transition-all peer-checked:bg-black" />
+</div>
+```
+
+**Key Tailwind classes**:
+- `peer sr-only` - hides input visually, keeps for accessibility
+- `peer-checked:` - applies styles when peer input is checked
+- `peer-focus:` - applies styles when peer input is focused
+- `peer-disabled:` - applies styles when peer input is disabled
+
+#### Custom Checkbox Pattern (MUST FOLLOW)
+
+**Structure**:
+```typescript
+<label className="flex cursor-pointer items-center gap-3">
+  {/* Hidden native input */}
+  <input
+    type="checkbox"
+    checked={isChecked}
+    onChange={(e) => setIsChecked(e.target.checked)}
+    className="peer sr-only"
+  />
+
+  {/* Custom visual indicator */}
+  {/* Note: Use peer-checked:[&>svg]:opacity-100 on parent to target nested SVG */}
+  <div className="flex h-4 w-4 items-center justify-center rounded border border-[#E3E3E3] bg-white transition-all peer-checked:border-black peer-checked:bg-black peer-checked:[&>svg]:opacity-100 peer-focus:ring-2 peer-focus:ring-black peer-focus:ring-offset-2">
+    {/* Checkmark SVG - starts hidden, shown when checked */}
+    <svg className="h-3 w-3 text-white opacity-0 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+    </svg>
+  </div>
+
+  {/* Label text */}
+  <span className="font-inter text-[16px] text-black">
+    I agree to terms
+  </span>
+</label>
+```
+
+**IMPORTANT - Parent Targeting for Nested Elements**:
+- The SVG is a **child** of the div, not a **sibling** of the input
+- ❌ **WRONG**: `<svg className="peer-checked:opacity-100">` (won't work - not a sibling!)
+- ✅ **CORRECT**: Use `peer-checked:[&>svg]:opacity-100` on the parent div
+- This is the same concept as radio buttons - `peer-checked:` only works on siblings
+
+**Alternative checkmark** (using absolute positioning):
+```typescript
+<div className="relative flex h-4 w-4 items-center justify-center rounded border border-[#E3E3E3] bg-white transition-all peer-checked:border-black peer-checked:bg-black peer-checked:[&>svg]:opacity-100 peer-focus:ring-2 peer-focus:ring-black peer-focus:ring-offset-2">
+  <svg className="absolute h-3 w-3 text-white opacity-0 transition-opacity duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+  </svg>
+</div>
+```
+
+#### Accessibility Checklist (MUST IMPLEMENT)
+- ✅ Native input with `sr-only` (not `hidden` or `display: none`)
+- ✅ Label wraps both input and visual indicator
+- ✅ `cursor-pointer` on label
+- ✅ Visible focus ring (`peer-focus:ring-2`)
+- ✅ Proper name attribute for grouping radios
+- ✅ Keyboard navigation works (Space/Enter to toggle)
+- ✅ ARIA labels if needed (`aria-label`, `aria-describedby`)
+
+#### State Management
+```typescript
+// Radio button group
+const [selected, setSelected] = useState('option1')
+
+// Checkbox
+const [isChecked, setIsChecked] = useState(false)
+
+// Multiple checkboxes
+const [agreed, setAgreed] = useState(false)
+const [newsletter, setNewsletter] = useState(false)
+```
+
+#### Complete Example - Radio Group in Container
+```typescript
+<div className="space-y-3">
+  {/* Option 1 */}
+  <div className="rounded-lg border border-[#E3E3E3] p-4 transition-colors hover:border-black">
+    <label className="flex cursor-pointer items-center gap-3">
+      <input
+        type="radio"
+        name="shipping"
+        value="standard"
+        checked={shipping === 'standard'}
+        onChange={(e) => setShipping(e.target.value)}
+        className="peer sr-only"
+      />
+      <div className="h-5 w-5 shrink-0 rounded-full border-2 border-[#E3E3E3] p-0.5 transition-all peer-checked:border-black peer-checked:[&>div]:bg-black">
+        <div className="h-full w-full rounded-full bg-transparent transition-all" />
+      </div>
+      <span className="font-inter text-[16px] font-medium text-black">
+        Standard Shipping - $10.00
+      </span>
+    </label>
+  </div>
+
+  {/* Option 2 */}
+  <div className="rounded-lg border border-[#E3E3E3] p-4 transition-colors hover:border-black">
+    <label className="flex cursor-pointer items-center gap-3">
+      <input
+        type="radio"
+        name="shipping"
+        value="express"
+        checked={shipping === 'express'}
+        onChange={(e) => setShipping(e.target.value)}
+        className="peer sr-only"
+      />
+      <div className="h-5 w-5 shrink-0 rounded-full border-2 border-[#E3E3E3] p-0.5 transition-all peer-checked:border-black peer-checked:[&>div]:bg-black">
+        <div className="h-full w-full rounded-full bg-transparent transition-all" />
+      </div>
+      <span className="font-inter text-[16px] font-medium text-black">
+        Express Shipping - $20.00
+      </span>
+    </label>
+  </div>
+</div>
+```
+
+#### Common Mistakes to Avoid
+- ❌ Using `hidden` or `display: none` on input (breaks accessibility)
+- ❌ Not using `peer` class on the native input
+- ❌ **Using `peer-checked:` on nested children** (won't work - only works on siblings!)
+- ❌ **Overcomplicating with `flex items-center justify-center`** (use simple padding instead)
+- ❌ Forgetting focus states (`peer-focus:ring-2`)
+- ❌ Not adding `cursor-pointer` to label
+- ❌ Using arbitrary colors instead of theme colors
+- ❌ Missing transitions for smooth state changes
+
+### Performance Optimization
+- Minimize `'use client'` directives - only at the component that needs it
+- Use dynamic imports for heavy client components: `const Heavy = dynamic(() => import('./Heavy'))`
+- Implement Suspense boundaries with meaningful fallbacks
+- Use Next.js `<Image>` component for all images:
+  - Always provide `width` and `height` or `fill`
+  - Use `priority` for above-the-fold images
+  - Use `loading="lazy"` for below-the-fold images
+  - Prefer WebP format
+- Monitor Core Web Vitals (LCP, CLS, FID)
+- Use streaming and progressive enhancement
+
+### Data Fetching
+- Fetch data at the **server level** in Server Components
+- Use `async/await` directly in Server Components
+- Cache data appropriately with Next.js caching strategies
+- Use React Server Actions for mutations
+- Validate data with Zod or similar before processing
+- Handle errors gracefully with try/catch
+
+### State Management
+- **URL state**: Use search params via `useSearchParams()` or consider 'nuqs' library
+- **Server state**: Keep state on server when possible (Server Components)
+- **Client state**: Use React Context for simple global state
+- **Form state**: Use React Hook Form or similar
+- Avoid Redux/Zustand unless complexity clearly justifies it
+
+### Testing Standards
+- Colocate tests with source files: `Button.test.tsx` next to `Button.tsx`
+- Use Jest for unit testing
+- Test user behavior, not implementation details
+- Test complete structures in single assertions
+- Skip tests for conditions caught by TypeScript's type system
+- Write tests BEFORE implementing (TDD approach when possible)
+
+### Error Handling
+- Implement comprehensive error boundaries with `error.tsx`
+- Validate all user inputs on server side
+- Use Zod or similar for runtime validation
+- Provide meaningful error messages to users
+- Log errors appropriately (avoid `console.log` in production)
+- Never expose sensitive data in error messages
+
+### Environment Variables
+- Use `.env.local` for local development secrets
+- Use `.env.example` as template (no actual secrets)
+- Prefix with `NEXT_PUBLIC_` for client-accessible variables
+- Document all required environment variables in README
+- Validate environment variables at startup
+
+### Security Best Practices
+- Sanitize all user inputs before processing
+- Never trust client-side data - validate on server
+- Use secure headers (configure in `next.config.ts`)
+- Implement Content Security Policy (CSP)
+- Use HTTPS in production
+- Protect API routes with authentication/authorization
+- Use environment variables for secrets (never hardcode)
+
+### Code Quality
+- Follow ESLint rules strictly (configured in `eslint.config.mjs`)
+- No linting warnings allowed
+- Use Prettier for consistent formatting
+- Write self-documenting code with clear names
+- Add comments only for complex business logic
+- Keep functions small and focused (< 50 lines ideally)
+
+### Git & Version Control (CRITICAL RULES)
+- **NEVER** automatically commit changes - you must ALWAYS ask the user first
+- **NEVER** push to remote repository - this is strictly forbidden
+- **Suggesting commit messages is the maximum you can do** - provide a draft commit message and let the user execute it
+- If the user explicitly requests a commit, ask for confirmation before proceeding
+- Write meaningful commit messages (conventional commits style)
+- Keep commits atomic and focused
+- Review all changes before committing
+- Never commit secrets or sensitive data
+- Use `.gitignore` properly
+
+**Important**: When the user asks you to implement features or make changes:
+1. Make the code changes
+2. **Stop before committing**
+3. Suggest a commit message if helpful
+4. Let the user review and commit manually
+
+### Commit Message Content (CRITICAL RULES)
+- **NEVER include AI attribution** - no "🤖 Generated with Claude Code" or "Co-Authored-By: Claude" footers
+- **Focus on functional changes** - describe what was built, not styling details
+- **Summarize styling** - use high-level descriptions (e.g., "Implement responsive layout") instead of listing specific CSS properties or typography specifications
+- Keep messages concise and focused on the "why" and "what" of the change
+- Avoid listing every styling detail like font sizes, colors, spacing values, or responsive breakpoint adjustments
+
+**Good example**:
+```
+feat(bag): implement shopping bag page with cart functionality
+
+- Create bag page with cart items display and order summary
+- Add cart types and CartContext with localStorage persistence
+- Create CartItem, OrderSummary, and EmptyCart components
+- Add free shipping progress indicator
+- Update Header to display dynamic cart count
+- Integrate cart with ProductDetail page
+```
+
+**Bad example** (too detailed, includes AI attribution):
+```
+feat(bag): implement shopping bag page
+
+- Apply exact typography specifications (16px, -0.96px tracking, font-weight 500)
+- Style "Calculated in checkout" text with responsive sizing (12px default, 14px on lg+)
+- Add inline SVG payment icons (Visa, Mastercard, Amex, Discover, Apple Pay, PayPal, Shop Pay)
+- Implement responsive grid layout (lg: 5 cols, xl: 3 cols) with adjusted gaps
+
+🤖 Generated with Claude Code
+Co-Authored-By: Claude <noreply@anthropic.com>
+```
+
+---
+
+## DEVELOPMENT WORKFLOW
+
+### Before Starting Implementation
+1. **Ask clarifying questions** if requirements are unclear
+2. **Consider multiple approaches** - discuss pros/cons for complex features
+3. **Plan the architecture** - think about file structure and component hierarchy
+4. **Check existing patterns** - maintain consistency with current codebase
+
+### During Implementation
+1. **Write types first** - define interfaces/types before implementation
+2. **Consider Server vs Client** - default to Server Components
+3. **Think about edge cases** - handle loading, error, and empty states
+4. **Test incrementally** - don't wait until everything is done
+5. **Optimize as you go** - don't defer performance considerations
+
+### After Implementation
+1. **Review the code** - read through as if reviewing someone else's PR
+2. **Test thoroughly** - happy path and edge cases
+3. **Check performance** - verify no unnecessary re-renders or client components
+4. **Update documentation** - if you changed public APIs or added features
+5. **Clean up** - remove console.logs, unused imports, commented code
+
+---
+
+## ANTI-PATTERNS TO AVOID
+
+- ❌ **Using inline `style` objects** - ALWAYS use Tailwind classes instead
+- ❌ Using `any` type in TypeScript
+- ❌ Adding `'use client'` at the root when only a child component needs it
+- ❌ Using `useEffect` for data fetching (fetch at server level instead)
+- ❌ Prop drilling through many levels (use composition or context)
+- ❌ Creating CSS files when Tailwind can handle it
+- ❌ Using CSS modules or styled-components (use Tailwind exclusively)
+- ❌ Using `<img>` instead of Next.js `<Image>`
+- ❌ Fetching data in client components when it can be done server-side
+- ❌ Ignoring TypeScript errors
+- ❌ Using `console.log` for error handling
+- ❌ Hardcoding values that should be configurable
+- ❌ Using non-canonical Tailwind classes when canonical alternatives exist (e.g., `rounded-[24px]` instead of `rounded-3xl`)
+
+---
+
+## IMPORTANT REMINDERS
+
+1. **AI tools are assistants, not senior engineers** - always critically review suggestions
+2. **Question suboptimal choices** - prevent technical debt from accumulating
+3. **Test thoroughly** - automated tests and manual verification
+4. **Maintain code ownership** - you are responsible for the final code
+5. **When in doubt, ask** - clarify before implementing complex features
+6. **Keep it simple** - avoid over-engineering solutions
+7. **Document decisions** - explain WHY in comments for non-obvious choices
+
+---
+
+## REFERENCE LINKS
+
+- [Next.js Documentation](https://nextjs.org/docs)
+- [React Server Components](https://nextjs.org/docs/app/building-your-application/rendering/server-components)
+- [Tailwind CSS v4](https://tailwindcss.com/docs)
+- [TypeScript Handbook](https://www.typescriptlang.org/docs/)
+
+---
+
+**Last Updated**: 2025-11-12
+**Project Version**: Next.js 16.0.1

@@ -1,0 +1,1113 @@
+# AI Assistant Rules for LB Frozen Workspace
+
+> **Read `GUIDELINES.md` first** for project architecture, development setup, and general conventions.
+
+---
+
+## Table of Contents
+
+1. [Global Rules](#global-rules)
+2. [Server Rules (server)](#server-rules-server)
+3. [Storepage Rules (storepage)](#storepage-rules-storepage)
+4. [Admin Rules (admin)](#admin-rules-admin)
+
+---
+
+## Global Rules
+
+### Cross-Project Priority
+
+When implementing features spanning multiple projects:
+1. **First**: Adapt the target project to use existing APIs
+2. **Second**: Check `/docs` for existing endpoints
+3. **Last**: Modify other projects only if required functionality doesn't exist
+
+### Project Boundaries
+
+| Code Type | Belongs In | Never In |
+|-----------|------------|----------|
+| Admin UI | `admin/` | `server/`, `storepage/` |
+| Customer UI | `storepage/` | `admin/`, `server/` |
+| API endpoints | `server/src/api/` | Frontend projects |
+
+### Port Assignments
+
+- Server: **9000** (`pnpm dev`)
+- Storepage: **3000** (`pnpm dev`)
+- Admin: **3001** (`pnpm dev`)
+
+### TypeScript Standards (All Projects)
+
+- **Strict mode enabled** - enforce strict type checking
+- **NO `any` types** - use `unknown` with type guards
+- Explicit return types on all functions
+- Use descriptive names with auxiliary verbs (`isLoading`, `hasError`, `canSubmit`)
+- Use `type` by default; use `interface` only for objects that need extension
+
+### Git Behavior
+
+- **Never** auto-commit without asking
+- **Never** push to remote
+- **Never** include AI attribution in commits
+- Use conventional commit format (`feat`, `fix`, `refactor`, `docs`, `test`, `chore`)
+
+---
+
+## Server Rules (server)
+
+**Stack**: Medusa.js 2.10.2, Node.js 22.x, TypeScript 5.7.2, PostgreSQL, MikroORM
+
+### Package Manager
+
+Always use `pnpm` for server.
+
+### Dependency Injection (Critical)
+
+**ALWAYS** resolve services from container. **NEVER** instantiate directly.
+
+```typescript
+// CORRECT
+const logger = container.resolve("logger")
+const productService = container.resolve("productService")
+
+// In API routes
+const logger = req.scope.resolve("logger")
+
+// WRONG - Never do this
+const logger = new Logger()
+```
+
+### File-Based Routing
+
+```
+src/api/
+  admin/
+    custom/
+      route.ts          # /admin/custom
+    products/
+      [id]/
+        route.ts        # /admin/products/:id
+  store/
+    custom/
+      route.ts          # /store/custom
+```
+
+### API Route Pattern
+
+```typescript
+import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+
+export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
+  const { id } = req.params
+  res.json({ data: { id } })
+}
+```
+
+### Admin Endpoint Authentication (Security Critical)
+
+**ALL custom admin endpoints MUST use custom auth pattern**:
+
+```typescript
+export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
+  const authContext = (req as any).auth_context;
+  if (!authContext?.actor_id) {
+    return res.status(401).json({ message: "Unauthorized" } as any);
+  }
+  // Handler logic - user is authenticated
+  res.json({ data: "protected" })
+}
+```
+
+**Why**: Medusa's `authenticate()` middleware blocks OPTIONS requests (CORS preflight).
+
+### Model Definition (Timestamp Fields)
+
+```typescript
+// CORRECT - No defaults on dateTime
+const Membership = model.define("membership", {
+  id: model.id().primaryKey(),
+  status: model.enum(["active", "cancelled"]).default("active"),
+  created_at: model.dateTime(), // Auto-managed by MikroORM
+  updated_at: model.dateTime(), // Auto-managed by MikroORM
+})
+
+// WRONG
+created_at: model.dateTime().default("now") // TypeScript error!
+created_at: model.dateTime().defaultNow()   // Doesn't exist!
+```
+
+### Executable Scripts Pattern
+
+```typescript
+// CORRECT - Export as default, receive container via injection
+export default async function({ container }: any) {
+  const logger = container.resolve("logger")
+  const customerModule = container.resolve(Modules.CUSTOMER)
+  // Script logic
+}
+
+// Run with: pnpm medusa exec ./src/scripts/my-script.ts
+```
+
+### Custom Module Service Naming (Critical)
+
+**NEVER name a service class `{ModelName}Service`** - it conflicts with Medusa's auto-generated internal service.
+
+```typescript
+// WRONG - Conflicts with Medusa's internal MembershipService
+class MembershipService extends MedusaService({ Membership }) { }
+
+// CORRECT - Use "ModuleService" suffix
+class MembershipModuleService extends MedusaService({ Membership }) { }
+```
+
+**Naming pattern for all custom modules:**
+| Model | Service Class Name |
+|-------|-------------------|
+| `Membership` | `MembershipModuleService` |
+| `Points` | `PointsModuleService` |
+| `MembershipPromo` | `MembershipPromoModuleService` |
+
+### MedusaService Method Signatures (Critical)
+
+Auto-generated methods use `(filters, config)` signature, NOT `({ filters: {...} })`:
+
+```typescript
+// WRONG - Object wrapper doesn't work
+const items = await this.listMemberships({ filters: { status: "active" } })
+
+// CORRECT - Direct (filters, config) signature
+const items = await this.listMemberships(
+  { status: "active" },  // filters
+  { take: 50, skip: 0 }  // config
+)
+```
+
+**Declare methods for TypeScript support** instead of using `(this as any)`:
+
+```typescript
+class MembershipModuleService extends MedusaService({ Membership }) {
+  // Declare auto-generated methods for proper TypeScript support
+  declare listMemberships: (
+    filters: Record<string, unknown>,
+    config?: { take?: number; skip?: number; order?: Record<string, "ASC" | "DESC"> }
+  ) => Promise<any[]>
+  declare createMemberships: (data: Record<string, unknown>) => Promise<any>
+  declare updateMemberships: (data: { id: string } & Record<string, unknown>) => Promise<any>
+  declare retrieveMembership: (id: string) => Promise<any>
+
+  // Now TypeScript recognizes these methods
+  async getActiveMemberships() {
+    return this.listMemberships({ status: "active" }, { take: 100 })
+  }
+}
+```
+
+### Zod Validation
+
+```typescript
+import { z } from "zod"
+import { validateAndTransformBody } from "@medusajs/framework"
+
+export const CreateSchema = z.object({
+  title: z.string().min(1).describe("Product title"),
+  price: z.number().positive().describe("Price in cents"),
+})
+
+export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
+  const validated = await validateAndTransformBody(req, CreateSchema)
+  // validated is fully typed
+}
+```
+
+### Error Handling
+
+```typescript
+import { MedusaError } from "@medusajs/framework/utils"
+
+throw new MedusaError(MedusaError.Types.NOT_FOUND, `Product ${id} not found`)
+throw new MedusaError(MedusaError.Types.INVALID_DATA, "Quantity must be > 0")
+```
+
+### Import Paths
+
+```typescript
+// CORRECT - Direct module names (no @/ prefix)
+import { assertValue } from "lib/constants"
+
+// WRONG
+import { assertValue } from "@/lib/constants"
+```
+
+### Workflows (Multi-Step Processes)
+
+Use workflows for operations requiring rollback:
+
+```typescript
+import { createStep, createWorkflow, StepResponse } from "@medusajs/framework/workflows-sdk"
+
+const reserveStep = createStep(
+  "reserve-inventory",
+  async (input) => {
+    const reservation = await inventoryService.reserve(input)
+    return new StepResponse(
+      { reservationId: reservation.id },
+      { reservationId: reservation.id } // For compensation
+    )
+  },
+  async (compensationData) => {
+    // Rollback if later steps fail
+    await inventoryService.cancelReservation(compensationData.reservationId)
+  }
+)
+```
+
+### E-commerce Best Practices
+
+- **Idempotency**: Use idempotency keys for payments
+- **Transactions**: Wrap critical operations in database transactions
+- **Soft deletes**: Never hard-delete order/payment records
+- **Audit logging**: Log financial transactions
+- **Event emission**: Emit events for decoupled business logic
+
+### Order Data Consistency (Critical)
+
+When implementing features that affect order calculations (discounts, coupons, points, shipping, taxes, promotions), **ALL display locations MUST be updated together**.
+
+#### Storepage Display Files (Customer-Facing)
+
+| Location | File | Updates Needed |
+|----------|------|----------------|
+| Checkout preview | `storepage/app/checkout/page.tsx` | Order summary, discount rows, total calculation |
+| Success page | `storepage/app/success/page.tsx` | Receipt display, discount summary |
+| Order history list | `storepage/app/account/orders/page.tsx` | Order total in list |
+| Order detail | `storepage/app/account/orders/[id]/page.tsx` | Full order breakdown |
+
+#### Admin Display Files
+
+| Location | File | Updates Needed |
+|----------|------|----------------|
+| Order list page | `admin/app/admin/orders/page.tsx` | Order cards display |
+| Order detail | `admin/app/admin/orders/[id]/page.tsx` | Full breakdown |
+| Order drawer | `admin/components/admin/OrderDetailsDrawer.tsx` | Quick view panel |
+| Order card | `admin/components/admin/OrderCard.tsx` | Card total calculation, discount display |
+| Recent orders table | `admin/components/admin/RecentOrdersTable.tsx` | Overview page table, total calculation |
+
+#### Backend API Files (Data Source)
+
+| Endpoint | File | Updates Needed |
+|----------|------|----------------|
+| Format helper | `server/src/utils/format-order.ts` | Add metadata, discount calc |
+| Recent orders | `server/src/api/admin/orders/recent/route.ts` | Include discount in total |
+| Custom orders | `server/src/api/admin/custom-orders/route.ts` | Add metadata field, discount calc |
+| Order validator | `admin/lib/validators/order.ts` | Add metadata to Order schema |
+
+#### Implementation Checklist
+
+For ANY order-affecting feature:
+
+1. **Backend: Store in metadata** - Persist all discount info in `order.metadata`
+2. **Backend: Update format-order.ts** - Include metadata and adjust total calculation
+3. **Backend: Update custom-orders API** - Return metadata field
+4. **Admin: Update Order schema** - Add new metadata fields to TypeScript validator
+5. **Storepage: Update all 4 views** - Checkout, success, order history, order detail
+6. **Admin: Update all 5 views** - Order list page, order detail, order drawer, OrderCard component, RecentOrdersTable component
+7. **Test full flow** - Cart → Checkout → Success → Customer orders → Admin views (including overview page recent orders)
+
+#### Example Metadata Structure
+
+```typescript
+order.metadata = {
+  // Coupon discount
+  coupon_code: "SAVE10",
+  applied_coupon_discount: 1000, // cents
+
+  // Points discount
+  points_to_redeem: 500,
+  points_discount_amount: 500, // cents
+
+  // PWP items store their discount on each item
+  // item.metadata.is_pwp_item: true
+  // item.metadata.pwp_discount_amount: 2000
+
+  // EasyParcel shipping (actual selected rate from courier)
+  easyparcel_shipping: {
+    service_id: "EP-CS0M3",
+    service_name: "MRight",
+    courier_id: "EP-CR0M2",
+    courier_name: "MRight Pte Ltd",
+    courier_logo: "https://...",
+    price: 369, // cents - the ACTUAL shipping rate
+    price_display: "$3.69",
+    delivery_eta: "1-2 days"
+  },
+
+  // Free shipping flag (when free shipping promotion applied)
+  free_shipping_applied: true
+}
+```
+
+#### Shipping Cost Calculation Pattern (Critical)
+
+**Problem**: When customers select EasyParcel shipping during checkout, the actual shipping rate is stored in `order.metadata.easyparcel_shipping.price`. However, Medusa requires a placeholder shipping method with a different price (e.g., $0.10). If you read from `shipping_methods.amount`, you'll get the wrong shipping cost.
+
+**Solution**: Always check `metadata.easyparcel_shipping.price` first, then fall back to `shipping_methods` amount:
+
+```typescript
+// Get shipping info from order
+const shippingMethods = (order as any).shipping_methods || [];
+const orderMetadata = (order as any).metadata || {};
+
+// Check if EasyParcel shipping was used - prefer this over shipping_methods
+// because shipping_methods may contain a placeholder Medusa shipping option
+const easyParcelShipping = orderMetadata.easyparcel_shipping;
+let rawShippingTotal: number;
+
+if (easyParcelShipping && typeof easyParcelShipping.price === 'number') {
+  // Use EasyParcel price from metadata (the actual selected shipping rate)
+  rawShippingTotal = easyParcelShipping.price;
+} else {
+  // Fall back to shipping methods amount
+  rawShippingTotal = shippingMethods.reduce((sum: number, method: any) => {
+    return sum + (Number(method.amount) || 0);
+  }, 0);
+}
+
+// If free shipping was applied, the effective shipping is 0
+const freeShippingApplied = orderMetadata.free_shipping_applied === true;
+const effectiveShippingTotal = freeShippingApplied ? 0 : rawShippingTotal;
+
+// Final total = subtotal + effectiveShipping - discounts
+const orderTotal = Math.max(0, subtotal + effectiveShippingTotal - discountTotal);
+```
+
+**Display shipping method name** (prefer EasyParcel courier name):
+
+```typescript
+const shippingMethodName = easyParcelShipping?.courier_name
+  ? `${easyParcelShipping.courier_name}${easyParcelShipping.service_name ? ` - ${easyParcelShipping.service_name}` : ''}`
+  : (shippingMethods.length > 0
+    ? (shippingMethods[0].name || shippingMethods[0].shipping_option?.name || 'Standard Shipping')
+    : 'Standard Shipping');
+```
+
+**Files that must use this pattern**:
+| Location | File |
+|----------|------|
+| Format helper | `server/src/utils/format-order.ts` |
+| Recent orders API | `server/src/api/admin/orders/recent/route.ts` |
+| Custom orders API | `server/src/api/admin/custom-orders/route.ts` |
+| Admin single order | `server/src/api/admin/orders/[id]/route.ts` |
+| Store customer orders | `server/src/api/store/customer-orders/route.ts` |
+| Store single order | `server/src/api/store/customer-orders/[id]/route.ts` |
+| Email template | `server/src/modules/email-notifications/templates/order-placed.tsx` |
+| Success page | `storepage/app/success/page.tsx` |
+| Order detail page | `storepage/app/account/orders/[id]/page.tsx` |
+| Revenue API | `server/src/api/admin/analytics/revenue/route.ts` |
+| Revenue timeseries API | `server/src/api/admin/analytics/revenue/timeseries/route.ts` |
+| RecentOrdersTable | `admin/components/admin/RecentOrdersTable.tsx` |
+
+**Common Pitfalls**:
+- Reading from `shipping_methods.amount` instead of EasyParcel metadata
+- Forgetting to add `shipping_methods` relation when querying orders
+- Not handling free shipping flag (`free_shipping_applied`)
+- Showing "Standard Shipping" instead of EasyParcel courier name
+
+#### Order Total Calculation Pattern
+
+**CRITICAL**: Medusa v2 does NOT populate `cart.total` or `order.total`. You must calculate from items.
+
+```typescript
+// Get original price before variant discounts
+function getItemOriginalPrice(item: any): number {
+  const unitPrice = Number(item.unit_price) || 0;
+  if (item.metadata?.original_unit_price) {
+    return Number(item.metadata.original_unit_price) || 0;
+  }
+  if (item.metadata?.is_variant_discount && item.metadata?.variant_discount_amount) {
+    return unitPrice + (Number(item.metadata.variant_discount_amount) || 0);
+  }
+  return unitPrice;
+}
+
+// Standard total calculation with all 7 discounts
+function calculateOrderTotal(order: any): number {
+  const items = order.items || [];
+
+  // Gross = sum of original prices (before variant discounts)
+  const gross = items.reduce((sum, item) => {
+    const originalPrice = getItemOriginalPrice(item);
+    return sum + originalPrice * (Number(item.quantity) || 0);
+  }, 0);
+
+  // 1. PWP discount (item-level)
+  const pwpDiscount = items.reduce((sum, item) => {
+    if (item.metadata?.is_pwp_item && item.metadata?.pwp_discount_amount) {
+      return sum + Number(item.metadata.pwp_discount_amount) * (Number(item.quantity) || 1);
+    }
+    return sum;
+  }, 0);
+
+  // 2. Variant discount (item-level)
+  const variantDiscount = items.reduce((sum, item) => {
+    if (item.metadata?.is_variant_discount && item.metadata?.variant_discount_amount) {
+      return sum + Number(item.metadata.variant_discount_amount) * (Number(item.quantity) || 1);
+    }
+    return sum;
+  }, 0);
+
+  // 3. Wholesale/Bulk discount (item-level)
+  const wholesaleDiscount = items.reduce((sum, item) => {
+    if (item.metadata?.is_bulk_price) {
+      const originalPrice = getItemOriginalPrice(item);
+      const currentPrice = Number(item.unit_price) || 0;
+      return sum + (originalPrice - currentPrice) * (Number(item.quantity) || 1);
+    }
+    return sum;
+  }, 0);
+
+  // 4. Adjustment discount (from item.adjustments array)
+  const adjustmentDiscount = items.reduce((sum, item) => {
+    return sum + (item.adjustments || []).reduce(
+      (adjSum, adj) => adjSum + (Number(adj.amount) || 0), 0);
+  }, 0);
+
+  // 5. Coupon discount (order-level, only if not in adjustments)
+  const couponDiscount = adjustmentDiscount === 0
+    ? (Number(order.metadata?.applied_coupon_discount) || 0) : 0;
+
+  // 6. Points discount (order-level)
+  const pointsDiscount = Number(order.metadata?.points_discount_amount) || 0;
+
+  // 7. Membership promo discount (order-level)
+  const membershipPromoDiscount = Number(order.metadata?.applied_membership_promo_discount) || 0;
+
+  // 8. Tier discount (order-level)
+  const tierDiscount = Number(order.metadata?.tier_discount_amount) || 0;
+
+  const totalDiscount = pwpDiscount + variantDiscount + wholesaleDiscount +
+    adjustmentDiscount + couponDiscount + pointsDiscount + membershipPromoDiscount + tierDiscount;
+
+  return Math.max(0, gross - totalDiscount);
+}
+```
+
+#### Common Pitfalls
+
+- **Missing metadata in API response** - Admin API must return `metadata` field
+- **Missing TypeScript types** - Add metadata to Order schema validator
+- **Discount in checkout but not history** - Must update all views
+- **Using cart.total/order.total** - Not populated in Medusa v2, calculate manually
+- **Forgetting item.adjustments** - Coupons may be stored here instead of metadata
+- **Missing OrderCard/RecentOrdersTable updates** - These components have their own `calculateOrderTotal()` functions that must be updated for new discount types
+- **Server vs Frontend calculation mismatch** - `format-order.ts` calculates totals server-side; frontend components recalculate from item data. Both must use the same logic
+- **CRITICAL: Coupon double-counting** - Coupons can be stored in BOTH `item.adjustments` AND `order.metadata.applied_coupon_discount`. Only add metadata coupon if `item.adjustments` is empty to prevent double-counting
+
+### Analytics Revenue Calculation (Critical)
+
+Dashboard analytics (revenue, AOV, top-selling products) must use **NET revenue** (after all discounts), not gross revenue.
+
+**CRITICAL: Revenue = Subtotal + Shipping - Discounts**. Always include effective shipping cost (0 if free shipping applied).
+
+#### Discount Types
+
+| Type | Level | Source | Apply To |
+|------|-------|--------|----------|
+| PWP | Item | `item.metadata.is_pwp_item`, `item.metadata.pwp_discount_amount` | Order revenue, Product revenue |
+| Variant Discount | Item | `item.metadata.is_variant_discount`, `item.metadata.variant_discount_amount` | Order revenue, Product revenue |
+| Wholesale/Bulk | Item | `item.metadata.is_bulk_price` (discount = original_price - unit_price) | Order revenue, Product revenue |
+| Coupon | Order | `item.adjustments` or `order.metadata.applied_coupon_discount` | Order revenue only |
+| Points | Order | `order.metadata.points_discount_amount` | Order revenue only |
+| Membership Promo | Order | `order.metadata.applied_membership_promo_discount` | Order revenue only |
+| Tier Discount | Order | `order.metadata.tier_discount_amount` | Order revenue only |
+
+**Important**:
+- Top-selling products should only subtract **item-level discounts** (PWP, variant, wholesale), not order-level discounts (coupon/points/membership promo/tier), because order-level discounts are spread across all items.
+- For variant discount items, `unit_price` is the **discounted** price. Use `item.metadata.original_unit_price` or calculate `unit_price + variant_discount_amount` to get the original price.
+- For wholesale/bulk items, calculate discount as `(original_price - unit_price) * quantity`.
+
+#### Analytics Files to Update
+
+| File | Metric | Discount Handling |
+|------|--------|-------------------|
+| `api/admin/analytics/revenue/route.ts` | Total earnings, AOV, orders | All 7 discounts (PWP + variant + wholesale + adjustments + coupon + points + membership promo + tier) |
+| `api/admin/analytics/revenue/timeseries/route.ts` | Revenue chart | All 7 discounts |
+| `api/admin/analytics/products/top-selling/route.ts` | Product revenue | Item-level only (PWP + variant + wholesale) |
+| `api/admin/orders/recent/route.ts` | Recent orders total | All 7 discounts |
+| `api/admin/analytics/schemas.ts` | Response types | Include gross_total, total_discount fields |
+
+#### Order Revenue Pattern (All 7 Discounts)
+
+```typescript
+/**
+ * Get original price before any variant discounts
+ * For variant discount items, unit_price is the discounted price
+ */
+function getItemOriginalPrice(item: { unit_price?: unknown; metadata?: Record<string, unknown> | null }): number {
+  const unitPrice = Number(item.unit_price) || 0;
+
+  // Check for original_unit_price in metadata first
+  if (item.metadata?.original_unit_price) {
+    return Number(item.metadata.original_unit_price) || 0;
+  }
+
+  // For variant discount items, calculate original from unit_price + discount
+  if (item.metadata?.is_variant_discount && item.metadata?.variant_discount_amount) {
+    return unitPrice + (Number(item.metadata.variant_discount_amount) || 0);
+  }
+
+  return unitPrice;
+}
+
+function calculateOrderNetRevenue(order: any): { gross: number; net: number; discount: number } {
+  const items = order.items || [];
+
+  // Gross = sum of original prices (before variant discounts)
+  const gross = items.reduce((sum, item) => {
+    const originalPrice = getItemOriginalPrice(item);
+    return sum + originalPrice * (Number(item.quantity) || 0);
+  }, 0);
+
+  // 1. PWP discount (item-level)
+  const pwpDiscount = items.reduce((sum, item) => {
+    if (item.metadata?.is_pwp_item && item.metadata?.pwp_discount_amount) {
+      return sum + Number(item.metadata.pwp_discount_amount) * (Number(item.quantity) || 1);
+    }
+    return sum;
+  }, 0);
+
+  // 2. Variant discount (item-level) - from Set Discount Global in admin
+  const variantDiscount = items.reduce((sum, item) => {
+    if (item.metadata?.is_variant_discount && item.metadata?.variant_discount_amount) {
+      return sum + Number(item.metadata.variant_discount_amount) * (Number(item.quantity) || 1);
+    }
+    return sum;
+  }, 0);
+
+  // 3. Wholesale/Bulk discount (item-level)
+  const wholesaleDiscount = items.reduce((sum, item) => {
+    if (item.metadata?.is_bulk_price) {
+      const originalPrice = getItemOriginalPrice(item);
+      const currentPrice = Number(item.unit_price) || 0;
+      return sum + (originalPrice - currentPrice) * (Number(item.quantity) || 1);
+    }
+    return sum;
+  }, 0);
+
+  // 4. Adjustment discount (order-level, from item.adjustments array)
+  const adjustmentDiscount = items.reduce((sum, item) => {
+    return sum + (item.adjustments || []).reduce(
+      (adjSum, adj) => adjSum + (Number(adj.amount) || 0), 0);
+  }, 0);
+
+  // 5. Coupon discount (order-level, fallback if not in adjustments)
+  const couponDiscount = adjustmentDiscount === 0
+    ? (Number(order.metadata?.applied_coupon_discount) || 0) : 0;
+
+  // 6. Points discount (order-level)
+  const pointsDiscount = Number(order.metadata?.points_discount_amount) || 0;
+
+  // 7. Membership promo discount (order-level)
+  const membershipPromoDiscount = Number(order.metadata?.applied_membership_promo_discount) || 0;
+
+  // 8. Tier discount (order-level) - auto-applied based on membership tier
+  const tierDiscount = Number(order.metadata?.tier_discount_amount) || 0;
+
+  // Total = all 7 discount types
+  const totalDiscount = pwpDiscount + variantDiscount + wholesaleDiscount +
+    adjustmentDiscount + couponDiscount + pointsDiscount + membershipPromoDiscount + tierDiscount;
+
+  return { gross, net: Math.max(0, gross - totalDiscount), discount: totalDiscount };
+}
+```
+
+#### Product Revenue Pattern (Item-Level Discounts Only)
+
+For top-selling products, only subtract item-level discounts (PWP, variant, wholesale), not order-level discounts.
+
+```typescript
+function getEffectiveItemPrice(item: any): number {
+  let effectivePrice = Number(item.unit_price) || 0;
+
+  // PWP discount
+  if (item.metadata?.is_pwp_item && item.metadata?.pwp_discount_amount) {
+    effectivePrice -= Number(item.metadata.pwp_discount_amount);
+  }
+
+  // Note: variant discount is already applied to unit_price
+  // Note: wholesale discount is already applied to unit_price
+
+  return Math.max(0, effectivePrice);
+}
+```
+
+#### Response Schema Requirements
+
+Analytics responses should include both gross and net values for transparency:
+
+```typescript
+// In schemas.ts
+total: z.number().describe("Net revenue (after discounts)"),
+gross_total: z.number().optional().describe("Gross revenue (before discounts)"),
+total_discount: z.number().optional().describe("Total discounts applied"),
+```
+
+#### Checklist for Order-Affecting Features
+
+When adding new discount/adjustment types:
+
+1. **Update server analytics APIs:**
+   - `calculateOrderNetRevenue()` in `revenue/route.ts` and `timeseries/route.ts`
+   - `calculateDiscountTotal()` in `format-order.ts`
+   - `recent/route.ts` for recent orders
+2. **Update admin frontend components:**
+   - `OrderCard.tsx` - `calculateOrderTotal()` function
+   - `RecentOrdersTable.tsx` - `calculateOrderTotal()` function
+   - `OrderDetailsDrawer.tsx` - if showing discount breakdown
+3. **Update item-level discount tracking** (if item-level):
+   - `getEffectiveItemPrice()` for product revenue
+   - `getItemOriginalPrice()` for gross calculation
+4. Add to Discount Types table above
+5. Include `items.adjustments` relation in order queries
+6. Test analytics dashboard shows correct net revenue
+7. Verify consistency across: Order Drawer, Order Card, Recent Orders Table
+
+---
+
+## Storepage Rules (storepage)
+
+**Stack**: Next.js 16.0.1, React 19.2.0, TypeScript 5, Tailwind CSS 4
+
+### Package Manager
+
+Use `pnpm` for storepage.
+
+### Server Components by Default
+
+All components in `app/` are Server Components unless marked with `'use client'`.
+
+Use `'use client'` **ONLY** for:
+- Interactive features (onClick, onChange)
+- Browser APIs (window, localStorage)
+- React hooks (useState, useEffect)
+- Third-party client-side libraries
+
+### Styling with Tailwind CSS (Critical)
+
+**NEVER use inline `style` objects** - this is strictly forbidden.
+
+```typescript
+// WRONG
+<p style={{ fontSize: '16px', fontWeight: 500 }}>Text</p>
+
+// CORRECT
+<p className="text-[16px] font-medium">Text</p>
+```
+
+**Common conversions**:
+- `fontSize: '16px'` → `text-[16px]` or `text-base`
+- `fontWeight: 500` → `font-medium`
+- `color: '#999'` → `text-[#999]`
+- `padding: '24px'` → `p-6`
+- `borderRadius: '24px'` → `rounded-3xl`
+
+Use canonical Tailwind classes when available (`rounded-3xl` not `rounded-[24px]`).
+
+### Explicit Text Colors (Critical)
+
+**ALWAYS add explicit text color classes** to all text elements. Never rely on inherited colors.
+
+```typescript
+// WRONG - No explicit color, relies on inheritance
+<h2 className="text-xl font-semibold">Title</h2>
+<span className="text-sm font-medium">Label</span>
+
+// CORRECT - Explicit color class
+<h2 className="text-xl font-semibold text-neutral-900">Title</h2>
+<span className="text-sm font-medium text-neutral-900">Label</span>
+```
+
+**Standard color palette**:
+- Primary text: `text-black` or `text-neutral-900`
+- Secondary text: `text-neutral-500` or `text-[#999]`
+- White text (dark bg): `text-white`
+- Success: `text-green-600`
+- Error: `text-red-600`
+- Warning: `text-amber-600`
+
+### Component Organization
+
+```
+components/            # ALL components go here
+  ui/                  # Reusable UI (Button, Card, Input)
+  layout/              # Layout (Header, Footer, Sidebar)
+  forms/               # Form components
+  products/            # Product-related components
+  users/               # User-related components
+```
+
+**Never** create component folders inside `app/` routes.
+
+### UI/UX Interactivity
+
+**ALWAYS add `cursor-pointer`** to clickable elements:
+
+```typescript
+<button className="cursor-pointer rounded bg-black px-4 py-2 hover:opacity-90">
+  Click me
+</button>
+
+<div onClick={handleClick} className="cursor-pointer rounded hover:bg-gray-100">
+  Clickable card
+</div>
+```
+
+### Custom Dropdown Pattern
+
+Create custom dropdowns for design control. Structure:
+
+```typescript
+'use client'
+import { useState, useRef, useEffect } from 'react'
+
+const [isOpen, setIsOpen] = useState(false)
+const dropdownRef = useRef<HTMLDivElement>(null)
+
+// Close on outside click
+useEffect(() => {
+  function handleClickOutside(event: MouseEvent) {
+    if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      setIsOpen(false)
+    }
+  }
+  document.addEventListener('mousedown', handleClickOutside)
+  return () => document.removeEventListener('mousedown', handleClickOutside)
+}, [])
+```
+
+Key elements:
+- `position: absolute z-50` for dropdown menu
+- `max-h-60 overflow-auto` for scrollable list
+- ARIA attributes (`aria-haspopup`, `aria-expanded`, `role="listbox"`)
+- Keyboard support (Escape to close)
+
+### Custom Radio/Checkbox Pattern
+
+Use hybrid approach: hidden native input + custom visual indicator.
+
+```typescript
+<label className="flex cursor-pointer items-center gap-3">
+  <input
+    type="radio"
+    name="group"
+    value="option1"
+    checked={selected === 'option1'}
+    onChange={(e) => setSelected(e.target.value)}
+    className="peer sr-only"
+  />
+  <div className="h-5 w-5 rounded-full border-2 border-[#E3E3E3] p-0.5 peer-checked:border-black peer-checked:[&>div]:bg-black">
+    <div className="h-full w-full rounded-full bg-transparent" />
+  </div>
+  <span>Option 1</span>
+</label>
+```
+
+**Critical**: `peer-checked:` only works on siblings, not nested children. Use `peer-checked:[&>div]:bg-black` for nested elements.
+
+### Data Fetching
+
+- Fetch at **server level** in Server Components
+- Use `async/await` directly in Server Components
+- Use React Server Actions for mutations
+- Validate with Zod before processing
+
+### State Management
+
+- **URL state**: Use `useSearchParams()` or `nuqs` library
+- **Server state**: Keep on server when possible
+- **Client state**: React Context for simple global state
+- **Form state**: React Hook Form
+
+### Cart Optimistic Updates for Percentage-Based Discounts (Critical)
+
+When implementing or fixing **percentage-based discounts** that depend on cart subtotal (e.g., tier discounts, percentage coupons), you **MUST update both**:
+
+1. **Local optimistic update** - Recalculate discount immediately in `CartContext.tsx`
+2. **Server sync** - Ensure server recalculates via `syncCartPrices()`
+
+**Problem**: Cart uses optimistic updates for instant UX. If a discount is percentage-based (e.g., 15% tier discount), the discount amount must be recalculated when subtotal changes. Otherwise:
+- User changes quantity: 1 item ($70) → 3 items ($210)
+- Subtotal updates: $70 → $210 ✅
+- Tier discount stays: -$10.50 (15% of $70) ❌ should be -$31.50 (15% of $210)
+
+**Solution Pattern** (in `updateQuantity` function):
+
+```typescript
+// After calculating newSubtotal from updated items...
+
+// Calculate percentage-based discounts optimistically
+const tierPercentage = Number(medusaCart.metadata?.tier_discount_percentage) || 0
+const newTierDiscount = tierPercentage > 0
+  ? Math.round(newSubtotal * tierPercentage / 100)
+  : 0
+
+// Update metadata with recalculated discount
+const updatedMetadata = {
+  ...medusaCart.metadata,
+  tier_discount_amount: newTierDiscount,
+}
+
+setMedusaCart({
+  ...medusaCart,
+  items: updatedItems,
+  subtotal: newSubtotal,
+  metadata: updatedMetadata, // Include updated discount
+})
+```
+
+**Checklist for new percentage-based discounts**:
+
+1. Store percentage in cart metadata (e.g., `tier_discount_percentage: 15`)
+2. Store calculated amount in cart metadata (e.g., `tier_discount_amount: 1050`)
+3. In `CartContext.tsx` `updateQuantity()`:
+   - Recalculate amount from percentage when subtotal changes
+   - Update metadata in optimistic state
+4. Ensure `syncCartPrices()` is called after server sync to confirm values
+5. Test: Change quantity and verify discount updates immediately
+
+**Files to check**:
+- `storepage/lib/context/CartContext.tsx` - `updateQuantity()` function
+- `storepage/lib/api/cart-pricing.ts` - `getApplied*FromCart()` functions
+- `server/src/api/store/carts/[id]/sync-prices/route.ts` - Server-side calculation
+
+### Return Types for Components
+
+```typescript
+// React components
+export function Button(): React.JSX.Element { ... }
+
+// Regular functions
+function calculateTotal(items: CartItem[]): number { ... }
+```
+
+### Anti-Patterns to Avoid
+
+- Using inline `style` objects
+- Adding `'use client'` at root when only child needs it
+- Using `useEffect` for data fetching
+- Using `<img>` instead of Next.js `<Image>`
+- Creating CSS files when Tailwind can handle it
+
+---
+
+## Admin Rules (admin)
+
+**Stack**: Next.js 16, React 19, Zustand, React Query, Zod, React Hook Form, Axios, Tailwind CSS
+
+### Package Manager
+
+Use `pnpm` for admin (same as other projects).
+
+```bash
+pnpm install          # Install dependencies
+pnpm add <package>    # Add package
+pnpm dev              # Run dev server (port 3001)
+```
+
+### Port Configuration
+
+Port 3001 is configured in the project's `package.json` dev script.
+
+### Folder Structure (Mandatory)
+
+```
+app/
+  (auth)/
+  (dashboard)/
+  layout.tsx
+  page.tsx
+components/
+  ui/
+  forms/
+hooks/
+lib/
+  api/
+  validators/
+  utils/
+  types/
+```
+
+### API Client
+
+Single Axios instance in `lib/api/client.ts`:
+
+```typescript
+import axios from "axios"
+
+export const api = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_URL,
+  withCredentials: true,
+})
+```
+
+**Never** import axios directly; always use `api`.
+
+### Zod - Single Source of Truth
+
+Zod validates forms, API requests, and API responses. Schemas in `lib/validators/*`:
+
+```typescript
+import { z } from "zod"
+
+export const ProductSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1),
+  price: z.number().nonnegative(),
+})
+
+export type Product = z.infer<typeof ProductSchema>
+```
+
+**Never duplicate types** - always infer from Zod.
+
+### React Hook Form + Zod
+
+Forms must use `zodResolver`:
+
+```typescript
+const form = useForm<ProductForm>({
+  resolver: zodResolver(ProductSchema),
+  defaultValues: props.initialData || {}
+})
+```
+
+### React Query
+
+All data fetching uses React Query. No direct axios calls in components.
+
+```typescript
+// lib/api/queries.ts
+export const useProducts = () =>
+  useQuery({
+    queryKey: ["products"],
+    queryFn: () => api.get("/products").then(res => res.data)
+  })
+```
+
+### Zustand
+
+Used **only for UI state**. Never store API data (React Query owns server state).
+
+```typescript
+export const useUIStore = create(set => ({
+  sidebarOpen: false,
+  toggleSidebar: () => set(s => ({ sidebarOpen: !s.sidebarOpen }))
+}))
+```
+
+### Portal-Based Table Action Menus (Critical)
+
+For action menus in tables, **ALWAYS use `createPortal`** to prevent clipping by `overflow-x-auto`:
+
+```typescript
+import { createPortal } from 'react-dom'
+
+// Calculate position from button
+const buttonRect = e.currentTarget.getBoundingClientRect()
+const openUp = buttonRect.bottom > window.innerHeight - 200
+
+// Render via portal
+{openMenuId && menuPosition && typeof document !== 'undefined' && createPortal(
+  <div
+    className="fixed w-[140px] rounded-lg border bg-white py-1 shadow-lg z-[9999]"
+    style={{
+      top: menuPosition.openUp ? 'auto' : menuPosition.top,
+      bottom: menuPosition.openUp ? `${window.innerHeight - menuPosition.top + 4}px` : 'auto',
+      left: menuPosition.left,
+    }}
+  >
+    {/* Menu items */}
+  </div>,
+  document.body
+)}
+```
+
+### API Integration Pattern
+
+```typescript
+export async function getProducts(): Promise<Product[]> {
+  const res = await api.get("/products")
+  const parsed = z.array(ProductSchema).safeParse(res.data)
+  if (!parsed.success) throw new Error("Invalid API response")
+  return parsed.data
+}
+```
+
+### Toast Notifications & Confirmations (Critical)
+
+**NEVER use `alert()` or `window.confirm()`** - always use the Toast system.
+
+```typescript
+import { useToast } from "@/contexts/ToastContext"
+
+function MyComponent(): React.JSX.Element {
+  const { showToast, confirm } = useToast()
+
+  // Success notification
+  showToast("Category created successfully!", "success")
+
+  // Error notification
+  showToast("Failed to create category. Please try again.", "error")
+
+  // Warning notification
+  showToast("This action may take a while", "warning")
+
+  // Confirmation dialog (returns Promise<boolean>)
+  const handleDelete = async (): Promise<void> => {
+    const confirmed = await confirm({
+      title: "Delete Item",
+      message: "Are you sure you want to delete this item? This action cannot be undone.",
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      type: "danger", // "danger" | "warning" | "info"
+    })
+
+    if (confirmed) {
+      // Proceed with deletion
+    }
+  }
+}
+```
+
+**Toast Types:**
+- `"success"` - Green, for successful operations
+- `"error"` - Red, for failed operations
+- `"warning"` - Yellow, for warnings
+- `"info"` - Blue, for informational messages
+
+**Confirm Dialog Types:**
+- `"danger"` - Red confirm button (for destructive actions)
+- `"warning"` - Yellow confirm button
+- `"info"` - Black confirm button (default)
+
+### Same Rules Apply
+
+All Storepage styling rules apply to Admin:
+- Tailwind CSS only (no inline styles)
+- Custom dropdowns/radios/checkboxes
+- `cursor-pointer` on clickable elements
+- TypeScript strict mode
+
+---
+
+## Quick Reference
+
+| Project | Port | Package Manager | API Client | State |
+|---------|------|-----------------|------------|-------|
+| server | 9000 | pnpm | - | - |
+| storepage | 3000 | pnpm | Medusa SDK | Context |
+| admin | 3001 | pnpm | Axios + JWT | Zustand + React Query |
+
+---
+
+*Last Updated: 2026-01-04*

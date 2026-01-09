@@ -1,0 +1,1966 @@
+# AI Coding Guidelines for Medusa.js E-commerce Backend
+
+## Project Context
+- **Framework**: Medusa.js 2.10.2 (v2 architecture)
+- **Runtime**: Node.js 22.x
+- **TypeScript**: Version 5.7.2 with strict mode enabled
+- **Package Manager**: pnpm 9.10.0
+- **Database**: PostgreSQL with MikroORM 6.4.3
+- **Cache/Queue**: Redis (optional, with fallback)
+- **File Storage**: MinIO (custom provider) + local fallback
+- **Email**: Resend with React Email templates
+- **Payments**: Stripe integration
+- **Search**: Meilisearch (optional)
+- **Purpose**: Modern e-commerce backend with custom modules
+
+---
+
+## CRITICAL RULES (MUST FOLLOW)
+
+### TypeScript Standards
+- **Strict mode is enabled** - always enforce strict type checking
+- **NO `any` types** - use `unknown` and type guards instead
+- All functions must have explicit return types
+- Use `type` by default; use `interface` only for object shapes that need extension
+- Import types from `@medusajs/framework/types` for framework entities
+- Use descriptive variable names with auxiliary verbs (isProcessed, hasInventory, canFulfill)
+- Prefer branded types for IDs: `type OrderId = string & { __brand: 'OrderId' }`
+
+### Medusa v2 Architecture Patterns
+
+#### 1. Dependency Injection with Awilix Container
+Medusa uses dependency injection via Awilix. Never instantiate services directly—always resolve from container.
+
+```typescript
+// ✅ CORRECT - Resolve from container
+type InjectedDependencies = {
+  logger: Logger
+  productService: ProductService
+}
+
+export default async function handler({
+  container,
+}: SubscriberArgs<{ id: string }>) {
+  const logger = container.resolve("logger")
+  const productService = container.resolve("productService")
+}
+
+// ❌ WRONG - Direct instantiation
+const logger = new Logger()
+const productService = new ProductService()
+```
+
+**In API routes**:
+```typescript
+export const GET = async (
+  req: MedusaRequest,
+  res: MedusaResponse
+) => {
+  const logger = req.scope.resolve("logger")
+  const productService = req.scope.resolve("productService")
+}
+```
+
+#### 2. File-Based Routing
+API routes are defined in `route.ts` files with HTTP method exports.
+
+**Structure**:
+```
+src/api/
+  admin/
+    custom/
+      route.ts          # /admin/custom
+    products/
+      [id]/
+        route.ts        # /admin/products/:id
+  store/
+    custom/
+      route.ts          # /store/custom
+```
+
+**Implementation**:
+```typescript
+import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+
+export const GET = async (
+  req: MedusaRequest,
+  res: MedusaResponse
+) => {
+  // Access path params
+  const { id } = req.params
+
+  // Access query params
+  const { limit, offset } = req.query
+
+  res.json({ data: { id, limit, offset } })
+}
+
+export const POST = async (
+  req: MedusaRequest,
+  res: MedusaResponse
+) => {
+  // Access body
+  const { name, price } = req.body
+
+  res.json({ data: { name, price } })
+}
+```
+
+#### 3. Event Subscribers
+Subscribers react to events emitted by Medusa (e.g., order.placed, customer.created).
+
+**Pattern** (see src/subscribers/order-placed.ts):
+```typescript
+import type { SubscriberArgs, SubscriberConfig } from "@medusajs/framework"
+import type { Logger } from "@medusajs/framework/types"
+
+type InjectedDependencies = {
+  logger: Logger
+}
+
+export default async function orderPlacedHandler({
+  event: { data },
+  container,
+}: SubscriberArgs<{ id: string }>) {
+  const logger = container.resolve<Logger>("logger")
+
+  logger.info(`Processing order: ${data.id}`)
+
+  // Your business logic here
+  // Example: Send confirmation email, update inventory, etc.
+}
+
+export const config: SubscriberConfig = {
+  event: "order.placed",
+}
+```
+
+**Common Events**:
+- `order.placed`, `order.completed`, `order.canceled`
+- `customer.created`, `customer.updated`
+- `product.created`, `product.updated`, `product.deleted`
+- `invite.created` (see src/subscribers/invite-created.ts)
+
+**Emit Custom Events**:
+```typescript
+const eventBus = container.resolve("eventBus")
+await eventBus.emit("custom.product.out_of_stock", {
+  productId: "prod_123",
+  variantId: "variant_456",
+})
+```
+
+#### 4. Workflows (Multi-Step Processes)
+Workflows define multi-step business processes with automatic rollbacks and retries.
+
+**Structure**:
+```typescript
+import { createStep, createWorkflow, StepResponse } from "@medusajs/framework/workflows-sdk"
+
+// Define a step
+const reserveInventoryStep = createStep(
+  "reserve-inventory",
+  async (input: { variantId: string; quantity: number }) => {
+    // Reserve inventory
+    const reservation = await inventoryService.reserve(
+      input.variantId,
+      input.quantity
+    )
+
+    // Return data + compensation data (for rollback)
+    return new StepResponse(
+      { reservationId: reservation.id },
+      { reservationId: reservation.id } // Used for compensation
+    )
+  },
+  async (compensationData) => {
+    // Rollback function - runs if later steps fail
+    if (compensationData?.reservationId) {
+      await inventoryService.cancelReservation(compensationData.reservationId)
+    }
+  }
+)
+
+// Define workflow
+const createOrderWorkflow = createWorkflow(
+  "create-order",
+  (input: { items: CartItem[] }) => {
+    const inventory = reserveInventoryStep(input.items[0])
+    const payment = processPaymentStep(input)
+
+    return { inventory, payment }
+  }
+)
+
+// Execute workflow
+const { result } = await createOrderWorkflow.run({
+  input: { items: cartItems }
+})
+```
+
+**Why use workflows**:
+- Automatic rollback if any step fails
+- Retry logic built-in
+- Better error handling
+- Idempotent by default
+
+#### 5. Module Providers
+Custom modules extend Medusa functionality (see src/modules/minio-file/ and src/modules/email-notifications/).
+
+**Structure**:
+```typescript
+import { ModuleProviderExports } from "@medusajs/framework/types"
+import { MyCustomService } from "./services/my-custom-service"
+
+const services = [MyCustomService]
+
+const moduleDefinition: ModuleProviderExports = {
+  services,
+}
+
+export default moduleDefinition
+```
+
+**Service Example** (see src/modules/minio-file/service.ts):
+```typescript
+import { AbstractFileProviderService } from "@medusajs/framework/utils"
+
+class MinioFileService extends AbstractFileProviderService {
+  static identifier = "minio-file"
+
+  async upload(file: ProviderUploadFileDTO): Promise<ProviderFileResultDTO> {
+    // Implementation
+  }
+
+  async delete(file: ProviderDeleteFileDTO): Promise<void> {
+    // Implementation
+  }
+}
+
+export default MinioFileService
+```
+
+#### 6. Model Definition Best Practices
+Models in Medusa v2 use MikroORM. Follow these patterns to avoid common errors.
+
+**Timestamp Fields**:
+- **DO NOT** use `.default("now")` for dateTime fields (causes TypeScript error)
+- **DO NOT** use `.defaultNow()` (method doesn't exist in Medusa v2)
+- **DO** let MikroORM auto-manage `created_at` and `updated_at`
+- **DO** set timestamps explicitly in service layer when needed
+
+```typescript
+import { model } from "@medusajs/framework/utils"
+
+// ✅ CORRECT - Timestamps without defaults
+const Membership = model.define("membership", {
+  id: model.id().primaryKey(),
+  customer_id: model.text().unique(),
+  status: model.enum(["active", "cancelled"]).default("active"),
+  activated_at: model.dateTime(), // Set manually when needed
+  stripe_payment_id: model.text().nullable(),
+  created_at: model.dateTime(), // Auto-managed by MikroORM
+  updated_at: model.dateTime(), // Auto-managed by MikroORM
+})
+
+// ❌ WRONG - String default for dateTime
+created_at: model.dateTime().default("now") // TypeScript error!
+
+// ❌ WRONG - Method doesn't exist
+created_at: model.dateTime().defaultNow() // Property doesn't exist!
+```
+
+**Field Types**:
+```typescript
+// String fields
+customer_id: model.text() // Regular text
+email: model.text().unique() // Unique constraint
+description: model.text().nullable() // Optional field
+
+// Numbers
+price: model.number().default(0) // Regular number
+balance: model.bigNumber().default(0) // Large numbers (for points, amounts)
+
+// Enums
+status: model.enum(["active", "cancelled"]).default("active")
+type: model.enum(["percentage", "fixed"])
+
+// Booleans
+is_enabled: model.boolean().default(true)
+
+// Dates
+created_at: model.dateTime() // Timestamp
+expires_at: model.dateTime().nullable() // Optional timestamp
+```
+
+**In Services - Setting Timestamps**:
+```typescript
+// Timestamps are set automatically on create
+const membership = await this.createMembership({
+  customer_id: customerId,
+  activated_at: new Date(), // Set this manually
+  // created_at and updated_at handled by MikroORM
+})
+
+// Explicitly set updated_at if needed
+await this.updateMembership({
+  id: membershipId,
+  status: "cancelled",
+  updated_at: new Date(), // Optional: override auto-update
+})
+```
+
+**Common Model Patterns**:
+```typescript
+// Audit fields
+created_by: model.text().nullable() // Who created it
+updated_by: model.text().nullable() // Who updated it
+
+// Soft delete
+deleted_at: model.dateTime().nullable() // For soft deletes
+
+// Metadata
+metadata: model.json().nullable() // JSON field for flexible data
+```
+
+#### 7. Executable Scripts Pattern
+Medusa v2 scripts use dependency injection via `medusa exec`. Follow this pattern to avoid import errors.
+
+**Script Structure**:
+```typescript
+import { Modules } from "@medusajs/framework/utils"
+
+/**
+ * Script description and purpose
+ * Usage: pnpm medusa exec ./src/scripts/my-script.ts
+ */
+export default async function myScript({ container }: any) {
+  const logger = container.resolve("logger")
+  const customerModuleService = container.resolve(Modules.CUSTOMER)
+
+  logger.info("Starting script...")
+
+  try {
+    // Your script logic here
+    const result = await customerModuleService.list()
+
+    logger.info("Script completed successfully!")
+  } catch (error) {
+    logger.error("Script failed:", error)
+    throw error
+  }
+}
+```
+
+**Running Scripts**:
+```bash
+# Execute a script
+pnpm medusa exec ./src/scripts/seed.ts
+
+# With arguments (if your script accepts them)
+pnpm medusa exec ./src/scripts/my-script.ts -- --arg=value
+```
+
+**❌ WRONG - Common Mistakes**:
+```typescript
+// ❌ Wrong: Trying to import container directly
+import { container } from "@medusajs/framework/http" // Property doesn't exist!
+const { container } = await import("@medusajs/framework/http") // Still wrong!
+
+// ❌ Wrong: Manual function invocation
+async function myScript() {
+  // Container not available
+}
+myScript() // Won't have access to Medusa services
+
+// ❌ Wrong: Not exporting as default
+export async function myScript({ container }: any) {
+  // Won't work with medusa exec
+}
+
+// ❌ Wrong: Missing container parameter
+export default async function myScript() {
+  const logger = container.resolve("logger") // container is undefined!
+}
+```
+
+**✅ CORRECT Pattern**:
+```typescript
+// Export as default, receive container via injection
+export default async function({ container }: any) {
+  // Container is automatically injected by medusa exec
+  const service = container.resolve("myService")
+  const logger = container.resolve("logger")
+
+  // Access all Medusa modules and services
+  const customerModule = container.resolve(Modules.CUSTOMER)
+  const productModule = container.resolve(Modules.PRODUCT)
+}
+```
+
+**Common Use Cases**:
+```typescript
+// Seed script
+export default async function seedData({ container }: any) {
+  const productModule = container.resolve(Modules.PRODUCT)
+  const logger = container.resolve("logger")
+
+  await productModule.create({
+    title: "Sample Product",
+    // ...
+  })
+}
+
+// Migration script
+export default async function migrate({ container }: any) {
+  const logger = container.resolve("logger")
+  // Migration logic
+}
+
+// Initialization script (see src/scripts/init-membership.ts)
+export default async function initSystem({ container }: any) {
+  const customerModule = container.resolve(Modules.CUSTOMER)
+  // System initialization
+}
+```
+
+#### 8. API Validation & Documentation with Zod
+Medusa v2 uses Zod for request validation and auto-generated OpenAPI documentation.
+
+**Why Use Zod**:
+- Automatic request validation
+- Auto-generated Swagger/OpenAPI docs
+- TypeScript type inference
+- Runtime type safety
+- Better developer experience
+
+**Schema Definition Pattern**:
+```typescript
+import { z } from "zod"
+import { validateAndTransformBody } from "@medusajs/framework"
+
+// Define request schema
+export const CreateProductSchema = z.object({
+  title: z.string().min(1).max(255).describe("Product title"),
+  description: z.string().optional().describe("Product description"),
+  price: z.number().positive().describe("Product price in cents"),
+  quantity: z.number().int().min(0).describe("Available quantity"),
+  tags: z.array(z.string()).optional().describe("Product tags"),
+})
+
+// Define response schema (for documentation)
+export const ProductResponseSchema = z.object({
+  product: z.object({
+    id: z.string(),
+    title: z.string(),
+    price: z.number(),
+    created_at: z.string(),
+  })
+})
+
+// Infer TypeScript types from schemas
+export type CreateProductRequest = z.infer<typeof CreateProductSchema>
+export type ProductResponse = z.infer<typeof ProductResponseSchema>
+```
+
+**Using Schemas in API Routes**:
+```typescript
+import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+import { validateAndTransformBody } from "@medusajs/framework"
+import { CreateProductSchema, type CreateProductRequest } from "./schemas"
+
+export const POST = async (
+  req: MedusaRequest,
+  res: MedusaResponse
+) => {
+  // Validate and transform request body
+  const validated = await validateAndTransformBody<CreateProductRequest>(
+    req,
+    CreateProductSchema
+  )
+
+  // No manual validation needed - Zod handles it
+  // validated is fully typed and guaranteed valid
+  const productService = req.scope.resolve("productService")
+  const product = await productService.create(validated)
+
+  res.json({ product })
+}
+```
+
+**Common Validation Patterns**:
+```typescript
+import { z } from "zod"
+
+// String validations
+z.string()                      // Required string
+z.string().optional()           // Optional string
+z.string().min(1)               // Non-empty string
+z.string().email()              // Email validation
+z.string().uuid()               // UUID validation
+z.string().regex(/^[A-Z]/)      // Pattern matching
+
+// Number validations
+z.number()                      // Required number
+z.number().positive()           // Must be > 0
+z.number().int()                // Must be integer
+z.number().min(0).max(100)      // Range validation
+
+// Enum validations
+z.enum(["active", "inactive"])  // String enum
+z.nativeEnum(Status)            // TypeScript enum
+
+// Array validations
+z.array(z.string())             // Array of strings
+z.array(z.object({ ... }))      // Array of objects
+z.array(z.string()).min(1)      // Non-empty array
+
+// Object validations
+z.object({
+  name: z.string(),
+  age: z.number().optional(),
+})
+
+// Nested objects
+z.object({
+  user: z.object({
+    name: z.string(),
+    email: z.string().email(),
+  }),
+  settings: z.record(z.any()),  // Key-value pairs
+})
+
+// Union types
+z.union([z.string(), z.number()])  // String OR number
+z.discriminatedUnion("type", [     // Tagged union
+  z.object({ type: z.literal("a"), value: z.string() }),
+  z.object({ type: z.literal("b"), value: z.number() }),
+])
+
+// Transform data
+z.string().transform(s => s.toUpperCase())
+z.string().transform(s => parseInt(s, 10))
+
+// Custom validation
+z.string().refine(
+  (val) => val.length > 0,
+  { message: "String cannot be empty" }
+)
+```
+
+**File Organization**:
+```
+src/api/
+  admin/
+    points/
+      schemas.ts              # All points-related schemas
+      config/
+        route.ts             # Uses schemas from ../schemas.ts
+      adjust/
+        route.ts
+  store/
+    membership/
+      schemas.ts             # All membership schemas
+      route.ts
+      purchase/
+        route.ts
+```
+
+**Schema File Example**:
+```typescript
+// src/api/admin/points/schemas.ts
+import { z } from "zod"
+
+// Request schemas
+export const UpdateConfigSchema = z.object({
+  earning_type: z.enum(["percentage", "per_product"]).optional()
+    .describe("How points are calculated"),
+  earning_rate: z.number().min(0).optional()
+    .describe("Points earning rate (percentage or fixed)"),
+  redemption_rate: z.number().positive().optional()
+    .describe("Points redemption rate (points per dollar)"),
+  is_enabled: z.boolean().optional()
+    .describe("Enable or disable points system"),
+})
+
+export const AdjustPointsSchema = z.object({
+  customer_id: z.string().uuid()
+    .describe("Customer ID to adjust points for"),
+  amount: z.number()
+    .describe("Points to add (positive) or remove (negative)"),
+  reason: z.string().min(1).max(500)
+    .describe("Reason for adjustment"),
+})
+
+// Response schemas (for documentation)
+export const PointsConfigResponse = z.object({
+  config: z.object({
+    earning_type: z.enum(["percentage", "per_product"]),
+    earning_rate: z.number(),
+    redemption_rate: z.number(),
+    is_enabled: z.boolean(),
+    updated_at: z.string(),
+  })
+})
+
+// Infer types
+export type UpdateConfigRequest = z.infer<typeof UpdateConfigSchema>
+export type AdjustPointsRequest = z.infer<typeof AdjustPointsSchema>
+export type PointsConfigResponse = z.infer<typeof PointsConfigResponse>
+```
+
+**Benefits Over Manual Validation**:
+```typescript
+// ❌ OLD WAY - Manual validation
+export const POST = async (req, res) => {
+  const { customer_id, amount, reason } = req.body
+
+  if (!customer_id) {
+    throw new MedusaError(MedusaError.Types.INVALID_DATA, "customer_id is required")
+  }
+  if (typeof amount !== "number") {
+    throw new MedusaError(MedusaError.Types.INVALID_DATA, "amount must be a number")
+  }
+  if (!reason || reason.trim().length === 0) {
+    throw new MedusaError(MedusaError.Types.INVALID_DATA, "reason is required")
+  }
+
+  // Finally use the data...
+}
+
+// ✅ NEW WAY - Zod validation
+export const POST = async (req, res) => {
+  const validated = await validateAndTransformBody(req, AdjustPointsSchema)
+
+  // All validation done! Type-safe and documented
+  const { customer_id, amount, reason } = validated
+  // Use the data...
+}
+```
+
+**API Documentation with Zod-to-OpenAPI**:
+All Zod schemas include OpenAPI metadata for auto-generated documentation:
+
+```typescript
+import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi'
+import { z } from 'zod'
+
+extendZodWithOpenApi(z)
+
+export const CreateSchema = z.object({
+  name: z.string().min(1).describe("Resource name"),
+  value: z.number().positive().describe("Value in cents"),
+}).openapi('CreateRequest', {  // First arg: unique reference name
+  example: {
+    name: "Example",
+    value: 1000,
+  }
+})
+```
+
+**When adding new endpoints**:
+1. Create Zod schema with `.openapi()` metadata in `schemas.ts`
+2. Implement the endpoint logic in `route.ts`
+3. **TEST the endpoint manually or with integration tests** - Verify it works correctly
+4. Register endpoint in `src/utils/generate-openapi.ts` ONLY after testing
+5. Documentation updates automatically
+
+**Testing Requirements Before Documentation**:
+CRITICAL: Only register endpoints in OpenAPI documentation AFTER verifying they work correctly. Untested or broken endpoints MUST NOT appear in Swagger documentation.
+
+**Verification Checklist for Custom Endpoints**:
+Before adding an endpoint to `generate-openapi.ts`, verify:
+- [ ] Endpoint responds with 200 OK for valid requests
+- [ ] Request validation works (Zod schema validates correctly)
+- [ ] Response format matches documentation
+- [ ] Error handling works (400, 401, 404, etc.)
+- [ ] Authentication/authorization works if required
+- [ ] Database operations complete successfully
+- [ ] Test with curl, Postman, or integration tests
+
+Example manual test:
+```bash
+# Test GET endpoint
+curl http://localhost:9000/admin/points/config
+
+# Test POST endpoint with data
+curl -X POST http://localhost:9000/admin/points/config \
+  -H "Content-Type: application/json" \
+  -d '{"earning_rate": 5, "is_enabled": true}'
+```
+
+**Modifying Medusa's Built-in Endpoints**:
+The OpenAPI merge uses method-level merging, so you can override specific HTTP methods while preserving others:
+- If you register only GET for `/store/products`, only GET is overwritten
+- POST, PUT, DELETE from Medusa's spec are preserved
+- This allows selective customization of individual endpoints
+
+**Access Documentation**:
+- Swagger UI: `http://localhost:9000/docs` (or your configured server URL)
+- OpenAPI JSON: `http://localhost:9000/docs/swagger.json`
+
+**Dynamic Server URL Configuration**:
+The Swagger documentation server URL automatically uses the existing `BACKEND_URL` constant from `lib/constants`, which reads from:
+1. `BACKEND_PUBLIC_URL` environment variable (primary)
+2. `RAILWAY_PUBLIC_DOMAIN_VALUE` (Railway deployment fallback)
+3. `http://localhost:9000` (default)
+
+This ensures Swagger always shows the correct server URL for your environment.
+
+Example configurations:
+```bash
+# Development (default)
+BACKEND_PUBLIC_URL=http://localhost:9000
+
+# Production
+BACKEND_PUBLIC_URL=https://api.yourdomain.com
+
+# Railway (auto-detected)
+# RAILWAY_PUBLIC_DOMAIN_VALUE is automatically set by Railway
+```
+
+No additional configuration needed - the URL is automatically shared between Medusa admin and Swagger documentation.
+
+**Endpoint Filtering - Show Only Working Endpoints**:
+IMPORTANT: The OpenAPI documentation MUST only show endpoints that are actually working and configured in the project. This prevents developer confusion and ensures accurate documentation.
+
+The filtering logic is implemented in `src/utils/generate-openapi.ts`:
+
+1. **enabledPaths Array**: Maintains a whitelist of Medusa built-in endpoint paths that are configured and working:
+   ```typescript
+   const enabledPaths = [
+     '/admin/products', '/store/products',
+     '/admin/customers', '/store/customers',
+     '/admin/orders', '/store/orders',
+     '/store/carts',
+     '/admin/regions',
+     '/admin/currencies',
+     '/admin/sales-channels',
+     '/admin/inventory-items',
+     '/admin/stock-locations',
+     '/admin/price-lists',
+     '/admin/users',
+     '/admin/api-keys',
+     '/admin/invites',
+     '/auth',
+     '/store/auth',
+     '/admin/uploads', // File module (MinIO or local)
+   ]
+   ```
+
+2. **shouldIncludePath() Function**: Determines if an endpoint should appear in documentation:
+   - ALWAYS includes custom endpoints (Points, Membership, Promotions, etc.)
+   - Only includes Medusa endpoints if they match the enabledPaths whitelist
+   - Uses `startsWith()` matching to include all sub-paths (e.g., `/admin/products` includes `/admin/products/{id}`)
+
+3. **Tag and Schema Filtering**: Automatically removes:
+   - Tags (categories) that have no endpoints
+   - Schema definitions that are never referenced
+   - This keeps the documentation clean and reduces file size
+
+**When Adding New Medusa Modules**:
+If you enable a new Medusa module (e.g., Notifications, Workflow Engine, etc.), you MUST test the endpoints before adding them to documentation:
+
+1. **Configure the module** in `medusa-config.ts`
+2. **Test the endpoints manually** to verify they work
+3. **Only after successful testing**, add to `enabledPaths` array in `src/utils/generate-openapi.ts`
+
+Example verification process:
+```bash
+# Test if the new module endpoints work
+curl http://localhost:9000/admin/notifications
+curl http://localhost:9000/store/notifications
+
+# If both return valid responses (not 404), add to enabledPaths:
+```
+
+```typescript
+const enabledPaths = [
+  // ... existing paths
+  '/admin/notifications', '/store/notifications',  // ✅ Verified working
+]
+```
+
+**DO NOT add paths to enabledPaths without testing first** - This ensures documentation accuracy.
+
+**Why This Matters**:
+- Medusa provides 430+ endpoints across all modules
+- Most projects only use 20-30% of available modules
+- Showing non-working endpoints confuses developers and wastes time
+- Filtered documentation typically shows ~100-150 working endpoints
+
+### Error Handling
+Always use `MedusaError` for throwing errors in Medusa context.
+
+```typescript
+import { MedusaError } from "@medusajs/framework/utils"
+
+// ✅ CORRECT
+throw new MedusaError(
+  MedusaError.Types.NOT_FOUND,
+  `Product with id ${id} not found`
+)
+
+throw new MedusaError(
+  MedusaError.Types.INVALID_DATA,
+  "Quantity must be greater than 0"
+)
+
+// ❌ WRONG
+throw new Error("Product not found")
+```
+
+**Error Types**:
+- `NOT_FOUND` - Resource doesn't exist
+- `INVALID_DATA` - Validation failed
+- `UNAUTHORIZED` - Auth required
+- `NOT_ALLOWED` - Forbidden
+- `DUPLICATE_ERROR` - Unique constraint violation
+- `CONFLICT` - Business rule violation
+
+### Import Path Conventions
+Use path aliases defined in tsconfig.json. DO NOT use `@/` prefix.
+
+```typescript
+// ✅ CORRECT - Direct module names
+import { assertValue } from "lib/constants"
+import { RESEND_API_KEY } from "lib/constants"
+
+// ❌ WRONG - Using @/ prefix
+import { assertValue } from "@/lib/constants"
+
+// ✅ CORRECT - Framework imports
+import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+import { MedusaError } from "@medusajs/framework/utils"
+```
+
+---
+
+## FILE NAMING & ORGANIZATION
+
+### Directory Structure (MUST FOLLOW)
+```
+src/
+  api/                      # API routes (file-based routing)
+    admin/                  # Admin API endpoints
+    store/                  # Storefront API endpoints
+
+  workflows/                # Custom workflows (multi-step processes)
+    create-order/
+      index.ts
+      steps/
+        reserve-inventory.ts
+        process-payment.ts
+
+  subscribers/              # Event subscribers
+    order-placed.ts
+    customer-created.ts
+
+  modules/                  # Custom modules (extend Medusa)
+    email-notifications/
+      services/
+        resend.ts
+      templates/            # React Email templates
+        order-placed.tsx
+      index.ts
+    minio-file/
+      service.ts
+      index.ts
+
+  jobs/                     # Scheduled jobs
+    sync-inventory.ts
+    send-abandoned-cart.ts
+
+  scripts/                  # Utility scripts
+    seed.ts
+    migrate.ts
+
+  lib/                      # Core utilities and constants
+    constants.ts            # Environment variables
+
+  utils/                    # Helper functions
+    assert-value.ts
+    format-currency.ts
+
+  admin/                    # Admin dashboard customizations
+```
+
+### Naming Conventions
+- **Directories**: kebab-case (`email-notifications/`, `minio-file/`)
+- **Files**: kebab-case (`order-placed.ts`, `assert-value.ts`)
+- **Classes/Services**: PascalCase (`MinioFileService`, `ResendNotificationService`)
+- **Functions**: camelCase (`reserveInventory`, `processPayment`)
+- **Constants**: UPPER_SNAKE_CASE (`RESEND_API_KEY`, `MINIO_ENDPOINT`)
+- **Types/Interfaces**: PascalCase (`OrderPlacedData`, `CreateProductInput`)
+
+### Export Conventions
+- Use **named exports** for utilities and services
+- Use **default export** for subscribers, workflows, and module definitions
+- Export types alongside implementations
+
+```typescript
+// ✅ CORRECT - Named exports for utilities
+export const formatCurrency = (amount: number): string => {
+  // ...
+}
+
+// ✅ CORRECT - Default export for subscribers
+export default async function orderPlacedHandler() {
+  // ...
+}
+
+export const config: SubscriberConfig = {
+  event: "order.placed",
+}
+```
+
+### Admin Endpoint Authentication (SECURITY CRITICAL)
+
+**ALL admin endpoints MUST be protected with authentication. NO EXCEPTIONS.**
+
+**IMPORTANT**: For **custom admin endpoints** (endpoints you create, not Medusa built-ins), use **custom authentication** pattern to avoid CORS issues:
+
+**✅ CORRECT - Custom Admin Endpoint with Custom Auth**:
+```typescript
+import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+
+export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
+  // Custom auth - check if user is authenticated admin
+  const authContext = (req as any).auth_context;
+  if (!authContext?.actor_id) {
+    return res.status(401).json({ message: "Unauthorized" } as any);
+  }
+
+  // Handler logic here - user is authenticated
+  res.json({ data: "protected" })
+}
+```
+
+**Why Custom Auth for Custom Endpoints**:
+- Medusa's `authenticate()` middleware blocks OPTIONS requests (CORS preflight)
+- OPTIONS requests don't include authentication credentials (cookies/tokens)
+- This breaks frontend applications making cross-origin requests
+- Custom auth checks session AFTER OPTIONS passes through
+- No CORS complexity - no need for OPTIONS handlers
+
+**For Medusa Built-in Endpoints** (modifying core Medusa routes):
+Use standard `authenticate()` middleware as Medusa handles CORS internally:
+```typescript
+import { authenticate } from "@medusajs/framework/http"
+
+export const GET = [
+  authenticate("admin", ["session", "bearer", "api-key"]),
+  async (req: MedusaRequest, res: MedusaResponse) => {
+    res.json({ data: "protected" })
+  }
+]
+```
+
+**Authentication Flow with Custom Auth**:
+1. Browser sends OPTIONS request (no auth credentials)
+2. Medusa's CORS config allows OPTIONS to pass
+3. Browser receives 204 response
+4. Browser sends actual GET/POST request with auth credentials
+5. Custom auth checks `req.auth_context.actor_id`
+6. If valid session exists, request proceeds
+7. If no session, returns 401
+
+**Security Note**:
+Custom auth is equally secure because:
+- Still validates admin session via `auth_context.actor_id`
+- OPTIONS requests are safe (return no data, just CORS headers)
+- Actual data requests require authentication
+- Uses same session mechanism as Medusa's `authenticate()`
+
+**❌ WRONG - Unprotected admin endpoint (CRITICAL VULNERABILITY)**:
+```typescript
+export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
+  // This allows ANYONE to access admin functionality - NEVER DO THIS
+  res.json({ data: "unprotected" })
+}
+```
+
+**All HTTP methods require authentication**:
+```typescript
+export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
+  const authContext = (req as any).auth_context;
+  if (!authContext?.actor_id) {
+    return res.status(401).json({ message: "Unauthorized" } as any);
+  }
+  // GET handler logic
+}
+
+export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
+  const authContext = (req as any).auth_context;
+  if (!authContext?.actor_id) {
+    return res.status(401).json({ message: "Unauthorized" } as any);
+  }
+  // POST handler logic
+}
+```
+
+**Why this is CRITICAL**:
+- Without authentication, ANY user can access admin-only functionality
+- Exposes sensitive business data (revenue, customer info, analytics)
+- Allows unauthorized modifications (promotions, orders, inventory)
+- Creates a severe security vulnerability (OWASP A01:2021 - Broken Access Control)
+
+**Verification Checklist**:
+- [ ] Every custom endpoint in `src/api/admin/` has custom auth check
+- [ ] Every HTTP method export (GET, POST, PUT, DELETE) is protected
+- [ ] Auth check is at the START of each handler function
+- [ ] Returns 401 when `authContext?.actor_id` is missing
+
+### CORS Preflight Handling (OPTIONS Requests)
+
+**CRITICAL: When adding authentication to endpoints, you MUST also add OPTIONS handlers for CORS preflight requests.**
+
+**Why This Is Needed**:
+- Browsers send OPTIONS requests before cross-origin API calls (CORS preflight)
+- OPTIONS requests do NOT include authentication credentials (cookies, bearer tokens, etc.)
+- If `authenticate()` middleware is applied to OPTIONS, it will return 401 and block the actual request
+- This breaks admin dashboards and frontend applications that make cross-origin requests
+
+**Pattern for All Authenticated Endpoints**:
+```typescript
+import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+import { authenticate } from "@medusajs/framework/http"
+
+// Protected GET endpoint
+export const GET = [
+  authenticate("admin", ["session", "bearer", "api-key"]),
+  async (req: MedusaRequest, res: MedusaResponse) => {
+    res.json({ data: "protected" })
+  }
+]
+
+// Protected POST endpoint
+export const POST = [
+  authenticate("admin", ["session", "bearer", "api-key"]),
+  async (req: MedusaRequest, res: MedusaResponse) => {
+    res.json({ success: true })
+  }
+]
+
+// ✅ CRITICAL: Always add OPTIONS handler (no authentication required)
+/**
+ * OPTIONS /admin/your-endpoint
+ * Handle CORS preflight request
+ */
+export const OPTIONS = async (req: MedusaRequest, res: MedusaResponse) => {
+  res.status(204).send();
+}
+```
+
+**Key Points**:
+- OPTIONS handler returns HTTP 204 (No Content) with empty body
+- OPTIONS handler does NOT have authentication middleware
+- OPTIONS handler does NOT access any data or services
+- OPTIONS handler is SAFE because it only returns standard CORS headers (configured in `medusa-config.ts`)
+- Add JSDoc comment explaining it's for CORS preflight
+
+**When to Add OPTIONS Handler**:
+- ALWAYS add when creating a NEW admin endpoint with authentication
+- ALWAYS add when ADDING authentication to an existing endpoint
+- Add to ALL HTTP methods that require authentication (GET, POST, PUT, DELETE)
+
+**Security Note**:
+OPTIONS handlers are safe because:
+1. They return no data (just 204 status code)
+2. CORS headers are already configured in `medusa-config.ts`
+3. The actual GET/POST/PUT/DELETE requests still require authentication
+4. Browsers automatically send OPTIONS before the real request
+5. Without OPTIONS handler, browsers will never send the authenticated request
+
+**Common Mistake to Avoid**:
+```typescript
+// ❌ WRONG - Applying authentication to OPTIONS
+export const OPTIONS = [
+  authenticate("admin", ["session", "bearer", "api-key"]), // This breaks CORS!
+  async (req: MedusaRequest, res: MedusaResponse) => {
+    res.status(204).send();
+  }
+]
+```
+
+**Example - Complete Endpoint with OPTIONS**:
+```typescript
+// src/api/admin/analytics/revenue/route.ts
+import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+import { authenticate } from "@medusajs/framework/http"
+
+export const GET = [
+  authenticate("admin", ["session", "bearer", "api-key"]),
+  async (req: MedusaRequest, res: MedusaResponse) => {
+    // Analytics logic here
+    res.json({ revenue: 10000 })
+  }
+]
+
+/**
+ * OPTIONS /admin/analytics/revenue
+ * Handle CORS preflight request
+ */
+export const OPTIONS = async (req: MedusaRequest, res: MedusaResponse) => {
+  res.status(204).send();
+}
+```
+
+---
+
+## STRONG RECOMMENDATIONS (SHOULD FOLLOW)
+
+### API Route Best Practices
+
+```typescript
+import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+import { MedusaError } from "@medusajs/framework/utils"
+
+// Define input/output types
+type GetProductRequest = {
+  params: { id: string }
+  query: { include_variants?: string }
+}
+
+type GetProductResponse = {
+  product: {
+    id: string
+    title: string
+    variants?: unknown[]
+  }
+}
+
+export const GET = async (
+  req: MedusaRequest<GetProductRequest>,
+  res: MedusaResponse<GetProductResponse>
+) => {
+  const { id } = req.params
+  const includeVariants = req.query.include_variants === "true"
+
+  const productService = req.scope.resolve("productService")
+
+  const product = await productService.retrieve(id, {
+    relations: includeVariants ? ["variants"] : [],
+  })
+
+  if (!product) {
+    throw new MedusaError(
+      MedusaError.Types.NOT_FOUND,
+      `Product with id ${id} not found`
+    )
+  }
+
+  res.json({ product })
+}
+
+// POST with validation
+export const POST = async (
+  req: MedusaRequest,
+  res: MedusaResponse
+) => {
+  const { title, description, price } = req.body
+
+  // Validate required fields
+  if (!title || !price) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "Title and price are required"
+    )
+  }
+
+  // Validate data types
+  if (typeof price !== "number" || price <= 0) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "Price must be a positive number"
+    )
+  }
+
+  const productService = req.scope.resolve("productService")
+  const product = await productService.create({ title, description, price })
+
+  res.json({ product })
+}
+```
+
+### Database Queries with MikroORM
+
+```typescript
+// Querying
+const products = await productRepository.find({
+  where: { is_published: true },
+  orderBy: { created_at: "DESC" },
+  limit: 20,
+  offset: 0,
+})
+
+// With relations
+const order = await orderRepository.findOne(
+  { id: orderId },
+  { populate: ["items", "customer", "shipping_address"] }
+)
+
+// Transactions
+await em.transactional(async (em) => {
+  const order = await em.findOne(Order, { id: orderId })
+  order.status = "completed"
+
+  const payment = em.create(Payment, {
+    order,
+    amount: order.total,
+    status: "captured",
+  })
+
+  await em.flush()
+})
+```
+
+### Service Layer Patterns
+
+```typescript
+import { AbstractService } from "@medusajs/framework/utils"
+import type { Logger } from "@medusajs/framework/types"
+
+type InjectedDependencies = {
+  logger: Logger
+  productService: any
+}
+
+class InventoryService extends AbstractService {
+  protected logger: Logger
+  protected productService: any
+
+  constructor({ logger, productService }: InjectedDependencies) {
+    super()
+    this.logger = logger
+    this.productService = productService
+  }
+
+  async reserveStock(
+    variantId: string,
+    quantity: number
+  ): Promise<{ reservationId: string }> {
+    this.logger.info(`Reserving ${quantity} units of variant ${variantId}`)
+
+    // Business logic here
+
+    return { reservationId: "res_123" }
+  }
+}
+
+export default InventoryService
+```
+
+### Async/Await Standards
+- **ALWAYS** use async/await, never raw promises
+- **NEVER** use `.then()` or `.catch()` chains
+- Handle errors with try/catch blocks
+- Use `Promise.all()` for parallel async operations
+
+```typescript
+// ✅ CORRECT
+async function processOrder(orderId: string): Promise<void> {
+  try {
+    const order = await orderService.retrieve(orderId)
+    await paymentService.capture(order.payment_id)
+    await notificationService.sendConfirmation(order.customer_email)
+  } catch (error) {
+    logger.error(`Failed to process order ${orderId}:`, error)
+    throw error
+  }
+}
+
+// ✅ CORRECT - Parallel operations
+async function fetchOrderData(orderId: string) {
+  const [order, customer, items] = await Promise.all([
+    orderService.retrieve(orderId),
+    customerService.retrieve(customerId),
+    orderItemService.list({ order_id: orderId }),
+  ])
+
+  return { order, customer, items }
+}
+
+// ❌ WRONG - Promise chains
+function processOrder(orderId: string) {
+  return orderService.retrieve(orderId)
+    .then(order => paymentService.capture(order.payment_id))
+    .then(() => notificationService.send())
+    .catch(error => logger.error(error))
+}
+```
+
+---
+
+## E-COMMERCE BEST PRACTICES
+
+### Transaction Handling
+Always wrap critical operations (orders, payments, inventory) in database transactions.
+
+```typescript
+import { EntityManager } from "@mikro-orm/postgresql"
+
+async function createOrder(
+  orderData: CreateOrderInput,
+  em: EntityManager
+): Promise<Order> {
+  return await em.transactional(async (em) => {
+    // Create order
+    const order = em.create(Order, orderData)
+
+    // Reserve inventory
+    for (const item of orderData.items) {
+      await inventoryService.reserve(item.variant_id, item.quantity, em)
+    }
+
+    // Create payment
+    const payment = em.create(Payment, {
+      order,
+      amount: order.total,
+      status: "pending",
+    })
+
+    await em.flush()
+
+    return order
+  })
+}
+```
+
+### Idempotency for Payment Operations
+**Critical**: Prevent duplicate charges by using idempotency keys.
+
+```typescript
+async function capturePayment(orderId: string): Promise<Payment> {
+  const order = await orderService.retrieve(orderId)
+
+  // Check if already captured
+  if (order.payment_status === "captured") {
+    logger.info(`Payment for order ${orderId} already captured`)
+    return order.payment
+  }
+
+  // Use order ID as idempotency key
+  const payment = await stripe.charges.create({
+    amount: order.total,
+    currency: order.currency_code,
+    source: order.payment_token,
+    idempotency_key: `order_${orderId}`, // Same key = same charge
+    metadata: { order_id: orderId },
+  })
+
+  // Update order status atomically
+  await orderService.update(orderId, {
+    payment_status: "captured",
+    payment_id: payment.id,
+  })
+
+  return payment
+}
+```
+
+**Why idempotency matters**:
+- Network retries don't duplicate charges
+- User double-clicking "Pay" button is safe
+- Webhook replay doesn't cause issues
+
+### Stock Management
+
+```typescript
+async function reserveInventory(
+  variantId: string,
+  quantity: number
+): Promise<Reservation> {
+  // Lock the inventory row to prevent race conditions
+  const inventory = await inventoryRepository.findOne(
+    { variant_id: variantId },
+    { lockMode: LockMode.PESSIMISTIC_WRITE }
+  )
+
+  if (!inventory) {
+    throw new MedusaError(
+      MedusaError.Types.NOT_FOUND,
+      `Inventory for variant ${variantId} not found`
+    )
+  }
+
+  if (inventory.available_quantity < quantity) {
+    throw new MedusaError(
+      MedusaError.Types.CONFLICT,
+      `Insufficient stock for variant ${variantId}. Available: ${inventory.available_quantity}, Requested: ${quantity}`
+    )
+  }
+
+  // Decrease available quantity
+  inventory.available_quantity -= quantity
+  inventory.reserved_quantity += quantity
+
+  // Create reservation record
+  const reservation = new Reservation({
+    variant_id: variantId,
+    quantity,
+    expires_at: new Date(Date.now() + 15 * 60 * 1000), // 15 min expiry
+  })
+
+  await em.flush()
+
+  return reservation
+}
+```
+
+### Event Emission for Business Logic
+Emit events to decouple business logic and enable extensibility.
+
+```typescript
+// In order service
+async function completeOrder(orderId: string): Promise<Order> {
+  const order = await orderRepository.findOne({ id: orderId })
+
+  order.status = "completed"
+  order.completed_at = new Date()
+
+  await em.flush()
+
+  // Emit event for other systems to react
+  const eventBus = container.resolve("eventBus")
+  await eventBus.emit("order.completed", {
+    id: orderId,
+    customer_id: order.customer_id,
+    total: order.total,
+  })
+
+  return order
+}
+
+// Subscribers can react independently
+// src/subscribers/order-completed.ts
+export default async function orderCompletedHandler({
+  event: { data },
+  container,
+}: SubscriberArgs<{ id: string }>) {
+  // Send confirmation email
+  await emailService.send("order-completed", data)
+
+  // Update analytics
+  await analyticsService.track("order_completed", data)
+
+  // Release reserved inventory
+  await inventoryService.confirmReservation(data.id)
+}
+
+export const config: SubscriberConfig = {
+  event: "order.completed",
+}
+```
+
+### Soft Deletes
+Never hard-delete records that are part of order history or financial records.
+
+```typescript
+// ✅ CORRECT - Soft delete
+async function deleteProduct(productId: string): Promise<void> {
+  const product = await productRepository.findOne({ id: productId })
+
+  product.deleted_at = new Date()
+  product.is_published = false
+
+  await em.flush()
+
+  // Emit event
+  await eventBus.emit("product.deleted", { id: productId })
+}
+
+// Query excludes soft-deleted by default
+const activeProducts = await productRepository.find({
+  where: { deleted_at: null }
+})
+
+// ❌ WRONG - Hard delete (use only for non-critical data)
+await productRepository.nativeDelete({ id: productId })
+```
+
+### Audit Logging
+
+```typescript
+interface AuditLog {
+  entity_type: string
+  entity_id: string
+  action: "create" | "update" | "delete"
+  actor_id: string
+  actor_type: "user" | "admin" | "system"
+  changes: Record<string, any>
+  created_at: Date
+}
+
+async function auditLog(
+  entityType: string,
+  entityId: string,
+  action: string,
+  actorId: string,
+  changes: Record<string, any>
+): Promise<void> {
+  const log = new AuditLog({
+    entity_type: entityType,
+    entity_id: entityId,
+    action,
+    actor_id: actorId,
+    actor_type: "admin",
+    changes,
+    created_at: new Date(),
+  })
+
+  await em.persist(log).flush()
+}
+
+// Usage
+await auditLog("product", productId, "update", adminId, {
+  price: { from: 1000, to: 1500 },
+  title: { from: "Old Title", to: "New Title" },
+})
+```
+
+---
+
+## SECURITY & ENVIRONMENT
+
+### Environment Variable Validation
+Always validate required environment variables at startup (see lib/constants.ts).
+
+```typescript
+// lib/constants.ts
+export const assertValue = (value: string | undefined, errorMessage: string): string => {
+  if (!value) {
+    throw new Error(errorMessage)
+  }
+  return value
+}
+
+// Usage
+export const RESEND_API_KEY = assertValue(
+  process.env.RESEND_API_KEY,
+  "RESEND_API_KEY is required"
+)
+
+export const MINIO_ENDPOINT = assertValue(
+  process.env.MINIO_ENDPOINT,
+  "MINIO_ENDPOINT is required"
+)
+
+export const STRIPE_SECRET_KEY = assertValue(
+  process.env.STRIPE_SECRET_KEY,
+  "STRIPE_SECRET_KEY is required"
+)
+```
+
+### Secure Payment Handling
+- **NEVER** log sensitive payment data (card numbers, CVV, etc.)
+- **ALWAYS** use HTTPS in production
+- **ALWAYS** validate webhook signatures
+- Store payment tokens, not card details
+
+```typescript
+// ✅ CORRECT - Validate Stripe webhook
+import Stripe from "stripe"
+
+export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
+  const sig = req.headers["stripe-signature"] as string
+  const body = await req.text()
+
+  let event: Stripe.Event
+
+  try {
+    event = stripe.webhooks.constructEvent(
+      body,
+      sig,
+      process.env.STRIPE_WEBHOOK_SECRET
+    )
+  } catch (error) {
+    logger.error("Webhook signature verification failed:", error)
+    return res.status(400).json({ error: "Invalid signature" })
+  }
+
+  // Process verified webhook
+  if (event.type === "charge.succeeded") {
+    const charge = event.data.object as Stripe.Charge
+    await handleChargeSucceeded(charge)
+  }
+
+  res.json({ received: true })
+}
+
+// ❌ WRONG - No signature verification
+export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
+  const { type, data } = req.body
+
+  if (type === "charge.succeeded") {
+    await handleChargeSucceeded(data) // Could be fake!
+  }
+}
+```
+
+### API Authentication & Authorization
+
+**IMPORTANT**: Admin authentication is now a CRITICAL RULE (see "Admin Endpoint Authentication" section above). This section covers store/customer authentication patterns.
+
+```typescript
+import { authenticate } from "@medusajs/framework/http"
+
+// Protected store/customer route
+export const GET = [
+  authenticate("customer", ["session", "bearer"]),
+  async (req: MedusaRequest, res: MedusaResponse) => {
+    // req.auth contains authenticated customer
+    const customerId = req.auth.actor_id
+
+    // Customer-specific logic here
+    res.json({ customerId })
+  }
+]
+
+// Optional authentication (logged in or guest)
+export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
+  // Check if customer is authenticated
+  const customerId = req.auth?.actor_id
+
+  if (customerId) {
+    // Personalized response for logged-in customer
+  } else {
+    // Generic response for guest
+  }
+}
+```
+
+### Input Validation and Sanitization
+
+```typescript
+import { z } from "zod"
+
+// Define schema
+const CreateProductSchema = z.object({
+  title: z.string().min(1).max(255),
+  description: z.string().optional(),
+  price: z.number().positive(),
+  quantity: z.number().int().min(0),
+  tags: z.array(z.string()).optional(),
+})
+
+export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
+  // Validate input
+  const result = CreateProductSchema.safeParse(req.body)
+
+  if (!result.success) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      result.error.message
+    )
+  }
+
+  const validatedData = result.data
+
+  // Use validated data
+  const product = await productService.create(validatedData)
+
+  res.json({ product })
+}
+```
+
+### Secrets Management
+- **NEVER** commit secrets to git
+- Use `.env.local` for local development
+- Use `.env.template` as documentation (see project root)
+- Rotate secrets regularly
+- Use secret management services in production (AWS Secrets Manager, etc.)
+
+```bash
+# .env.template (safe to commit)
+RESEND_API_KEY=your_resend_key_here
+MINIO_ENDPOINT=your_minio_endpoint
+STRIPE_SECRET_KEY=your_stripe_secret
+
+# .env.local (gitignored - actual secrets)
+RESEND_API_KEY=re_actual_key_xyz
+MINIO_ENDPOINT=https://minio.example.com
+STRIPE_SECRET_KEY=sk_live_actual_key
+```
+
+---
+
+## TESTING STANDARDS
+
+### Jest Configuration
+Use `@medusajs/test-utils` for testing Medusa services and workflows.
+
+```typescript
+import { ModuleRegistrationName } from "@medusajs/framework/utils"
+import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
+
+medusaIntegrationTestRunner({
+  testSuite: ({ getContainer }) => {
+    describe("Product Service", () => {
+      it("should create a product", async () => {
+        const container = getContainer()
+        const productService = container.resolve(
+          ModuleRegistrationName.PRODUCT
+        )
+
+        const product = await productService.create({
+          title: "Test Product",
+          price: 1000,
+        })
+
+        expect(product).toMatchObject({
+          title: "Test Product",
+          price: 1000,
+        })
+      })
+    })
+  },
+})
+```
+
+### Integration Testing Patterns
+
+```typescript
+describe("Order Creation Workflow", () => {
+  let container: MedusaContainer
+  let orderService: OrderService
+  let inventoryService: InventoryService
+
+  beforeEach(async () => {
+    container = getContainer()
+    orderService = container.resolve("orderService")
+    inventoryService = container.resolve("inventoryService")
+
+    // Seed test data
+    await seedProducts(container)
+  })
+
+  afterEach(async () => {
+    // Cleanup
+    await clearDatabase(container)
+  })
+
+  it("should reserve inventory when order is created", async () => {
+    const order = await orderService.create({
+      items: [{ variant_id: "variant_123", quantity: 2 }],
+      customer_id: "customer_123",
+    })
+
+    const inventory = await inventoryService.retrieve("variant_123")
+
+    expect(inventory.reserved_quantity).toBe(2)
+    expect(order.status).toBe("pending")
+  })
+
+  it("should rollback inventory if payment fails", async () => {
+    const initialInventory = await inventoryService.retrieve("variant_123")
+
+    await expect(
+      orderService.create({
+        items: [{ variant_id: "variant_123", quantity: 2 }],
+        customer_id: "customer_invalid", // Will fail payment
+      })
+    ).rejects.toThrow()
+
+    const finalInventory = await inventoryService.retrieve("variant_123")
+
+    expect(finalInventory.reserved_quantity).toBe(
+      initialInventory.reserved_quantity
+    )
+  })
+})
+```
+
+### Mocking Medusa Services
+
+```typescript
+import { createMock } from "@medusajs/test-utils"
+
+describe("Order Subscriber", () => {
+  it("should send email when order is placed", async () => {
+    const mockEmailService = createMock({
+      send: jest.fn().mockResolvedValue({ success: true }),
+    })
+
+    const mockContainer = {
+      resolve: (name: string) => {
+        if (name === "emailService") return mockEmailService
+        if (name === "logger") return console
+      },
+    }
+
+    await orderPlacedHandler({
+      event: { data: { id: "order_123" } },
+      container: mockContainer as any,
+    })
+
+    expect(mockEmailService.send).toHaveBeenCalledWith(
+      "order-placed",
+      expect.objectContaining({ id: "order_123" })
+    )
+  })
+})
+```
+
+### Test Organization
+- Colocate tests with source: `src/services/__tests__/product-service.test.ts`
+- Use descriptive test names: "should X when Y"
+- Test happy path and edge cases
+- Keep tests focused and independent
+- Mock external dependencies (Stripe, email services, etc.)
+
+---
+
+## DEVELOPMENT WORKFLOW
+
+### Before Starting Implementation
+1. **Understand requirements** - Ask clarifying questions if unclear
+2. **Plan architecture** - Which layer? (API route, subscriber, workflow, service)
+3. **Check existing patterns** - Review similar implementations in codebase
+4. **Define types first** - Create interfaces/types before implementation
+5. **Consider events** - What events should be emitted? What should subscribe?
+
+### During Implementation
+1. **Write types first** - Define input/output types
+2. **Implement incrementally** - Build one piece at a time
+3. **Use dependency injection** - Resolve from container
+4. **Handle errors properly** - Use MedusaError
+5. **Add logging** - Info for success, error for failures
+6. **Test as you go** - Don't wait until the end
+
+### After Implementation
+1. **Review code** - Read through as if reviewing a PR
+2. **Test thoroughly** - Happy path + edge cases + error scenarios
+3. **Check performance** - Avoid N+1 queries, use transactions
+4. **Verify events** - Ensure events are emitted and subscribers work
+5. **Update environment vars** - Add new vars to `.env.template`
+6. **Clean up** - Remove console.logs, unused imports, commented code
+
+---
+
+## ANTI-PATTERNS TO AVOID
+
+### General Anti-Patterns
+- ❌ Using `any` type in TypeScript
+- ❌ Direct service instantiation (bypassing container)
+- ❌ Synchronous blocking operations (use async/await)
+- ❌ Ignoring TypeScript errors
+- ❌ Using `console.log` instead of injected logger
+- ❌ Hardcoding environment values
+- ❌ Missing error handling (no try/catch)
+- ❌ Using `.then()/.catch()` instead of async/await
+
+### Medusa-Specific Anti-Patterns
+- ❌ Mutating entities outside transactions
+- ❌ Not using workflows for multi-step processes
+- ❌ Ignoring event emission for important actions
+- ❌ Hardcoding URLs (use environment variables)
+- ❌ Not validating webhook signatures
+- ❌ Mixing admin and store logic in same route
+- ❌ Creating custom models instead of extending Medusa entities
+
+### E-commerce Anti-Patterns
+- ❌ Processing payments without idempotency keys
+- ❌ Not using database locks for inventory operations
+- ❌ Hard-deleting order or payment records
+- ❌ Storing credit card details (use tokens)
+- ❌ Missing audit logs for financial transactions
+- ❌ Not handling payment webhook failures
+- ❌ Displaying detailed error messages to customers (security risk)
+- ❌ Allowing negative inventory quantities
+- ❌ Not reserving inventory before payment
+- ❌ Processing refunds without checking order status
+
+### Database Anti-Patterns
+- ❌ N+1 queries (use `populate`/`relations`)
+- ❌ Missing indexes on frequently queried fields
+- ❌ Not using transactions for multi-table operations
+- ❌ Loading unnecessary relations
+- ❌ Using `SELECT *` when only specific fields needed
+
+---
+
+## IMPORTANT REMINDERS
+
+1. **TypeScript is your friend** - Leverage types for safety
+2. **Events decouple code** - Emit events for extensibility
+3. **Workflows handle complexity** - Use workflows for multi-step processes
+4. **Transactions prevent inconsistencies** - Wrap critical operations
+5. **Idempotency prevents duplicates** - Especially for payments
+6. **Logs aid debugging** - Use structured logging
+7. **Tests prevent regressions** - Write tests for critical paths
+8. **Security is non-negotiable** - Validate inputs, verify webhooks
+9. **Performance matters** - Avoid N+1, use caching, optimize queries
+10. **When in doubt, ask** - Clarify before implementing
+
+---
+
+## GIT & VERSION CONTROL (CRITICAL RULES)
+
+### Commit Rules
+- **NEVER** automatically commit changes - you must ALWAYS ask the user first
+- **NEVER** push to remote repository - this is strictly forbidden
+- **Suggesting commit messages is the maximum you can do** - provide a draft commit message and let the user execute it
+- If the user explicitly requests a commit, ask for confirmation before proceeding
+- Write meaningful commit messages (conventional commits style)
+- Keep commits atomic and focused
+- Review all changes before committing
+- Never commit secrets or sensitive data
+
+**Conventional Commit Format**:
+```
+type(scope): subject
+
+body (optional)
+
+footer (optional)
+```
+
+**Types**: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `perf`
+
+**Examples**:
+```
+feat(api): add product search endpoint
+fix(workflows): handle payment failure rollback
+refactor(subscribers): extract email logic to service
+docs(readme): update environment variables
+```
+
+### When User Asks for Changes
+1. ✅ Make the code changes
+2. ✅ Show the user what was changed
+3. ✅ Suggest a commit message
+4. ⛔ **STOP** - Let the user review and commit manually
+
+**Example Response**:
+```
+I've implemented the new product search endpoint. Here's what changed:
+
+- Added /api/store/products/search route
+- Implemented search service with Meilisearch
+- Added search query validation
+
+Suggested commit message:
+feat(api): add product search endpoint with Meilisearch integration
+
+You can review the changes and commit when ready.
+```
+
+---
+
+## REFERENCE LINKS
+
+- [Medusa v2 Documentation](https://docs.medusajs.com)
+- [Medusa Workflows](https://docs.medusajs.com/learn/fundamentals/workflows)
+- [Medusa API Routes](https://docs.medusajs.com/learn/fundamentals/api-routes)
+- [Medusa Events](https://docs.medusajs.com/learn/fundamentals/events-and-subscribers)
+- [Medusa Modules](https://docs.medusajs.com/learn/fundamentals/modules)
+- [TypeScript Handbook](https://www.typescriptlang.org/docs/)
+- [MikroORM Documentation](https://mikro-orm.io/docs)
+- [Stripe Best Practices](https://stripe.com/docs/api/idempotent_requests)
+
+---
+
+**Last Updated**: 2025-01-13
+**Project Version**: Medusa 2.10.2
+**Target Audience**: AI coding assistants working on this Medusa e-commerce backend

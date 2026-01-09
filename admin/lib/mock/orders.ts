@@ -1,0 +1,592 @@
+import type { OrderStats, Order, OrderListResponse } from "../validators/order";
+
+// Mock Order Statistics
+export const mockOrderStats: OrderStats = {
+  total_orders: 5129,
+  total_revenue: 1224435000, // $12,244.350 in cents
+  paid_orders: 2423,
+  unpaid_orders: 1916,
+  pending_orders: 1299,
+  refunded_orders: 256,
+  currency: "sgd",
+  paid_percentage: 47.2, // (2423 / 5129) * 100
+};
+
+// Mock Orders Data
+export const mockOrders: Order[] = [
+  {
+    id: "order_001",
+    display_id: 1001,
+    customer_id: "cust_001",
+    customer_name: "Aditya N.",
+    customer_email: "aditya.n@example.com",
+    customer_phone: "+60123456789",
+    status: "completed",
+    payment_status: "paid",
+    fulfillment_status: "delivered",
+    payment_method: "Credit Card",
+    shipping_method: "Standard Shipping",
+    shipping_channel: null,
+    subtotal: 2500,
+    shipping_total: 379,
+    tax_total: 0,
+    discount_total: 0,
+    total: 2879,
+    currency: "sgd",
+    items_count: 3,
+    items: [
+      {
+        id: "item_001",
+        product_id: "prod_001",
+        variant_id: "var_001",
+        product_name: "Sunscreen SPF50 PA+++",
+        variant_title: null,
+        thumbnail: "/products/sunscreen.jpg",
+        quantity: 2,
+        unit_price: 1000,
+        total: 2000,
+        sku: "SUN-SPF50-001",
+      },
+      {
+        id: "item_002",
+        product_id: "prod_002",
+        variant_id: "var_002",
+        product_name: "Face Moisturizer",
+        variant_title: null,
+        thumbnail: "/products/moisturizer.jpg",
+        quantity: 1,
+        unit_price: 500,
+        total: 500,
+        sku: "MOIST-FACE-001",
+      },
+    ],
+    tracking_number: null,
+    has_rating: false,
+    created_at: "2025-01-20T10:30:00Z",
+    updated_at: "2025-01-20T14:30:00Z",
+  },
+  {
+    id: "order_002",
+    display_id: 1002,
+    customer_id: "cust_001",
+    customer_name: "Aditya N.",
+    customer_email: "aditya.n@example.com",
+    customer_phone: "+60123456789",
+    status: "completed",
+    payment_status: "paid",
+    fulfillment_status: "delivered",
+    payment_method: "Credit Card",
+    shipping_method: "Express Shipping",
+    shipping_channel: null,
+    subtotal: 2500,
+    shipping_total: 379,
+    tax_total: 0,
+    discount_total: 0,
+    total: 2879,
+    currency: "sgd",
+    items_count: 1,
+    items: [
+      {
+        id: "item_003",
+        product_id: "prod_003",
+        variant_id: "var_003",
+        product_name: "Body Lotion Mustard",
+        variant_title: null,
+        thumbnail: "/products/body-lotion.jpg",
+        quantity: 1,
+        unit_price: 2500,
+        total: 2500,
+        sku: "BL-MUST-08174WS",
+      },
+    ],
+    tracking_number: "TRK123456789",
+    has_rating: false,
+    created_at: "2025-01-19T15:20:00Z",
+    updated_at: "2025-01-19T16:20:00Z",
+  },
+  {
+    id: "order_003",
+    display_id: 1003,
+    customer_id: "cust_001",
+    customer_name: "Aditya N.",
+    customer_email: "aditya.n@example.com",
+    customer_phone: "+60123456789",
+    status: "completed",
+    payment_status: "paid",
+    fulfillment_status: "delivered",
+    payment_method: "Credit Card",
+    shipping_method: "Standard Shipping",
+    shipping_channel: null,
+    subtotal: 2500,
+    shipping_total: 379,
+    tax_total: 0,
+    discount_total: 0,
+    total: 2879,
+    currency: "sgd",
+    items_count: 1,
+    items: [
+      {
+        id: "item_004",
+        product_id: "prod_003",
+        variant_id: "var_003",
+        product_name: "Body Lotion Mustard",
+        variant_title: null,
+        thumbnail: "/products/body-lotion.jpg",
+        quantity: 1,
+        unit_price: 2500,
+        total: 2500,
+        sku: "BL-MUST-08174WS",
+      },
+    ],
+    tracking_number: null,
+    has_rating: false,
+    created_at: "2025-01-18T09:15:00Z",
+    updated_at: "2025-01-18T10:15:00Z",
+  },
+  {
+    id: "order_004",
+    display_id: 1004,
+    customer_id: "cust_002",
+    customer_name: "Sarah Lee",
+    customer_email: "sarah.lee@example.com",
+    customer_phone: "+60129876543",
+    status: "pending",
+    payment_status: "awaiting",
+    fulfillment_status: "unfulfilled",
+    payment_method: "Bank Transfer",
+    shipping_method: "Standard Shipping",
+    shipping_channel: null,
+    subtotal: 3500,
+    shipping_total: 500,
+    tax_total: 0,
+    discount_total: 0,
+    total: 4000,
+    currency: "sgd",
+    items_count: 2,
+    items: [
+      {
+        id: "item_005",
+        product_id: "prod_004",
+        variant_id: "var_004",
+        product_name: "Vitamin C Serum",
+        variant_title: null,
+        thumbnail: "/products/serum.jpg",
+        quantity: 2,
+        unit_price: 1750,
+        total: 3500,
+        sku: "SER-VITC-001",
+      },
+    ],
+    tracking_number: null,
+    has_rating: false,
+    created_at: "2025-01-21T11:00:00Z",
+    updated_at: "2025-01-21T11:00:00Z",
+  },
+  {
+    id: "order_005",
+    display_id: 1005,
+    customer_id: "cust_003",
+    customer_name: "Ahmad Ibrahim",
+    customer_email: "ahmad.ibrahim@example.com",
+    customer_phone: "+60125551234",
+    status: "processing",
+    payment_status: "paid",
+    fulfillment_status: "processing",
+    payment_method: "E-Wallet",
+    shipping_method: "Express Shipping",
+    shipping_channel: "J&T Express",
+    subtotal: 5000,
+    shipping_total: 800,
+    tax_total: 0,
+    discount_total: 500,
+    total: 5300,
+    currency: "sgd",
+    items_count: 4,
+    items: [
+      {
+        id: "item_006",
+        product_id: "prod_005",
+        variant_id: "var_005",
+        product_name: "Cleansing Foam",
+        variant_title: null,
+        thumbnail: "/products/cleanser.jpg",
+        quantity: 2,
+        unit_price: 1500,
+        total: 3000,
+        sku: "CLN-FOAM-001",
+      },
+      {
+        id: "item_007",
+        product_id: "prod_006",
+        variant_id: "var_006",
+        product_name: "Night Cream",
+        variant_title: null,
+        thumbnail: "/products/night-cream.jpg",
+        quantity: 2,
+        unit_price: 1000,
+        total: 2000,
+        sku: "NC-REG-001",
+      },
+    ],
+    tracking_number: "JT987654321",
+    has_rating: true,
+    created_at: "2025-01-20T08:45:00Z",
+    updated_at: "2025-01-21T09:00:00Z",
+  },
+];
+
+// Additional mock orders for pagination testing
+const additionalOrders: Order[] = [
+  {
+    id: "order_006",
+    display_id: 1006,
+    customer_id: "cust_004",
+    customer_name: "Mei Ling Wong",
+    customer_email: "meiling.wong@example.com",
+    customer_phone: "+60127778899",
+    status: "completed",
+    payment_status: "paid",
+    fulfillment_status: "delivered",
+    payment_method: "Credit Card",
+    shipping_method: "Standard Shipping",
+    shipping_channel: "Pos Laju",
+    subtotal: 1500,
+    shipping_total: 300,
+    tax_total: 0,
+    discount_total: 0,
+    total: 1800,
+    currency: "sgd",
+    items_count: 1,
+    items: [
+      {
+        id: "item_008",
+        product_id: "prod_007",
+        variant_id: "var_007",
+        product_name: "Hydrating Toner",
+        variant_title: null,
+        thumbnail: "/products/toner.jpg",
+        quantity: 1,
+        unit_price: 1500,
+        total: 1500,
+        sku: "TON-HYD-001",
+      },
+    ],
+    tracking_number: "PL123456789",
+    has_rating: true,
+    created_at: "2025-01-17T14:00:00Z",
+    updated_at: "2025-01-18T10:00:00Z",
+  },
+  {
+    id: "order_007",
+    display_id: 1007,
+    customer_id: "cust_005",
+    customer_name: "Raj Kumar",
+    customer_email: "raj.kumar@example.com",
+    customer_phone: "+60126667788",
+    status: "cancelled",
+    payment_status: "refunded",
+    fulfillment_status: "cancelled",
+    payment_method: "E-Wallet",
+    shipping_method: "Express Shipping",
+    shipping_channel: null,
+    subtotal: 2000,
+    shipping_total: 500,
+    tax_total: 0,
+    discount_total: 0,
+    total: 2500,
+    currency: "sgd",
+    items_count: 2,
+    items: [
+      {
+        id: "item_009",
+        product_id: "prod_008",
+        variant_id: "var_008",
+        product_name: "Anti-Aging Eye Cream",
+        variant_title: null,
+        thumbnail: "/products/eye-cream.jpg",
+        quantity: 1,
+        unit_price: 2000,
+        total: 2000,
+        sku: "EC-ANTI-001",
+      },
+    ],
+    tracking_number: null,
+    has_rating: false,
+    created_at: "2025-01-16T09:30:00Z",
+    updated_at: "2025-01-16T12:00:00Z",
+  },
+  {
+    id: "order_008",
+    display_id: 1008,
+    customer_id: "cust_006",
+    customer_name: "Tan Wei Ming",
+    customer_email: "weiming.tan@example.com",
+    customer_phone: "+60128889900",
+    status: "pending",
+    payment_status: "awaiting",
+    fulfillment_status: "unfulfilled",
+    payment_method: "Bank Transfer",
+    shipping_method: "Standard Shipping",
+    shipping_channel: null,
+    subtotal: 4500,
+    shipping_total: 400,
+    tax_total: 0,
+    discount_total: 200,
+    total: 4700,
+    currency: "sgd",
+    items_count: 3,
+    items: [
+      {
+        id: "item_010",
+        product_id: "prod_009",
+        variant_id: "var_009",
+        product_name: "Complete Skincare Set Premium Edition",
+        variant_title: null,
+        thumbnail: "/products/skincare-set.jpg",
+        quantity: 1,
+        unit_price: 4500,
+        total: 4500,
+        sku: "SET-PREM-001",
+      },
+    ],
+    tracking_number: null,
+    has_rating: false,
+    created_at: "2025-01-21T16:00:00Z",
+    updated_at: "2025-01-21T16:00:00Z",
+  },
+  {
+    id: "order_009",
+    display_id: 1009,
+    customer_id: "cust_007",
+    customer_name: "Nurul Aisyah",
+    customer_email: "nurul.aisyah@example.com",
+    customer_phone: "+60129991122",
+    status: "processing",
+    payment_status: "paid",
+    fulfillment_status: "unfulfilled",
+    payment_method: "Credit Card",
+    shipping_method: "Express Shipping",
+    shipping_channel: "DHL",
+    subtotal: 3200,
+    shipping_total: 600,
+    tax_total: 0,
+    discount_total: 0,
+    total: 3800,
+    currency: "sgd",
+    items_count: 2,
+    items: [
+      {
+        id: "item_011",
+        product_id: "prod_010",
+        variant_id: "var_010",
+        product_name: "Brightening Mask",
+        variant_title: null,
+        thumbnail: "/products/mask.jpg",
+        quantity: 3,
+        unit_price: 800,
+        total: 2400,
+        sku: "MSK-BRT-001",
+      },
+      {
+        id: "item_012",
+        product_id: "prod_011",
+        variant_id: "var_011",
+        product_name: "Lip Balm Set",
+        variant_title: null,
+        thumbnail: "/products/lip-balm.jpg",
+        quantity: 2,
+        unit_price: 400,
+        total: 800,
+        sku: "LIP-SET-001",
+      },
+    ],
+    tracking_number: "DHL789456123",
+    has_rating: false,
+    created_at: "2025-01-20T12:30:00Z",
+    updated_at: "2025-01-21T08:00:00Z",
+  },
+  {
+    id: "order_010",
+    display_id: 1010,
+    customer_id: "cust_008",
+    customer_name: "David Lim",
+    customer_email: "david.lim@example.com",
+    customer_phone: "+60121112233",
+    status: "completed",
+    payment_status: "paid",
+    fulfillment_status: "delivered",
+    payment_method: "E-Wallet",
+    shipping_method: "Standard Shipping",
+    shipping_channel: "Ninja Van",
+    subtotal: 1800,
+    shipping_total: 350,
+    tax_total: 0,
+    discount_total: 100,
+    total: 2050,
+    currency: "sgd",
+    items_count: 1,
+    items: [
+      {
+        id: "item_013",
+        product_id: "prod_012",
+        variant_id: "var_012",
+        product_name: "Exfoliating Scrub",
+        variant_title: null,
+        thumbnail: "/products/scrub.jpg",
+        quantity: 2,
+        unit_price: 900,
+        total: 1800,
+        sku: "SCR-EXF-001",
+      },
+    ],
+    tracking_number: "NV456789123",
+    has_rating: true,
+    created_at: "2025-01-15T10:00:00Z",
+    updated_at: "2025-01-16T14:00:00Z",
+  },
+  {
+    id: "order_011",
+    display_id: 1011,
+    customer_id: "cust_009",
+    customer_name: "Farah Abdullah",
+    customer_email: "farah.abdullah@example.com",
+    customer_phone: "+60122223344",
+    status: "refunded",
+    payment_status: "refunded",
+    fulfillment_status: "cancelled",
+    payment_method: "Credit Card",
+    shipping_method: "Express Shipping",
+    shipping_channel: null,
+    subtotal: 6000,
+    shipping_total: 700,
+    tax_total: 0,
+    discount_total: 500,
+    total: 6200,
+    currency: "sgd",
+    items_count: 5,
+    items: [
+      {
+        id: "item_014",
+        product_id: "prod_013",
+        variant_id: "var_013",
+        product_name: "Luxury Face Oil",
+        variant_title: null,
+        thumbnail: "/products/face-oil.jpg",
+        quantity: 1,
+        unit_price: 6000,
+        total: 6000,
+        sku: "OIL-LUX-001",
+      },
+    ],
+    tracking_number: null,
+    has_rating: false,
+    created_at: "2025-01-14T11:00:00Z",
+    updated_at: "2025-01-15T09:00:00Z",
+  },
+  {
+    id: "order_012",
+    display_id: 1012,
+    customer_id: "cust_010",
+    customer_name: "Jason Ng",
+    customer_email: "jason.ng@example.com",
+    customer_phone: "+60123334455",
+    status: "completed",
+    payment_status: "paid",
+    fulfillment_status: "delivered",
+    payment_method: "Bank Transfer",
+    shipping_method: "Standard Shipping",
+    shipping_channel: "Pos Laju",
+    subtotal: 2200,
+    shipping_total: 300,
+    tax_total: 0,
+    discount_total: 0,
+    total: 2500,
+    currency: "sgd",
+    items_count: 2,
+    items: [
+      {
+        id: "item_015",
+        product_id: "prod_014",
+        variant_id: "var_014",
+        product_name: "Acne Treatment Gel",
+        variant_title: null,
+        thumbnail: "/products/acne-gel.jpg",
+        quantity: 2,
+        unit_price: 1100,
+        total: 2200,
+        sku: "ACN-GEL-001",
+      },
+    ],
+    tracking_number: "PL987654321",
+    has_rating: true,
+    created_at: "2025-01-13T15:30:00Z",
+    updated_at: "2025-01-14T12:00:00Z",
+  },
+];
+
+// Combine all mock orders
+const allMockOrders: Order[] = [...mockOrders, ...additionalOrders];
+
+// Mock function to get orders with filters
+export function getMockOrders(filters?: {
+  search?: string;
+  status?: string;
+  sort_by?: string;
+  limit?: number;
+  offset?: number;
+}): OrderListResponse {
+  let filteredOrders = [...allMockOrders];
+
+  // Apply search filter
+  if (filters?.search) {
+    const query = filters.search.toLowerCase();
+    filteredOrders = filteredOrders.filter(
+      (order) =>
+        order.customer_name.toLowerCase().includes(query) ||
+        order.customer_email.toLowerCase().includes(query) ||
+        order.display_id.toString().includes(query)
+    );
+  }
+
+  // Apply status filter
+  if (filters?.status && filters.status !== "all") {
+    filteredOrders = filteredOrders.filter((order) => order.status === filters.status);
+  }
+
+  // Apply sorting
+  if (filters?.sort_by) {
+    filteredOrders.sort((a, b) => {
+      switch (filters.sort_by) {
+        case "newest":
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        case "oldest":
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        case "highest":
+          return b.total - a.total;
+        case "lowest":
+          return a.total - b.total;
+        default:
+          return 0;
+      }
+    });
+  }
+
+  const totalCount = filteredOrders.length;
+  const limit = filters?.limit || 10;
+  const offset = filters?.offset || 0;
+
+  // Apply pagination
+  const paginatedOrders = filteredOrders.slice(offset, offset + limit);
+
+  return {
+    orders: paginatedOrders,
+    count: totalCount,
+    limit,
+    offset,
+  };
+}
+
+// Mock function to get order by ID
+export function getMockOrderById(id: string): Order | undefined {
+  return allMockOrders.find((order) => order.id === id);
+}
