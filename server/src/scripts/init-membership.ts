@@ -39,7 +39,7 @@ export default async function initMembership({ container }: any) {
     logger.info(`MEMBERSHIP_GROUP_ID=${memberGroup.id}`)
     logger.info("\nMembership system initialized successfully!")
   } catch (error) {
-    logger.error("Failed to initialize membership system:", error)
+    logger.error(`Failed to initialize membership system: ${error}`)
     throw error
   }
 }

@@ -182,7 +182,7 @@ export default async function checkLowStock(
       `Checked: ${variantMap.size} variants, Alerts: ${alertsGenerated}`
     )
   } catch (error) {
-    logger.error("[LOW-STOCK] Job failed:", error)
+    logger.error(`[LOW-STOCK] Job failed: ${error}`)
     throw error
   }
 }

@@ -162,7 +162,7 @@ export default async function checkStockAlerts({ container }: ExecArgs): Promise
     }
 
   } catch (error) {
-    logger.error("Diagnostic failed:", error)
+    logger.error(`Diagnostic failed: ${error}`)
     throw error
   }
 }

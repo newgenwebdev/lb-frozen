@@ -111,7 +111,7 @@ export default async function evaluateTierDowngrades(
       `Unchanged: ${unchanged}, Errors: ${errors}`
     )
   } catch (error) {
-    logger.error("[TIER-EVAL] Job failed:", error)
+    logger.error(`[TIER-EVAL] Job failed: ${error}`)
     throw error
   }
 }

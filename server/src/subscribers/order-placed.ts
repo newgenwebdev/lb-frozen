@@ -184,7 +184,7 @@ export default async function orderPlacedHandler({
         }
       }
     } catch (error) {
-      logger.error("Error awarding points for order:", error)
+      logger.error(`Error awarding points for order: ${error}`)
       // Don't fail the order if points fail
     }
 

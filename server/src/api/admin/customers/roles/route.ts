@@ -38,11 +38,9 @@ export const GET = withAdminAuth(async (
         let role: CustomerRole = DEFAULT_CUSTOMER_ROLE
 
         // Log for debugging
-        logger.info(`[ADMIN-ROLES] Customer ${customer.email} groups:`, 
-          JSON.stringify(customer.groups?.map((g: any) => ({ id: g.id, name: g.name })) || []))
-        logger.info(`[ADMIN-ROLES] Customer ${customer.email} metadata:`, 
-          JSON.stringify(customer.metadata))
-        logger.info(`[ADMIN-ROLES] Expected group IDs:`, JSON.stringify(CUSTOMER_GROUP_IDS))
+        logger.info(`[ADMIN-ROLES] Customer ${customer.email} groups: ${JSON.stringify(customer.groups?.map((g: any) => ({ id: g.id, name: g.name })) || [])}`)
+        logger.info(`[ADMIN-ROLES] Customer ${customer.email} metadata: ${JSON.stringify(customer.metadata)}`)
+        logger.info(`[ADMIN-ROLES] Expected group IDs: ${JSON.stringify(CUSTOMER_GROUP_IDS)}`)
 
         // First check metadata (primary source)
         if (customer.metadata?.pricing_role) {
@@ -83,7 +81,7 @@ export const GET = withAdminAuth(async (
       count: customersWithRoles.length,
     })
   } catch (error) {
-    logger.error("[ADMIN] Failed to list customers with roles:", error)
+    logger.error(`[ADMIN] Failed to list customers with roles: ${error}`)
     res.status(500).json({
       message: "Failed to list customers",
       error: (error as Error).message,

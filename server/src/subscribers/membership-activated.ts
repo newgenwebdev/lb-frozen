@@ -45,7 +45,7 @@ export default async function membershipActivatedHandler({
       `Welcome email would be sent to ${customer.email} for membership ${data.membership_id}`
     )
   } catch (error) {
-    logger.error("Error processing membership.activated event:", error)
+    logger.error(`Error processing membership.activated event: ${error}`)
     // Don't throw - we don't want to fail the membership purchase if email fails
   }
 }

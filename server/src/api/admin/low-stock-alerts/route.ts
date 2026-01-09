@@ -187,7 +187,7 @@ export const GET = withAdminAuth(async (req, res) => {
       source: "realtime",
     })
   } catch (error) {
-    logger.error("[LOW-STOCK-API] Error checking low stock:", error)
+    logger.error(`[LOW-STOCK-API] Error checking low stock: ${error}`)
     res.status(500).json({
       message: "Failed to check low stock levels",
       error: String(error),

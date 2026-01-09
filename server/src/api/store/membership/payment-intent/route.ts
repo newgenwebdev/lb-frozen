@@ -94,7 +94,7 @@ export const POST = async (
       currency: paymentIntent.currency,
     })
   } catch (error: any) {
-    logger.error("Failed to create membership payment intent:", error)
+    logger.error(`Failed to create membership payment intent: ${error}`)
 
     if (error instanceof MedusaError) {
       throw error

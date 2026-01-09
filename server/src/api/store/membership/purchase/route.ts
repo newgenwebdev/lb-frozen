@@ -171,7 +171,7 @@ export const POST = async (
       },
     })
   } catch (error: any) {
-    logger.error("Membership purchase failed:", error)
+    logger.error(`Membership purchase failed: ${error}`)
 
     if (error instanceof MedusaError) {
       throw error

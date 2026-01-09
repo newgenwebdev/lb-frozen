@@ -53,7 +53,7 @@ export const POST = [
       STRIPE_WEBHOOK_SECRET
     )
   } catch (error) {
-    logger.error("Webhook signature verification failed:", error)
+    logger.error(`Webhook signature verification failed: ${error}`)
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
       `Webhook Error: ${error.message}`

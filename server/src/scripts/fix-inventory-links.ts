@@ -113,7 +113,7 @@ export default async function fixInventoryLinks({ container }: ExecArgs): Promis
     }
 
   } catch (error) {
-    logger.error("Failed to fix inventory links:", error)
+    logger.error(`Failed to fix inventory links: ${error}`)
     throw error
   }
 }

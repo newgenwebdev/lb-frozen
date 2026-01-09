@@ -45,7 +45,7 @@ export default async function pointsEarnedHandler({
       `Points earned email would be sent to ${customer.email}: ${data.points_earned} points`
     )
   } catch (error) {
-    logger.error("Error processing points.earned event:", error)
+    logger.error(`Error processing points.earned event: ${error}`)
     // Don't throw - email failure shouldn't affect points award
   }
 }

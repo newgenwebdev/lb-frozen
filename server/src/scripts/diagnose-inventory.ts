@@ -167,7 +167,7 @@ export default async function diagnoseInventory({ container }: ExecArgs): Promis
     logger.info("=".repeat(60))
 
   } catch (error) {
-    logger.error("Diagnosis failed:", error)
+    logger.error(`Diagnosis failed: ${error}`)
     throw error
   }
 }
