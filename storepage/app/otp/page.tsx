@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Navbar from "@/components/layout/Navbar";
 import Button from "@/components/shared/Button";
 
-export default function OTPPage() {
+function OTPContent() {
   const searchParams = useSearchParams();
   const [otp, setOtp] = useState(["", "", "", "", ""]);
   // Get email from URL params or use empty string
@@ -132,5 +132,20 @@ export default function OTPPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function OTPPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="flex items-center justify-center px-8 py-20">
+          <div className="text-center">Loading...</div>
+        </div>
+      </div>
+    }>
+      <OTPContent />
+    </Suspense>
   );
 }
