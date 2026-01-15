@@ -31,7 +31,7 @@ export interface CustomerWithRole {
   last_name: string;
   phone?: string;
   has_account: boolean;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   created_at: string;
   groups?: Array<{ id: string; name: string }>;
   role?: CustomerRole;
@@ -47,7 +47,7 @@ export interface CreateCustomerRequest {
   phone?: string;
   role?: CustomerRole;
   password?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /**

@@ -56,7 +56,7 @@ export default function EditShipmentPage(): React.JSX.Element {
           // Convert from cents to main currency unit for display
           setFormData({
             name: shippingOption.name || "",
-            price: shippingOption.base_rate_sgd / 100,
+            price: shippingOption.base_rate_myr / 100,
             eta: shippingOption.eta || "2-3 days",
             enabled: shippingOption.status === "Active",
           });
@@ -122,9 +122,9 @@ export default function EditShipmentPage(): React.JSX.Element {
     }
 
     // Convert form data to API format
-    // Medusa stores prices in cents - only SGD
+    // Medusa stores prices in cents - only MYR
     const prices: ShippingOptionPrice[] = [
-      { currency_code: "sgd", amount: Math.round(formData.price * 100) },
+      { currency_code: "myr", amount: Math.round(formData.price * 100) },
     ];
 
     const apiData: Partial<ShippingOptionFormData> = {
