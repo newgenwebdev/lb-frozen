@@ -93,10 +93,12 @@ export async function logout(): Promise<void> {
  */
 export async function getCurrentCustomer(): Promise<Customer | null> {
   try {
-    // Use our custom endpoint that includes metadata
+    // Use our custom endpoint that includes metadata and addresses
     const response = await apiClient.get<{ customer: Customer }>(
-      '/store/customer/me'
+      '/store/customer/me?fields=*shipping_addresses'
     );
+    console.log('[AUTH] getCurrentCustomer response:', response.customer);
+    console.log('[AUTH] shipping_addresses:', response.customer?.shipping_addresses);
     return response.customer;
   } catch (error) {
     console.error('Failed to fetch current customer:', error);
@@ -166,10 +168,11 @@ export async function resendVerification(
  * Get customer addresses
  */
 export async function getAddresses(): Promise<any[]> {
-  const response = await apiClient.get<{ customer: Customer }>(
+  const response = await apiClient.get<{ customer: any }>(
     '/store/customers/me'
   );
-  return response.customer.shipping_addresses || [];
+  // Medusa v2 uses 'addresses' field
+  return response.customer.addresses || response.customer.shipping_addresses || [];
 }
 
 /**

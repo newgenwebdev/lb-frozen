@@ -199,6 +199,12 @@ const medusaConfig = {
        resolve: './src/modules/article'
     },
     {
+      resolve: './src/modules/review'
+    },
+    {
+      resolve: './src/modules/wishlist'
+    },
+    {
       resolve: './src/modules/shipment'
     },
     {

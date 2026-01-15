@@ -27,7 +27,7 @@ export function mapShippingOptionAPIToUI(
     id: apiOption.id,
     displayId: extractDisplayId(apiOption.id),
     name: apiOption.name,
-    baseRateSGD: apiOption.base_rate_sgd,
+    baseRateMYR: apiOption.base_rate_myr,
     eta: apiOption.eta,
     status: apiOption.status,
     serviceZoneName: apiOption.service_zone_name,

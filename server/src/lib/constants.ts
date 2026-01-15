@@ -23,6 +23,11 @@ export const STOREFRONT_URL = process.env.STOREFRONT_URL ?? 'http://localhost:30
 export const EMAIL_LOGO_URL = process.env.EMAIL_LOGO_URL
 
 /**
+ * Email brand name for email templates
+ */
+export const EMAIL_BRAND_NAME = process.env.EMAIL_BRAND_NAME || 'LB Frozen'
+
+/**
  * Database URL for Postgres instance used by the backend
  * Note: Don't assert at module load time to allow build without env vars
  */
@@ -36,17 +41,17 @@ export const REDIS_URL = process.env.REDIS_URL;
 /**
  * Admin CORS origins
  */
-export const ADMIN_CORS = process.env.ADMIN_CORS;
+export const ADMIN_CORS = process.env.ADMIN_CORS || 'http://localhost:3001,https://lb-frozen-admin-production.up.railway.app';
 
 /**
  * Auth CORS origins
  */
-export const AUTH_CORS = process.env.AUTH_CORS;
+export const AUTH_CORS = process.env.AUTH_CORS || 'http://localhost:3000,http://localhost:3001,https://lb-frozen-production.up.railway.app,https://lb-frozen-admin-production.up.railway.app';
 
 /**
  * Store/frontend CORS origins
  */
-export const STORE_CORS = process.env.STORE_CORS;
+export const STORE_CORS = process.env.STORE_CORS || 'http://localhost:3000,https://lb-frozen-production.up.railway.app';
 
 /**
  * JWT Secret used for signing JWT tokens

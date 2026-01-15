@@ -4,29 +4,50 @@ import Image from "next/image";
 import { useState, useEffect } from "react";
 import ProtectedNavbar from "@/components/layout/ProtectedNavbar";
 import NewsletterFooter from "@/components/shared/NewsletterFooter";
-import { useProducts, useCategories, useCart } from "@/lib/hooks";
+import { AddToCartSuccessDialog } from "@/components/shared/AddToCartSuccessDialog";
+import PhotoReviewCard from "@/components/shared/PhotoReviewCard";
+import { useProductsQuery, useCategoriesQuery, useFeaturedReviewsQuery } from "@/lib/queries";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthContext } from "@/lib/AuthContext";
+import { useCartContext } from "@/lib/CartContext";
+import { useWishlist } from "@/lib/WishlistContext";
+import { useUIStore } from "@/lib/stores";
+import { useToast } from "@/components/ui/toast";
+import type { FeaturedReview } from "@/lib/api/reviews";
 
 export default function LandingPage() {
   const router = useRouter();
-  const { role, isVIP, isAuthenticated } = useAuthContext();
-  const { products: featuredProducts, loading: productsLoading } = useProducts({ limit: 12 });
-  const { categories, loading: categoriesLoading } = useCategories();
-  const { addItem } = useCart();
+  const { role, isVIP } = useAuthContext();
+  const { data: featuredProductsData, isLoading: productsLoading } = useProductsQuery({ limit: 12 });
+  const featuredProducts = featuredProductsData?.products || [];
+  const { data: categoriesData, isLoading: categoriesLoading } = useCategoriesQuery();
+  const categories = categoriesData || [];
+  const { addItem } = useCartContext();
+  const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
+  const { showToast } = useToast();
+  
+  // Zustand UI store for cart success dialog
+  const { cartSuccessDialog, showCartSuccess, hideCartSuccess } = useUIStore();
   
   // Fetch flash sale products
-  const { products: flashSaleProducts, loading: flashSaleLoading } = useProducts({ 
+  const { data: flashSaleData, isLoading: flashSaleLoading } = useProductsQuery({ 
     flash_sale: true, 
     limit: 8 
   });
+  const flashSaleProducts = flashSaleData?.products || [];
   
   // Fetch trending products
-  const { products: trendingProducts, loading: trendingLoading } = useProducts({ 
+  const { data: trendingData, isLoading: trendingLoading } = useProductsQuery({ 
     trending: true, 
     limit: 8 
   });
+  const trendingProducts = trendingData?.products || [];
+
+  // Featured reviews with media - using React Query
+  const { data: featuredReviews = [], isLoading: featuredReviewsLoading } = useFeaturedReviewsQuery(12);
+  const [featuredReviewsPage, setFeaturedReviewsPage] = useState(0);
+  const reviewsPerPage = 3;
 
   // State for Top Products by Categories section
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
@@ -41,10 +62,11 @@ export default function LandingPage() {
   }, [categories, selectedCategoryId]);
 
   // Fetch products for selected category
-  const { products: categoryProducts, loading: categoryProductsLoading } = useProducts({
+  const { data: categoryProductsData, isLoading: categoryProductsLoading } = useProductsQuery({
     category_id: selectedCategoryId || undefined,
     limit: 10,
   });
+  const categoryProducts = categoryProductsData?.products || [];
 
   // Get the selected category name
   const selectedCategory = categories.find(c => c.id === selectedCategoryId);
@@ -73,6 +95,20 @@ export default function LandingPage() {
     setCategoryProductsPage(0);
   }, [selectedCategoryId]);
 
+  // Handle scroll to section on page load
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash) {
+      // Wait for content to load
+      setTimeout(() => {
+        const element = document.getElementById(hash.slice(1));
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 500);
+    }
+  }, []);
+
   // Countdown timer state
   const [countdown, setCountdown] = useState({ hours: 0, minutes: 0, seconds: 0 });
   
@@ -97,18 +133,50 @@ export default function LandingPage() {
     return () => clearInterval(timer);
   }, []);
 
-  const handleAddToCart = async (variantId: string) => {
+  const handleAddToCart = async (variantId: string, product?: { title: string; thumbnail?: string; price?: number; variantTitle?: string }) => {
     try {
       await addItem(variantId, 1);
-      alert("Added to cart!");
+      // Show success dialog with product info using Zustand
+      showCartSuccess({
+        name: product?.title || "Product",
+        price: product?.price || 0,
+        image: product?.thumbnail,
+        quantity: 1,
+        variantTitle: product?.variantTitle,
+      });
     } catch (error) {
       console.error("Failed to add to cart:", error);
-      alert("Failed to add to cart. Please try again.");
     }
   };
 
   const handleProductClick = (productId: string) => {
     router.push(`/product/${productId}`);
+  };
+
+  // Helper function to toggle wishlist for a product
+  const handleWishlistToggle = (e: React.MouseEvent, product: any) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const variant = product.variants?.[0];
+    const price = variant?.calculated_price;
+    
+    if (isInWishlist(product.id)) {
+      removeFromWishlist(product.id);
+      showToast("Removed from wishlist", "info");
+    } else if (variant?.id) {
+      addToWishlist({
+        product_id: product.id,
+        title: product.title,
+        handle: product.handle || product.id,
+        thumbnail: product.thumbnail || undefined,
+        price: price?.calculated_amount || 0,
+        original_price: price?.original_amount,
+        currency: "RM",
+        variant_id: variant.id,
+        variant_title: variant?.title,
+      });
+      showToast("Added to wishlist", "success");
+    }
   };
 
   return (
@@ -220,8 +288,8 @@ export default function LandingPage() {
             <h2 className="text-2xl font-bold text-gray-900">
               Browse categories
             </h2>
-            <a
-              href="#"
+            <Link
+              href="/products"
               className="hidden lg:flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
             >
               View all
@@ -238,7 +306,7 @@ export default function LandingPage() {
                   d="M9 5l7 7-7 7"
                 />
               </svg>
-            </a>
+            </Link>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
@@ -304,7 +372,7 @@ export default function LandingPage() {
       </div>
 
       {/* Today's Flash Deals - Full Width Red Section */}
-      <div className="bg-[#C52129] py-8">
+      <div id="flash-sale" className="bg-[#C52129] py-8">
         <div className="mx-auto px-4 lg:px-6">
           <div className="flex flex-col gap-4 mb-6 lg:flex-row lg:items-center lg:justify-between">
             <h2 className="text-2xl lg:text-3xl font-bold text-white">
@@ -340,7 +408,7 @@ export default function LandingPage() {
                   </div>
                 ))
               ) : flashSaleProducts && flashSaleProducts.length > 0 ? (
-                flashSaleProducts.slice(0, 4).map((product, index) => {
+                flashSaleProducts.slice(0, 4).map((product) => {
                   const variant = product.variants?.[0];
                   const price = variant?.calculated_price;
                   const originalPrice = price?.original_amount;
@@ -348,10 +416,10 @@ export default function LandingPage() {
                   const discount = originalPrice && salePrice && originalPrice > salePrice 
                     ? Math.round(((originalPrice - salePrice) / originalPrice) * 100) 
                     : 0;
-                  const rating = product.metadata?.rating || 4.5;
-                  const soldCount = product.metadata?.sold_count || 0;
-                  // First two cards have filled heart, rest have outline
-                  const isFavorite = index < 2;
+                  const reviewStats = (product as any).review_stats;
+                  const rating = reviewStats?.average_rating || null;
+                  const reviewCount = reviewStats?.total_reviews || 0;
+                  const isFavorite = isInWishlist(product.id);
 
                   return (
                     <div 
@@ -367,7 +435,7 @@ export default function LandingPage() {
                         )}
                         <button 
                           className="absolute top-3 right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center hover:bg-gray-100 z-10 shadow-sm"
-                          onClick={(e) => e.stopPropagation()}
+                          onClick={(e) => handleWishlistToggle(e, product)}
                         >
                           {isFavorite ? (
                             <svg
@@ -412,22 +480,24 @@ export default function LandingPage() {
                         <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">
                           {product.title}
                         </h3>
-                        <div className="flex items-center gap-1 mb-2">
-                          <div className="flex text-yellow-400">
-                            {[...Array(5)].map((_, i) => (
-                              <svg
-                                key={i}
-                                className={`w-4 h-4 ${i < Math.floor(Number(rating)) ? 'fill-current' : 'fill-gray-300'}`}
-                                viewBox="0 0 20 20"
-                              >
-                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                              </svg>
-                            ))}
+                        {(rating !== null || reviewCount > 0) && (
+                          <div className="flex items-center gap-1 mb-2">
+                            <div className="flex text-yellow-400">
+                              {[...Array(5)].map((_, i) => (
+                                <svg
+                                  key={i}
+                                  className={`w-4 h-4 ${rating && i < Math.floor(Number(rating)) ? 'fill-current' : 'fill-gray-300'}`}
+                                  viewBox="0 0 20 20"
+                                >
+                                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                </svg>
+                              ))}
+                            </div>
+                            <span className="text-sm text-gray-600">
+                              {rating ? rating.toFixed(1) : '0'} ({reviewCount} {reviewCount === 1 ? 'review' : 'reviews'})
+                            </span>
                           </div>
-                          <span className="text-sm text-gray-600">
-                            {rating} ({soldCount > 0 ? `${soldCount.toLocaleString()} sold` : '0 sold'})
-                          </span>
-                        </div>
+                        )}
                         {/* Original price crossed out in red */}
                         {discount > 0 && originalPrice && (
                           <div className="text-[#C52129] line-through text-sm mb-1">
@@ -454,7 +524,12 @@ export default function LandingPage() {
                             className="ml-auto w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-700 font-medium text-xl"
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (variant?.id) handleAddToCart(variant.id);
+                              if (variant?.id) handleAddToCart(variant.id, {
+                                title: product.title,
+                                thumbnail: product.thumbnail || undefined,
+                                price: salePrice || originalPrice || 0,
+                                variantTitle: variant.title,
+                              });
                             }}
                           >
                             +
@@ -521,7 +596,7 @@ export default function LandingPage() {
       </div>
 
       {/* Products on Trend This Month - Blue Section */}
-      <div className="bg-[#23429B] py-8 lg:py-12">
+      <div id="trending" className="bg-[#23429B] py-8 lg:py-12">
         <div className="mx-auto px-4 lg:px-6">
           <div className="flex flex-col gap-4 mb-6 lg:flex-row lg:items-center lg:justify-between lg:mb-8">
             <h2 className="text-2xl lg:text-4xl font-bold text-white">
@@ -582,31 +657,34 @@ export default function LandingPage() {
                 </div>
               ))
             ) : trendingProducts && trendingProducts.length > 0 ? (
-              trendingProducts.slice(0, 5).map((product, index) => {
+              trendingProducts.slice(0, 5).map((product) => {
                 // Get price from calculated_price
                 const variant = product.variants?.[0];
                 const calculatedPrice = variant?.calculated_price;
                 const currentPrice = calculatedPrice?.calculated_amount 
                   ? (calculatedPrice.calculated_amount / 100).toFixed(2)
                   : null;
-                const originalPrice = calculatedPrice?.original_amount && calculatedPrice.original_amount !== calculatedPrice.calculated_amount
+                const originalPriceVal = calculatedPrice?.original_amount && calculatedPrice.original_amount !== calculatedPrice.calculated_amount
                   ? (calculatedPrice.original_amount / 100).toFixed(2)
                   : null;
                 // Always display RM for Malaysian Ringgit
                 const currency = 'RM';
                 
-                // Get metadata
-                const rating = product.metadata?.rating || 4.5;
-                const soldCount = product.metadata?.sold_count || 0;
+                // Get review stats
+                const reviewStats = (product as any).review_stats;
+                const rating = reviewStats?.average_rating || null;
+                const reviewCount = reviewStats?.total_reviews || 0;
                 const hashtag = product.handle ? `#${product.handle.split('-')[0]}` : '#trending';
                 
                 // Calculate discount percentage if there's an original price
-                const discountPercent = originalPrice && currentPrice
-                  ? Math.round((1 - parseFloat(currentPrice) / parseFloat(originalPrice)) * 100)
+                const discountPercent = originalPriceVal && currentPrice
+                  ? Math.round((1 - parseFloat(currentPrice) / parseFloat(originalPriceVal)) * 100)
                   : null;
+                
+                const isFavorite = isInWishlist(product.id);
 
                 return (
-                  <Link href={`/product/${product.handle}`} key={product.id} className="bg-white rounded-3xl border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow">
+                  <Link href={`/product/${product.id}`} key={product.id} className="bg-white rounded-3xl border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow">
                     <div className="relative">
                       {/* Discount badge - top left */}
                       {discountPercent && discountPercent > 0 && (
@@ -614,16 +692,16 @@ export default function LandingPage() {
                           {discountPercent}% OFF
                         </div>
                       )}
-                      {/* Heart button - top right, filled red for first product */}
+                      {/* Heart button - top right */}
                       <button 
                         className={`absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center z-10 ${
-                          index === 0 ? 'bg-[#23429B]' : 'bg-white/80 hover:bg-white'
+                          isFavorite ? 'bg-[#23429B]' : 'bg-white/80 hover:bg-white'
                         }`}
-                        onClick={(e) => e.preventDefault()}
+                        onClick={(e) => handleWishlistToggle(e, product)}
                       >
                         <svg
-                          className={`w-5 h-5 ${index === 0 ? 'text-white fill-current' : 'text-gray-400'}`}
-                          fill={index === 0 ? 'currentColor' : 'none'}
+                          className={`w-5 h-5 ${isFavorite ? 'text-white fill-current' : 'text-gray-400'}`}
+                          fill={isFavorite ? 'currentColor' : 'none'}
                           stroke="currentColor"
                           viewBox="0 0 24 24"
                         >
@@ -660,28 +738,30 @@ export default function LandingPage() {
                       <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 min-h-12">
                         {product.title}
                       </h3>
-                      <div className="flex items-center gap-1 mb-4">
-                        <div className="flex text-yellow-400">
-                          {[...Array(5)].map((_, i) => (
-                            <svg
-                              key={i}
-                              className={`w-4 h-4 ${i < Math.floor(Number(rating)) ? 'fill-current' : 'fill-gray-200'}`}
-                              viewBox="0 0 20 20"
-                            >
-                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                            </svg>
-                          ))}
+                      {(rating !== null || reviewCount > 0) && (
+                        <div className="flex items-center gap-1 mb-4">
+                          <div className="flex text-yellow-400">
+                            {[...Array(5)].map((_, i) => (
+                              <svg
+                                key={i}
+                                className={`w-4 h-4 ${rating && i < Math.floor(Number(rating)) ? 'fill-current' : 'fill-gray-200'}`}
+                                viewBox="0 0 20 20"
+                              >
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                              </svg>
+                            ))}
+                          </div>
+                          <span className="text-sm text-gray-500">{rating ? rating.toFixed(1) : '0'} ({reviewCount} {reviewCount === 1 ? 'review' : 'reviews'})</span>
                         </div>
-                        <span className="text-sm text-gray-500">{rating} ({soldCount.toLocaleString()} sold)</span>
-                      </div>
+                      )}
                       <div className="flex items-center justify-between">
                         <div className="flex items-baseline gap-2">
                           <span className="text-xl font-bold text-[#1a2b5f]">
                             {currency}{currentPrice || '0.00'}
                           </span>
-                          {originalPrice && (
+                          {originalPriceVal && (
                             <span className="text-sm text-[#C52129] line-through">
-                              {currency}{originalPrice}
+                              {currency}{originalPriceVal}
                             </span>
                           )}
                         </div>
@@ -690,7 +770,13 @@ export default function LandingPage() {
                           onClick={(e) => {
                             e.preventDefault();
                             if (variant) {
-                              addItem(variant.id, 1);
+                              const price = calculatedPrice?.calculated_amount || 0;
+                              handleAddToCart(variant.id, {
+                                title: product.title,
+                                thumbnail: product.thumbnail || undefined,
+                                price: price,
+                                variantTitle: variant.title,
+                              });
                             }
                           }}
                         >
@@ -768,8 +854,8 @@ export default function LandingPage() {
             <h2 className="text-2xl lg:text-4xl font-bold text-gray-900">
               Top products by categories
             </h2>
-            <a
-              href="#"
+            <Link
+              href="/products"
               className="hidden lg:flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
             >
               View all
@@ -786,7 +872,7 @@ export default function LandingPage() {
                   d="M9 5l7 7-7 7"
                 />
               </svg>
-            </a>
+            </Link>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1011,7 +1097,7 @@ export default function LandingPage() {
                     </div>
                   ))
                 ) : paginatedCategoryProducts.length > 0 ? (
-                  paginatedCategoryProducts.map((product, index) => {
+                  paginatedCategoryProducts.map((product) => {
                     const variant = product.variants?.[0];
                     const price = variant?.calculated_price;
                     const originalPrice = price?.original_amount;
@@ -1019,14 +1105,15 @@ export default function LandingPage() {
                     const discount = originalPrice && salePrice && originalPrice > salePrice
                       ? Math.round(((originalPrice - salePrice) / originalPrice) * 100)
                       : 0;
-                    const rating = (product.metadata?.rating as number) || 4.5;
-                    const soldCount = (product.metadata?.sold_count as number) || 0;
-                    const isFavorite = index === 0; // First item has filled heart
+                    const reviewStats = (product as any).review_stats;
+                    const rating = reviewStats?.average_rating || null;
+                    const reviewCount = reviewStats?.total_reviews || 0;
+                    const isFavorite = isInWishlist(product.id);
 
                     return (
                       <Link
                         key={product.id}
-                        href={`/product/${product.handle}`}
+                        href={`/product/${product.id}`}
                         className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow"
                       >
                         <div className="relative">
@@ -1037,7 +1124,7 @@ export default function LandingPage() {
                           )}
                           <button 
                             className="absolute top-3 right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center hover:bg-gray-100 z-10"
-                            onClick={(e) => e.preventDefault()}
+                            onClick={(e) => handleWishlistToggle(e, product)}
                           >
                             {isFavorite ? (
                               <svg
@@ -1076,22 +1163,24 @@ export default function LandingPage() {
                           <h4 className="font-semibold text-gray-900 text-sm mb-2 line-clamp-2">
                             {product.title}
                           </h4>
-                          <div className="flex items-center gap-1 mb-2">
-                            <div className="flex text-yellow-400">
-                              {[...Array(5)].map((_, i) => (
-                                <svg
-                                  key={i}
-                                  className={`w-3 h-3 fill-current ${i < Math.floor(rating) ? 'text-yellow-400' : 'text-gray-300'}`}
-                                  viewBox="0 0 20 20"
-                                >
-                                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                </svg>
-                              ))}
+                          {(rating !== null || reviewCount > 0) && (
+                            <div className="flex items-center gap-1 mb-2">
+                              <div className="flex text-yellow-400">
+                                {[...Array(5)].map((_, i) => (
+                                  <svg
+                                    key={i}
+                                    className={`w-3 h-3 fill-current ${rating && i < Math.floor(rating) ? 'text-yellow-400' : 'text-gray-300'}`}
+                                    viewBox="0 0 20 20"
+                                  >
+                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                  </svg>
+                                ))}
+                              </div>
+                              <span className="text-xs text-gray-600">
+                                {rating ? rating.toFixed(1) : '0'} ({reviewCount} {reviewCount === 1 ? 'review' : 'reviews'})
+                              </span>
                             </div>
-                            <span className="text-xs text-gray-600">
-                              {rating} ({soldCount.toLocaleString()} sold)
-                            </span>
-                          </div>
+                          )}
                           <div className="flex items-center justify-between">
                             <div>
                               <span className="text-lg font-bold text-gray-900">
@@ -1108,7 +1197,12 @@ export default function LandingPage() {
                               onClick={(e) => {
                                 e.preventDefault();
                                 if (variant?.id) {
-                                  handleAddToCart(variant.id);
+                                  handleAddToCart(variant.id, {
+                                    title: product.title,
+                                    thumbnail: product.thumbnail || undefined,
+                                    price: salePrice || originalPrice || 0,
+                                    variantTitle: variant?.title,
+                                  });
                                 }
                               }}
                             >
@@ -1158,14 +1252,20 @@ export default function LandingPage() {
         </div>
       </div>
 
-      {/* Check out the seafood buyer Section */}
-      <div className="mx-auto px-4 lg:px-6 py-8 lg:py-12">
-        <div className="flex flex-col gap-3 mb-6 lg:flex-row lg:items-center lg:justify-between lg:mb-6 bg-[#F9F9F9]">
+      {/* Check out the seafood buyer Section - Photo Reviews */}
+      <div className="mx-auto px-4 lg:px-6 py-8 lg:py-12 bg-[#F9F9F9]">
+        <div className="flex flex-col gap-3 mb-6 lg:flex-row lg:items-center lg:justify-between lg:mb-6">
           <h2 className="text-xl lg:text-3xl font-bold text-gray-900">
             Check out the seafood buyer, then dive into purchasing online.
           </h2>
           <div className="hidden lg:flex gap-2">
-            <button className="w-10 h-10 bg-white border border-gray-200 rounded-lg flex items-center justify-center hover:bg-gray-100">
+            <button 
+              onClick={() => setFeaturedReviewsPage(prev => Math.max(0, prev - 1))}
+              disabled={featuredReviewsPage === 0}
+              className={`w-10 h-10 bg-white border border-gray-200 rounded-lg flex items-center justify-center transition-colors ${
+                featuredReviewsPage === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'
+              }`}
+            >
               <svg
                 className="w-5 h-5"
                 fill="none"
@@ -1180,7 +1280,13 @@ export default function LandingPage() {
                 />
               </svg>
             </button>
-            <button className="w-10 h-10 bg-white border border-gray-200 rounded-lg flex items-center justify-center hover:bg-gray-100">
+            <button 
+              onClick={() => setFeaturedReviewsPage(prev => Math.min(Math.ceil(featuredReviews.length / reviewsPerPage) - 1, prev + 1))}
+              disabled={featuredReviewsPage >= Math.ceil(featuredReviews.length / reviewsPerPage) - 1}
+              className={`w-10 h-10 bg-white border border-gray-200 rounded-lg flex items-center justify-center transition-colors ${
+                featuredReviewsPage >= Math.ceil(featuredReviews.length / reviewsPerPage) - 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'
+              }`}
+            >
               <svg
                 className="w-5 h-5"
                 fill="none"
@@ -1199,320 +1305,48 @@ export default function LandingPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Video Card 1 - Crab */}
-          <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
-            <div className="relative aspect-4/3 bg-gray-900 group cursor-pointer">
-              <Image
-                src="/lobster-crab.png"
-                alt="Crab Delights"
-                fill
-                className="object-cover"
-              />
-              <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center">
-                <button className="w-16 h-16 bg-white rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <svg
-                    className="w-8 h-8 text-gray-900 ml-1"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                </button>
-              </div>
-              <div className="absolute bottom-3 left-3 flex items-center gap-2">
-                <span className="text-white text-sm font-medium">
-                  03:45 / 07:40
-                </span>
-              </div>
-              <div className="absolute bottom-3 right-3 flex gap-2">
-                <button className="w-8 h-8 bg-white bg-opacity-80 rounded-lg flex items-center justify-center hover:bg-opacity-100">
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
-                    />
-                  </svg>
-                </button>
-                <button className="w-8 h-8 bg-white bg-opacity-80 rounded-lg flex items-center justify-center hover:bg-opacity-100">
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                    />
-                  </svg>
-                </button>
-              </div>
-              <div className="absolute top-3 left-3 text-white text-sm">
-                @selina.sabrine
-              </div>
-            </div>
-            <div className="p-4">
-              <h4 className="font-semibold text-gray-900 mb-2">
-                Crab Delights (2nd Edition)
-              </h4>
-              <div className="flex items-center gap-1 mb-3">
-                <div className="flex text-yellow-400">
-                  {[...Array(4)].map((_, i) => (
-                    <svg
-                      key={i}
-                      className="w-4 h-4 fill-current"
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                  ))}
-                  <svg
-                    className="w-4 h-4 fill-current text-gray-300"
-                    viewBox="0 0 20 20"
-                  >
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                  </svg>
+          {featuredReviewsLoading ? (
+            // Loading skeleton
+            [...Array(3)].map((_, i) => (
+              <div key={i} className="bg-white rounded-2xl overflow-hidden shadow-sm animate-pulse">
+                <div className="aspect-square bg-gray-200"></div>
+                <div className="p-4">
+                  <div className="h-5 bg-gray-200 rounded mb-2 w-3/4"></div>
+                  <div className="h-4 bg-gray-200 rounded mb-3 w-1/2"></div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-12 h-12 bg-gray-200 rounded"></div>
+                    <div className="h-6 bg-gray-200 rounded w-24"></div>
+                  </div>
                 </div>
-                <span className="text-sm text-gray-600">4.55 (148 sxd)</span>
               </div>
-              <div className="flex items-center gap-2">
-                <Image
-                  src="/crab.png"
-                  alt="Crab"
-                  width={40}
-                  height={40}
-                  className="object-contain"
-                />
-                <span className="text-xl font-bold text-gray-900">
-                  RM199.99
-                </span>
-              </div>
+            ))
+          ) : featuredReviews.length > 0 ? (
+            featuredReviews
+              .slice(featuredReviewsPage * reviewsPerPage, (featuredReviewsPage + 1) * reviewsPerPage)
+              .map((review: FeaturedReview) => (
+                <PhotoReviewCard key={review.id} review={review as FeaturedReview} />
+              ))
+          ) : (
+            // Empty state - show placeholder cards
+            <div className="col-span-3 text-center py-12 text-gray-500">
+              <svg className="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <p className="text-lg font-medium">No photo reviews yet</p>
+              <p className="text-sm mt-1">Be the first to share your seafood experience!</p>
             </div>
-          </div>
-
-          {/* Video Card 2 - Squid */}
-          <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
-            <div className="relative aspect-4/3 bg-gray-900 group cursor-pointer">
-              <Image
-                src="/squid-octopus.png"
-                alt="Squid Premium"
-                fill
-                className="object-cover"
-              />
-              <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center">
-                <button className="w-16 h-16 bg-white rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <svg
-                    className="w-8 h-8 text-gray-900 ml-1"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                </button>
-              </div>
-              <div className="absolute bottom-3 left-3 flex items-center gap-2">
-                <span className="text-white text-sm font-medium">
-                  00:00 / 05:40
-                </span>
-              </div>
-              <div className="absolute bottom-3 right-3 flex gap-2">
-                <button className="w-8 h-8 bg-white bg-opacity-80 rounded-lg flex items-center justify-center hover:bg-opacity-100">
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
-                    />
-                  </svg>
-                </button>
-                <button className="w-8 h-8 bg-white bg-opacity-80 rounded-lg flex items-center justify-center hover:bg-opacity-100">
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                    />
-                  </svg>
-                </button>
-              </div>
-              <div className="absolute top-3 left-3 text-white text-sm">
-                @john_henry123
-              </div>
-              <button className="absolute top-3 right-3 w-8 h-8 bg-white bg-opacity-80 rounded-full flex items-center justify-center hover:bg-opacity-100">
-                <svg
-                  className="w-5 h-5 text-red-500 fill-current"
-                  viewBox="0 0 20 20"
-                >
-                  <path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" />
-                </svg>
-              </button>
-            </div>
-            <div className="p-4">
-              <h4 className="font-semibold text-gray-900 mb-2">
-                Squid Premium 12,3kg
-              </h4>
-              <div className="flex items-center gap-1 mb-3">
-                <div className="flex text-yellow-400">
-                  {[...Array(4)].map((_, i) => (
-                    <svg
-                      key={i}
-                      className="w-4 h-4 fill-current"
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                  ))}
-                  <svg className="w-4 h-4" viewBox="0 0 20 20">
-                    <defs>
-                      <linearGradient id="half-star">
-                        <stop offset="50%" stopColor="#FBBF24" />
-                        <stop offset="50%" stopColor="#D1D5DB" />
-                      </linearGradient>
-                    </defs>
-                    <path
-                      fill="url(#half-star)"
-                      d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"
-                    />
-                  </svg>
-                </div>
-                <span className="text-sm text-gray-600">4.5 (171)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Image
-                  src="/squid-octopus.png"
-                  alt="Squid"
-                  width={40}
-                  height={40}
-                  className="object-contain"
-                />
-                <span className="text-xl font-bold text-gray-900">
-                  RM910.00
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Video Card 3 - Tuna */}
-          <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
-            <div className="relative aspect-4/3 bg-gray-900 group cursor-pointer">
-              <Image
-                src="/fish.png"
-                alt="Tuna Sear"
-                fill
-                className="object-cover"
-              />
-              <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center">
-                <button className="w-16 h-16 bg-white rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <svg
-                    className="w-8 h-8 text-gray-900 ml-1"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                </button>
-              </div>
-              <div className="absolute bottom-3 left-3 flex items-center gap-2">
-                <span className="text-white text-sm font-medium">
-                  00:00 / 06:00
-                </span>
-              </div>
-              <div className="absolute bottom-3 right-3 flex gap-2">
-                <button className="w-8 h-8 bg-white bg-opacity-80 rounded-lg flex items-center justify-center hover:bg-opacity-100">
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
-                    />
-                  </svg>
-                </button>
-                <button className="w-8 h-8 bg-white bg-opacity-80 rounded-lg flex items-center justify-center hover:bg-opacity-100">
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                    />
-                  </svg>
-                </button>
-              </div>
-              <div className="absolute top-3 left-3 text-white text-sm">
-                @henry_joe
-              </div>
-            </div>
-            <div className="p-4">
-              <h4 className="font-semibold text-gray-900 mb-2">Tuna Sear</h4>
-              <div className="flex items-center gap-1 mb-3">
-                <div className="flex text-yellow-400">
-                  {[...Array(4)].map((_, i) => (
-                    <svg
-                      key={i}
-                      className="w-4 h-4 fill-current"
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                  ))}
-                  <svg
-                    className="w-4 h-4 fill-current text-gray-300"
-                    viewBox="0 0 20 20"
-                  >
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                  </svg>
-                </div>
-                <span className="text-sm text-gray-600">4.2 (183)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Image
-                  src="/fish.png"
-                  alt="Tuna"
-                  width={40}
-                  height={40}
-                  className="object-contain"
-                />
-                <span className="text-xl font-bold text-gray-900">RM112.0</span>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Mobile Navigation - Bottom */}
         <div className="flex lg:hidden justify-end gap-2 mt-6">
-          <button className="w-10 h-10 bg-white border border-gray-200 rounded-lg flex items-center justify-center hover:bg-gray-100">
+          <button 
+            onClick={() => setFeaturedReviewsPage(prev => Math.max(0, prev - 1))}
+            disabled={featuredReviewsPage === 0}
+            className={`w-10 h-10 bg-white border border-gray-200 rounded-lg flex items-center justify-center transition-colors ${
+              featuredReviewsPage === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'
+            }`}
+          >
             <svg
               className="w-5 h-5"
               fill="none"
@@ -1527,7 +1361,13 @@ export default function LandingPage() {
               />
             </svg>
           </button>
-          <button className="w-10 h-10 bg-white border border-gray-200 rounded-lg flex items-center justify-center hover:bg-gray-100">
+          <button 
+            onClick={() => setFeaturedReviewsPage(prev => Math.min(Math.ceil(featuredReviews.length / reviewsPerPage) - 1, prev + 1))}
+            disabled={featuredReviewsPage >= Math.ceil(featuredReviews.length / reviewsPerPage) - 1}
+            className={`w-10 h-10 bg-white border border-gray-200 rounded-lg flex items-center justify-center transition-colors ${
+              featuredReviewsPage >= Math.ceil(featuredReviews.length / reviewsPerPage) - 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'
+            }`}
+          >
             <svg
               className="w-5 h-5"
               fill="none"
@@ -1543,9 +1383,33 @@ export default function LandingPage() {
             </svg>
           </button>
         </div>
+
+        {/* Page indicator */}
+        {featuredReviews.length > reviewsPerPage && (
+          <div className="flex justify-center gap-1 mt-4">
+            {[...Array(Math.ceil(featuredReviews.length / reviewsPerPage))].map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setFeaturedReviewsPage(i)}
+                className={`w-2 h-2 rounded-full transition-colors ${
+                  i === featuredReviewsPage ? 'bg-[#23429B]' : 'bg-gray-300'
+                }`}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
-      <NewsletterFooter />
+      <div id="contact-us">
+        <NewsletterFooter />
+      </div>
+
+      {/* Add to Cart Success Dialog */}
+      <AddToCartSuccessDialog
+        open={cartSuccessDialog.open}
+        onOpenChange={(open) => !open && hideCartSuccess()}
+        product={cartSuccessDialog.product}
+      />
     </div>
   );
 }

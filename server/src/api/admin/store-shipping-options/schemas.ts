@@ -2,11 +2,11 @@ import { z } from "zod";
 
 /**
  * Price schema for shipping option pricing
- * SGD only for Singapore-focused store
+ * MYR only for Malaysia-focused store
  */
 export const ShippingOptionPriceSchema = z.object({
   id: z.string().optional(),
-  currency_code: z.enum(["sgd"]),
+  currency_code: z.enum(["myr"]),
   amount: z.number().nonnegative(),
 });
 

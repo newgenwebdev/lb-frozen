@@ -240,7 +240,7 @@ export const GET = withAdminAuth(async (req, res) => {
     const totalStock = getProductStock(product)
 
     // Get first variant's price info for currency
-    let currencyCode = "sgd"
+    let currencyCode = "myr"
     const firstVariantId = product.variants?.[0]?.id
 
     return {

@@ -182,7 +182,8 @@ export interface Customer {
   has_account: boolean;
   metadata?: Record<string, any>;
   billing_address?: Address;
-  shipping_addresses?: Address[];
+  addresses?: Address[];
+  shipping_addresses?: Address[]; // Alias for backwards compatibility
   created_at: string;
   updated_at: string;
   // Role info (populated from metadata or API)

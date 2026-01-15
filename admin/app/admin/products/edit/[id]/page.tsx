@@ -63,8 +63,6 @@ export default function EditProductPage(): React.JSX.Element {
   const [reservedQuantity, setReservedQuantity] = useState<number>(0);
 
   // Product metadata fields
-  const [rating, setRating] = useState<string>("");
-  const [soldCount, setSoldCount] = useState<string>("");
   const [onSale, setOnSale] = useState<boolean>(false);
   const [flashSale, setFlashSale] = useState<boolean>(false);
   const [trending, setTrending] = useState<boolean>(false);
@@ -254,8 +252,6 @@ export default function EditProductPage(): React.JSX.Element {
       // Set metadata fields
       if (productData.metadata) {
         setValue("minimumStockAlert", (productData.metadata.minimumStockAlert as string) || "");
-        setRating((productData.metadata.rating as string) || "");
-        setSoldCount((productData.metadata.sold_count as string) || "");
         // Badge and deals metadata
         setOnSale(Boolean(productData.metadata.on_sale));
         setFlashSale(Boolean(productData.metadata.flash_sale));
@@ -349,7 +345,7 @@ export default function EditProductPage(): React.JSX.Element {
             .map((p) => ({
               currency_code: p.currency_code,
               amount: p.amount,
-            })) || [{ currency_code: "sgd", amount: 0 }];
+            })) || [{ currency_code: "myr", amount: 0 }];
 
           // Extract wholesale tiers (min_quantity > 1)
           const wholesaleTiers: WholesaleTierFormData[] = v.prices
@@ -397,11 +393,11 @@ export default function EditProductPage(): React.JSX.Element {
         const fetchInventoryQuantities = async () => {
           try {
             const updatedVariants = await Promise.all(
-              formVariants.map(async (variant, index) => {
-                // Get the variant ID from the raw API data
-                const rawVariant = productVariants[index];
+              formVariants.map(async (variant) => {
+                // Match API variant by title instead of index for reliability
+                const rawVariant = productVariants.find(v => v.title === variant.title);
                 const variantId = rawVariant?.id || "";
-                const sku = variant.sku || undefined;
+                const sku = variant.sku || rawVariant?.sku || undefined;
                 const quantity = await getVariantInventoryQuantity(variantId, sku);
                 return { ...variant, inventory_quantity: quantity };
               })
@@ -498,7 +494,7 @@ export default function EditProductPage(): React.JSX.Element {
         existingVariant || {
           title,
           sku: generateVariantSku(productHandle, title),
-          prices: [{ currency_code: "sgd", amount: 0 }],
+          prices: [{ currency_code: "myr", amount: 0 }],
           options: combo,
           manage_inventory: true,
           allow_backorder: false,
@@ -618,7 +614,7 @@ export default function EditProductPage(): React.JSX.Element {
           sortedTiers.forEach((tier, tierIndex) => {
             const maxQty = calculateMaxQty(sortedTiers, tierIndex);
             const wholesalePrice: WholesalePriceFormData = {
-              currency_code: "sgd",
+              currency_code: "myr",
               amount: tier.price,
               min_quantity: tier.minQty,
               max_quantity: maxQty ?? null,
@@ -703,9 +699,6 @@ export default function EditProductPage(): React.JSX.Element {
           inventoryLocation: data.inventoryLocation,
           // Brand association
           brand_id: data.brand || null,
-          // Store display metadata
-          rating: rating ? parseFloat(rating) : undefined,
-          sold_count: soldCount ? parseInt(soldCount) : undefined,
           // Badge and deals metadata
           on_sale: onSale,
           flash_sale: flashSale,
@@ -744,7 +737,7 @@ export default function EditProductPage(): React.JSX.Element {
 
         // Build prices array with base price only (no wholesale for non-variant products)
         const prices: Array<{ currency_code: string; amount: number }> = [
-          { currency_code: "sgd", amount: Math.round(basePrice) },
+          { currency_code: "myr", amount: Math.round(basePrice) },
         ];
 
         productPayload.variants = [
@@ -796,11 +789,20 @@ export default function EditProductPage(): React.JSX.Element {
       };
 
       const selectedLocationId = data.inventoryLocation;
+      console.log("[Inventory Update] Location:", selectedLocationId, "Has Variants:", hasVariants, "Variants:", variants.map(v => ({ title: v.title, qty: v.inventory_quantity })));
+      
       if (selectedLocationId && product.variants) {
-        const inventoryPromises = product.variants.map((variant, index) => {
+        const inventoryPromises = product.variants.map((variant) => {
+          // Match form variant to API variant by title (more reliable than index)
+          const formVariant = hasVariants
+            ? variants.find(v => v.title === variant.title)
+            : null;
+          
           const quantity = hasVariants
-            ? formVariants[index]?.inventory_quantity ?? 0
+            ? formVariant?.inventory_quantity ?? 0
             : parseInt(data.availableQuantity || "0");
+
+          console.log(`[Inventory Update] Variant "${variant.title}": formVariant found=${!!formVariant}, quantity=${quantity}`);
 
           // Always update inventory (even if 0) to sync with user input
           return updateVariantInventory(
@@ -1177,50 +1179,9 @@ export default function EditProductPage(): React.JSX.Element {
             <h3 className="mb-4 font-geist text-[15px] font-medium tracking-[-0.15px] text-[#020817]">
               Store Display
             </h3>
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              {/* Rating */}
-              <div>
-                <label className="mb-2 block font-geist text-[14px] font-medium leading-[150%] tracking-[-0.14px] text-[#020817]">
-                  Rating
-                  <span className="ml-2 font-geist text-[12px] font-normal text-[#6A7282]">(Optional)</span>
-                </label>
-                <input
-                  type="number"
-                  placeholder="e.g 4.5"
-                  value={rating}
-                  onChange={(e) => setRating(e.target.value)}
-                  step="0.1"
-                  min="0"
-                  max="5"
-                  className="w-full rounded-lg border border-[#E3E3E3] bg-white py-3 px-4 font-geist text-[16px] font-normal tracking-[-0.16px] text-[#030712] outline-none transition-colors placeholder:text-[#6A7282] focus:border-black"
-                />
-                <p className="mt-1 font-geist text-[12px] text-[#6A7282]">
-                  Product rating (0-5 stars)
-                </p>
-              </div>
-
-              {/* Sold Count */}
-              <div>
-                <label className="mb-2 block font-geist text-[14px] font-medium leading-[150%] tracking-[-0.14px] text-[#020817]">
-                  Sold Count
-                  <span className="ml-2 font-geist text-[12px] font-normal text-[#6A7282]">(Optional)</span>
-                </label>
-                <input
-                  type="number"
-                  placeholder="e.g 1203"
-                  value={soldCount}
-                  onChange={(e) => setSoldCount(e.target.value)}
-                  min="0"
-                  className="w-full rounded-lg border border-[#E3E3E3] bg-white py-3 px-4 font-geist text-[16px] font-normal tracking-[-0.16px] text-[#030712] outline-none transition-colors placeholder:text-[#6A7282] focus:border-black"
-                />
-                <p className="mt-1 font-geist text-[12px] text-[#6A7282]">
-                  Number of units sold
-                </p>
-              </div>
-            </div>
 
             {/* Badges & Deals */}
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 mt-6">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               {/* On Sale Toggle */}
               <div>
                 <label className="mb-2 block font-geist text-[14px] font-medium leading-[150%] tracking-[-0.14px] text-[#020817]">

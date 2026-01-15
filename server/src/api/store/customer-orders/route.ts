@@ -287,7 +287,7 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse): Promise<void
       fulfillment_status,
       payment_status,
       email: order.email || "",
-      currency_code: order.currency_code || "sgd",
+      currency_code: order.currency_code || "myr",
       subtotal: orderSubtotal,
       item_subtotal: orderSubtotal,
       shipping_total: effectiveShippingTotal,

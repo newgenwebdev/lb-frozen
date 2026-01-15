@@ -1,16 +1,45 @@
+"use client";
+
 import Image from "next/image";
 import { Product } from "@/lib/api/types";
+import { useWishlist } from "@/lib/WishlistContext";
+import { useToast } from "@/components/ui/toast";
 
 interface ProductCardProps {
   product: Product;
   onAddToCart: (variantId: string) => void;
   onClick: (productId: string) => void;
   showDiscount?: boolean;
+  isAuthenticated?: boolean;
 }
 
-export default function ProductCard({ product, onAddToCart, onClick, showDiscount = true }: ProductCardProps) {
+export default function ProductCard({ product, onAddToCart, onClick, showDiscount = true, isAuthenticated = false }: ProductCardProps) {
+  const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
+  const { showToast } = useToast();
   const variant = product.variants?.[0];
   const price = variant?.calculated_price?.calculated_amount || 0;
+  const isFavorite = isInWishlist(product.id);
+
+  const handleWishlistToggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isFavorite) {
+      removeFromWishlist(product.id);
+      showToast("Removed from wishlist", "info");
+    } else if (variant?.id) {
+      addToWishlist({
+        product_id: product.id,
+        title: product.title,
+        handle: product.handle || product.id,
+        thumbnail: product.thumbnail || undefined,
+        price: price,
+        original_price: variant?.calculated_price?.original_amount || price,
+        currency: "RM",
+        variant_id: variant.id,
+        variant_title: variant?.title,
+      });
+      showToast("Added to wishlist", "success");
+    }
+  };
   
   // Calculate original price from metadata discount if available
   let originalPrice = variant?.calculated_price?.original_amount || price;
@@ -30,9 +59,11 @@ export default function ProductCard({ product, onAddToCart, onClick, showDiscoun
     ? Math.round(((originalPrice - price) / originalPrice) * 100)
     : 0;
   
-  // Get rating and sold count from product metadata
-  const rating = product.metadata?.rating ? Number(product.metadata.rating) : null;
-  const soldCount = product.metadata?.sold_count ? Number(product.metadata.sold_count) : null;
+  // Get rating from review_stats (real data) - fallback to metadata for backwards compatibility
+  const reviewStats = (product as any).review_stats;
+  const rating = reviewStats?.average_rating || null;
+  const reviewCount = reviewStats?.total_reviews || null;
+  const soldCount = (product as any).sold_count || 0;
 
   return (
     <div className="bg-white rounded-xl overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
@@ -47,24 +78,30 @@ export default function ProductCard({ product, onAddToCart, onClick, showDiscoun
         )}
         <button 
           className="absolute top-3 right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center hover:bg-gray-100 z-10"
-          onClick={(e) => {
-            e.stopPropagation();
-            // Add to wishlist functionality
-          }}
+          onClick={handleWishlistToggle}
         >
-          <svg
-            className="w-5 h-5 text-gray-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-            />
-          </svg>
+          {isFavorite ? (
+            <svg
+              className="w-5 h-5 text-red-500 fill-current"
+              viewBox="0 0 20 20"
+            >
+              <path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" />
+            </svg>
+          ) : (
+            <svg
+              className="w-5 h-5 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+              />
+            </svg>
+          )}
         </button>
         <div className="bg-gray-100 aspect-square flex items-center justify-center p-6">
           <Image
@@ -81,31 +118,35 @@ export default function ProductCard({ product, onAddToCart, onClick, showDiscoun
         <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 min-h-12">
           {product.title}
         </h3>
-        {(rating || soldCount) && (
+        {(rating !== null && rating > 0) && (
           <div className="flex items-center gap-1 mb-2">
-            {rating && (
-              <>
-                <div className="flex text-yellow-400">
-                  {[...Array(5)].map((_, i) => (
-                    <svg
-                      key={i}
-                      className={`w-4 h-4 fill-current ${
-                        i < Math.floor(rating) ? '' : 'opacity-30'
-                      }`}
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                  ))}
-                </div>
-                <span className="text-sm text-gray-600">{rating.toFixed(1)}</span>
-              </>
-            )}
-            {soldCount && (
+            <div className="flex text-yellow-400">
+              {[...Array(5)].map((_, i) => (
+                <svg
+                  key={i}
+                  className={`w-4 h-4 fill-current ${
+                    i < Math.floor(rating) ? '' : 'opacity-30'
+                  }`}
+                  viewBox="0 0 20 20"
+                >
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                </svg>
+              ))}
+            </div>
+            <span className="text-sm text-gray-600">{rating.toFixed(1)}</span>
+            {reviewCount !== null && reviewCount > 0 && (
               <span className="text-xs text-gray-500 ml-1">
-                ({soldCount.toLocaleString()} sold)
+                ({reviewCount})
               </span>
             )}
+            {soldCount > 0 && (
+              <span className="text-xs text-gray-500 ml-1">• {soldCount} sold</span>
+            )}
+          </div>
+        )}
+        {(!rating || rating === 0) && soldCount > 0 && (
+          <div className="flex items-center gap-1 mb-2">
+            <span className="text-xs text-gray-500">{soldCount} sold</span>
           </div>
         )}
         <div className="flex items-baseline gap-2">
@@ -118,6 +159,7 @@ export default function ProductCard({ product, onAddToCart, onClick, showDiscoun
             </span>
           )}
         </div>
+        {/* Add to cart button - available for both guests and logged-in users */}
         <button 
           onClick={(e) => {
             e.stopPropagation();

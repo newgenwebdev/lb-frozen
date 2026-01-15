@@ -69,7 +69,7 @@ export default function HelpSupportPage() {
                     Need help? Send us an email
                   </h3>
                   <p className="text-sm text-gray-500 mb-4">
-                    Got a question? Message us, we'll reply within 24 hours.
+                    Got a question? Message us, we&apos;ll reply within 24 hours.
                   </p>
                   <Button 
                     className="text-white"

@@ -1,7 +1,7 @@
 // @ts-nocheck - Ignore React 18/19 type conflicts with @react-email/components
 import { Html, Body, Container, Preview, Tailwind, Head, Img, Section, Text } from '@react-email/components'
 import * as React from 'react'
-import { EMAIL_LOGO_URL } from '../../../lib/constants'
+import { EMAIL_LOGO_URL, EMAIL_BRAND_NAME } from '../../../lib/constants'
 
 interface BaseProps {
   preview?: string
@@ -21,13 +21,13 @@ export const Base: React.FC<BaseProps> = ({ preview, children }) => {
                 <Img
                   src={EMAIL_LOGO_URL}
                   width="180"
-                  alt="King Jess"
+                  alt={EMAIL_BRAND_NAME}
                   className="mx-auto"
                   style={{ height: 'auto' }}
                 />
               ) : (
                 <Text className="text-black text-[24px] font-bold tracking-[-1px] mt-0 mb-0">
-                  KING JESS
+                  {EMAIL_BRAND_NAME}
                 </Text>
               )}
             </Section>

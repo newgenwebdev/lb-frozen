@@ -1,6 +1,7 @@
 import { Modules } from '@medusajs/framework/utils'
-import { INotificationModuleService, IOrderModuleService, Logger } from '@medusajs/framework/types'
+import { INotificationModuleService, IOrderModuleService, IPaymentModuleService, Logger } from '@medusajs/framework/types'
 import { SubscriberArgs, SubscriberConfig } from '@medusajs/medusa'
+import { capturePaymentWorkflow } from '@medusajs/medusa/core-flows'
 import { EmailTemplates } from '../modules/email-notifications/templates'
 import { MEMBERSHIP_MODULE } from '../modules/membership'
 import { MEMBERSHIP_CONFIG_MODULE } from '../modules/membership-config'
@@ -27,6 +28,73 @@ export default async function orderPlacedHandler({
   logger.info(`[ORDER-PLACED] Order ${order.id} items adjustments: ${JSON.stringify(order.items?.map(i => ({ id: i.id, adjustments: (i as any).adjustments })))}`)
   logger.info(`[ORDER-PLACED] Order ${order.id} total: ${order.total}, raw_discount_total: ${(order as any).raw_discount_total}, discount_total: ${(order as any).discount_total}`)
   const shippingAddress = await (orderModuleService as any).orderAddressService_.retrieve(order.shipping_address.id)
+
+  // Auto-capture payment (for orders with authorized but not captured payments)
+  try {
+    const paymentModuleService: IPaymentModuleService = container.resolve(Modules.PAYMENT)
+    
+    // Get the order with payment collections using link query
+    const query = container.resolve("query")
+    const { data: [orderWithPayments] } = await query.graph({
+      entity: "order",
+      fields: ["id", "payment_collections.*", "payment_collections.payments.*"],
+      filters: { id: order.id }
+    })
+    
+    logger.info(`[ORDER-PLACED] Order payment collections: ${JSON.stringify(orderWithPayments?.payment_collections)}`)
+    
+    const paymentCollections = orderWithPayments?.payment_collections || []
+    
+    for (const paymentCollection of paymentCollections) {
+      // Check if payment collection is authorized but not captured
+      if (paymentCollection.status === 'authorized' && paymentCollection.captured_amount === 0) {
+        logger.info(`[ORDER-PLACED] Payment collection ${paymentCollection.id} is authorized, fetching payments...`)
+        
+        // Get payments from this collection
+        const payments = paymentCollection.payments || []
+        
+        if (payments.length === 0) {
+          // Try to fetch payments directly from payment module
+          const paymentCollectionWithPayments = await paymentModuleService.retrievePaymentCollection(
+            paymentCollection.id,
+            { relations: ["payments"] }
+          )
+          const fetchedPayments = paymentCollectionWithPayments.payments || []
+          
+          for (const payment of fetchedPayments) {
+            if (!payment.captured_at) {
+              logger.info(`[ORDER-PLACED] Auto-capturing payment ${payment.id} for order ${order.id}`)
+              try {
+                await capturePaymentWorkflow(container).run({
+                  input: { payment_id: payment.id }
+                })
+                logger.info(`[ORDER-PLACED] Successfully captured payment ${payment.id}`)
+              } catch (captureError) {
+                logger.error(`[ORDER-PLACED] Failed to capture payment ${payment.id}: ${captureError}`)
+              }
+            }
+          }
+        } else {
+          for (const payment of payments) {
+            if (!payment.captured_at) {
+              logger.info(`[ORDER-PLACED] Auto-capturing payment ${payment.id} for order ${order.id}`)
+              try {
+                await capturePaymentWorkflow(container).run({
+                  input: { payment_id: payment.id }
+                })
+                logger.info(`[ORDER-PLACED] Successfully captured payment ${payment.id}`)
+              } catch (captureError) {
+                logger.error(`[ORDER-PLACED] Failed to capture payment ${payment.id}: ${captureError}`)
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch (error) {
+    logger.error(`[ORDER-PLACED] Error auto-capturing payment: ${error}`)
+    // Don't fail the order if payment capture fails
+  }
 
   // Send order confirmation email
   try {

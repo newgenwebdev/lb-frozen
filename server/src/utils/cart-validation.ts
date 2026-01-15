@@ -211,7 +211,7 @@ export function getApplicableBulkTier(
     max_quantity: number | null
     currency_code: string
   }>,
-  currencyCode: string = "sgd"
+  currencyCode: string = "myr"
 ): { amount: number; min_quantity: number; max_quantity: number | null } | null {
   // Filter by currency and sort by min_quantity descending (highest tier first)
   const applicableTiers = priceTiers
@@ -245,7 +245,7 @@ export function getBasePrice(
     min_quantity: number | null
     currency_code: string
   }>,
-  currencyCode: string = "sgd"
+  currencyCode: string = "myr"
 ): number | null {
   const basePrice = priceTiers.find(
     (tier) =>

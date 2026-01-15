@@ -274,7 +274,7 @@ export const POST = async (
             const firstVariant = product.variants?.[0] as any
             const variantPrices = priceMap.get(firstVariant?.id) || []
             const price = variantPrices.find(
-              (p: any) => p.currency_code === (cart.currency_code || "sgd")
+              (p: any) => p.currency_code === (cart.currency_code || "myr")
             ) || variantPrices[0]
 
             if (price) {
@@ -335,7 +335,7 @@ export const POST = async (
     res.json({
       success: true,
       cart_value: cartValue,
-      currency_code: cart.currency_code || "sgd",
+      currency_code: cart.currency_code || "myr",
       eligible_offers: eligibleOffers.filter(o => o.trigger_met && !o.already_applied),
       all_offers: eligibleOffers,
     })

@@ -42,7 +42,7 @@ export type MedusaShippingOption = {
 export type ShippingOptionResponse = {
   id: string;
   name: string;
-  base_rate_sgd: number;
+  base_rate_myr: number;
   eta: string;
   status: "Active" | "Non Active";
   service_zone_name?: string;
@@ -57,7 +57,7 @@ export type ShippingOptionResponse = {
 export function mapShippingOptionToResponse(
   option: MedusaShippingOption
 ): ShippingOptionResponse {
-  const sgdPrice = option.prices?.find((p) => p.currency_code === "sgd")?.amount || 0;
+  const myrPrice = option.prices?.find((p) => p.currency_code === "myr")?.amount || 0;
 
   // Check enabled_in_store rule to determine status
   const enabledRule = option.rules?.find((r) => r.attribute === "enabled_in_store");
@@ -72,7 +72,7 @@ export function mapShippingOptionToResponse(
   return {
     id: option.id,
     name: option.name,
-    base_rate_sgd: sgdPrice,
+    base_rate_myr: myrPrice,
     eta,
     status: isEnabled ? "Active" : "Non Active",
     service_zone_name: option.service_zone?.name,

@@ -47,14 +47,14 @@ const EasyParcelReturn = model.define("easyparcel_return", {
   sender_phone: model.text(),
   sender_address: model.text(),
   sender_postcode: model.text(),
-  sender_country: model.text().default("SG"),
+  sender_country: model.text().default("MY"),
 
   // Receiver info (warehouse - where package is delivered)
   receiver_name: model.text(),
   receiver_phone: model.text(),
   receiver_address: model.text(),
   receiver_postcode: model.text(),
-  receiver_country: model.text().default("SG"),
+  receiver_country: model.text().default("MY"),
 
   // Status tracking
   status: model.text().default("rate_checked"), // rate_checked | order_created | paid | in_transit | delivered | cancelled

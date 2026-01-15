@@ -39,7 +39,7 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse): Promise<void
     }
 
     const items = cart.items || []
-    const currencyCode = cart.currency_code || "sgd"
+    const currencyCode = cart.currency_code || "myr"
 
     // ========================================
     // 1. Get bulk pricing tiers for all variants

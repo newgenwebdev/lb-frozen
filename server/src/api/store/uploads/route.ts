@@ -25,7 +25,13 @@ export const POST = async (
     // Accept files from JSON body (same format as admin uploads)
     const body = req.body as { files?: UploadFileInput[] }
     
+    console.log("[STORE UPLOAD] Request received:", {
+      hasFiles: !!body.files,
+      fileCount: body.files?.length || 0,
+    })
+    
     if (!body.files || !Array.isArray(body.files) || body.files.length === 0) {
+      console.error("[STORE UPLOAD] No files provided")
       return res.status(400).json({
         message: "No files provided. Expected { files: [{ name, content }] }",
       })
@@ -34,11 +40,14 @@ export const POST = async (
     // Validate file inputs
     for (const file of body.files) {
       if (!file.name || !file.content) {
+        console.error("[STORE UPLOAD] Invalid file:", { hasName: !!file.name, hasContent: !!file.content })
         return res.status(400).json({
           message: "Each file must have 'name' and 'content' properties",
         })
       }
     }
+
+    console.log("[STORE UPLOAD] Uploading files:", body.files.map(f => ({ name: f.name, size: f.content.length })))
 
     // Use the same workflow as admin uploads
     const { result } = await uploadFilesWorkflow(req.scope).run({
@@ -52,11 +61,14 @@ export const POST = async (
       },
     })
 
+    console.log("[STORE UPLOAD] Upload successful:", result)
+
     res.json({
       files: result,
     })
   } catch (error) {
-    console.error("[STORE] Failed to upload file:", error)
+    console.error("[STORE UPLOAD] Failed to upload file:", error)
+    console.error("[STORE UPLOAD] Error stack:", error instanceof Error ? error.stack : "No stack trace")
     res.status(500).json({
       message: "Failed to upload file",
       error: error instanceof Error ? error.message : "Unknown error",

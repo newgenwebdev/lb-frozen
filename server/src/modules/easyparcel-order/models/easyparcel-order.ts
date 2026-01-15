@@ -42,7 +42,7 @@ const EasyParcelOrder = model.define("easyparcel_order", {
   receiver_phone: model.text(),
   receiver_address: model.text(),
   receiver_postcode: model.text(),
-  receiver_country: model.text().default("SG"),
+  receiver_country: model.text().default("MY"),
 
   // Status tracking
   status: model.text().default("rate_checked"), // rate_checked | order_created | paid | in_transit | delivered | cancelled

@@ -85,4 +85,20 @@ export const apiClient = {
     fetchAPI<T>(endpoint, { ...options, method: 'DELETE' }),
 };
 
+/**
+ * Get auth headers for authenticated requests
+ */
+export function getAuthHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {};
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem(
+      process.env.NEXT_PUBLIC_AUTH_TOKEN_KEY || 'lb-frozen-auth-token'
+    );
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+  }
+  return headers;
+}
+
 export default apiClient;

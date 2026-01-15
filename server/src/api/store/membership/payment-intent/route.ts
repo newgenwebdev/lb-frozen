@@ -75,7 +75,7 @@ export const POST = async (
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount,
-      currency: "sgd",
+      currency: "myr",
       automatic_payment_methods: {
         enabled: true,
       },

@@ -6,11 +6,11 @@
 export type ShippingOptionStatus = "Active" | "Non Active";
 
 /**
- * Price for a specific currency (SGD only for Singapore focus)
+ * Price for a specific currency (MYR only for Malaysia focus)
  */
 export type ShippingOptionPrice = {
   id?: string;
-  currency_code: "sgd";
+  currency_code: "myr";
   amount: number;
 };
 
@@ -20,7 +20,7 @@ export type ShippingOptionPrice = {
 export type ShippingOptionAPI = {
   id: string;
   name: string;
-  base_rate_sgd: number;
+  base_rate_myr: number;
   eta: string;
   status: ShippingOptionStatus;
   service_zone_name?: string;
@@ -51,7 +51,7 @@ export type ShippingOption = {
   id: string;
   displayId: string;
   name: string;
-  baseRateSGD: number;
+  baseRateMYR: number;
   eta: string;
   status: ShippingOptionStatus;
   serviceZoneName?: string;

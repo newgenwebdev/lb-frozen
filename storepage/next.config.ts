@@ -7,11 +7,11 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'bucket-production-e243.up.railway.app',
         port: '',
-        pathname: '/**',
+        pathname: '/lb-frozen/**',
       },
       {
         protocol: 'https',
-        hostname: '*.railway.app',
+        hostname: '*.up.railway.app',
         port: '',
         pathname: '/**',
       },

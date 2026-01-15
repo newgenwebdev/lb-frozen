@@ -54,7 +54,7 @@ export const EmailVerificationEmail = ({
           Verify Your Email
         </Text>
         <Text className="text-[#666666] text-[16px] leading-[26px] mt-0 mb-[32px]">
-          {firstName ? `Hi ${firstName}, welcome` : 'Welcome'} to KingJess!
+          {firstName ? `Hi ${firstName}, welcome` : 'Welcome'} to LB Frozen!
           Please verify your email address to activate your account.
         </Text>
         <Section className="mb-[32px]">

@@ -386,7 +386,7 @@ export function formatOrderResponse(options: OrderFormatOptions) {
       discount_amount: tierDiscount,
     } : null,
     total: orderTotal,
-    currency: order.currency_code || "sgd",
+    currency: order.currency_code || "myr",
     items_count: itemsCount,
     items: formattedItems,
     tracking_number: extension?.tracking_number || null,

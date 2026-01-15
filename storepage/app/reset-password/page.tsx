@@ -1,14 +1,27 @@
 'use client';
 
 import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import Navbar from '@/components/layout/Navbar';
 import Button from '@/components/shared/Button';
+import { resetPasswordSchema, type ResetPasswordFormData } from '@/lib/schemas';
 
 export default function ResetPasswordPage() {
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors, isSubmitting },
+  } = useForm<ResetPasswordFormData>({
+    resolver: zodResolver(resetPasswordSchema),
+    mode: 'onChange',
+  });
+
+  const password = watch('password', '');
 
   // Password validation states
   const hasSymbol = /[!@#$%^&*(),.?":{}|<>]/.test(password);
@@ -30,9 +43,9 @@ export default function ResetPasswordPage() {
     return 'bg-red-500';
   };
 
-  const handleConfirm = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('Password reset:', { password, confirmPassword });
+  const onSubmit = async (data: ResetPasswordFormData) => {
+    console.log('Password reset:', data);
+    // TODO: Call API to reset password
   };
 
   return (
@@ -47,12 +60,12 @@ export default function ResetPasswordPage() {
               Create new password
             </h1>
             <p className="text-sm text-gray-500">
-              Create a strong password and don't<br />forget it again, okay?
+              Create a strong password and don&apos;t<br />forget it again, okay?
             </p>
           </div>
 
           {/* Form */}
-          <form onSubmit={handleConfirm} className="space-y-6">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Password Field */}
             <div>
               <label htmlFor="password" className="block text-base font-normal text-black mb-2">
@@ -62,11 +75,9 @@ export default function ResetPasswordPage() {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   id="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  {...register('password')}
                   placeholder="Enter your password"
                   className="w-full px-4 py-3.5 border border-gray-200 focus:ring-2 focus:ring-pink-400 focus:border-transparent outline-none transition pr-12 bg-gray-50 text-gray-700 placeholder:text-gray-400"
-                  required
                 />
                 <button
                   type="button"
@@ -79,13 +90,13 @@ export default function ResetPasswordPage() {
                 </button>
               </div>
 
-              {/* Error Message */}
-              {password && !hasNumber && (
+              {/* Error Message from form validation */}
+              {errors.password && (
                 <p className="mt-2 text-xs text-red-500 flex items-center gap-1">
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                   </svg>
-                  Your password must contain at least one number
+                  {errors.password.message}
                 </p>
               )}
 
@@ -146,11 +157,9 @@ export default function ResetPasswordPage() {
                 <input
                   type={showConfirmPassword ? 'text' : 'password'}
                   id="confirmPassword"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  {...register('confirmPassword')}
                   placeholder="Re-enter your password"
                   className="w-full px-4 py-3.5 border border-gray-200 focus:ring-2 focus:ring-pink-400 focus:border-transparent outline-none transition pr-12 bg-gray-50 text-gray-700 placeholder:text-gray-400"
-                  required
                 />
                 <button
                   type="button"
@@ -162,14 +171,17 @@ export default function ResetPasswordPage() {
                   </svg>
                 </button>
               </div>
+              {errors.confirmPassword && (
+                <p className="mt-2 text-xs text-red-500">{errors.confirmPassword.message}</p>
+              )}
             </div>
 
             {/* Confirm Button */}
             <Button 
               type="submit"
-              disabled={!password || !confirmPassword || passwordStrength < 4 || password !== confirmPassword}
+              disabled={isSubmitting || passwordStrength < 4}
             >
-              Confirm
+              {isSubmitting ? 'Processing...' : 'Confirm'}
             </Button>
           </form>
         </div>

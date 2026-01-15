@@ -4,31 +4,30 @@ import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import Button from "@/components/shared/Button";
-import { useAuthContext } from "@/lib/AuthContext";
+import { useLoginForm } from "@/lib/forms";
+import { useLoginMutation } from "@/lib/queries";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useAuthContext();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
+  // React Hook Form
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isValid },
+  } = useLoginForm();
 
+  // React Query mutation
+  const loginMutation = useLoginMutation();
+
+  const onSubmit = async (data: { email: string; password: string }) => {
     try {
-      await login({ email, password });
+      await loginMutation.mutateAsync(data);
       router.push("/");
     } catch (err: any) {
       console.error("Login failed:", err);
-      setError(err.message || "Invalid email or password");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -59,11 +58,11 @@ export default function LoginPage() {
           </div>
 
           {/* Login Form */}
-          <form onSubmit={handleLogin} className="space-y-6">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Error Message */}
-            {error && (
+            {loginMutation.error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-                {error}
+                {(loginMutation.error as Error).message || "Invalid email or password"}
               </div>
             )}
 
@@ -78,12 +77,15 @@ export default function LoginPage() {
               <input
                 type="email"
                 id="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                {...register("email")}
                 placeholder="Enter your email"
-                className="w-full px-4 py-3.5 border border-gray-200 focus:ring-2 focus:ring-pink-400 focus:border-transparent outline-none transition bg-gray-50 text-gray-500 placeholder:text-gray-400"
-                required
+                className={`w-full px-4 py-3.5 border ${
+                  errors.email ? "border-red-500" : "border-gray-200"
+                } focus:ring-2 focus:ring-pink-400 focus:border-transparent outline-none transition bg-gray-50 text-gray-500 placeholder:text-gray-400`}
               />
+              {errors.email && (
+                <p className="mt-1 text-sm text-red-500">{errors.email.message}</p>
+              )}
             </div>
 
             {/* Password Field */}
@@ -98,11 +100,11 @@ export default function LoginPage() {
                 <input
                   type={showPassword ? "text" : "password"}
                   id="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  {...register("password")}
                   placeholder="Enter your password"
-                  className="w-full px-4 py-3.5 border border-gray-200 focus:ring-2 focus:ring-pink-400 focus:border-transparent outline-none transition pr-12 bg-gray-50 text-gray-500 placeholder:text-gray-400"
-                  required
+                  className={`w-full px-4 py-3.5 border ${
+                    errors.password ? "border-red-500" : "border-gray-200"
+                  } focus:ring-2 focus:ring-pink-400 focus:border-transparent outline-none transition pr-12 bg-gray-50 text-gray-500 placeholder:text-gray-400`}
                 />
                 <button
                   type="button"
@@ -167,8 +169,8 @@ export default function LoginPage() {
             </div>
 
             {/* Login Button */}
-            <Button type="submit" disabled={!email || !password || loading}>
-              {loading ? "Logging in..." : "Login"}
+            <Button type="submit" disabled={!isValid || loginMutation.isPending}>
+              {loginMutation.isPending ? "Logging in..." : "Login"}
             </Button>
           </form>
         </div>

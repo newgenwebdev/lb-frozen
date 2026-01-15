@@ -4,7 +4,7 @@ import { z } from "zod";
  * Variant Price Schema - Base price without quantity limits
  */
 export const VariantPriceSchema = z.object({
-  currency_code: z.string().default("sgd"),
+  currency_code: z.string().default("myr"),
   amount: z.number().int().nonnegative("Price must be zero or positive"),
   min_quantity: z.number().int().positive().optional(),
   max_quantity: z.number().int().positive().optional(),
@@ -14,7 +14,7 @@ export const VariantPriceSchema = z.object({
  * Wholesale Price Schema - Price with quantity range for wholesale tiers
  */
 export const WholesalePriceSchema = z.object({
-  currency_code: z.string().default("sgd"),
+  currency_code: z.string().default("myr"),
   amount: z.number().int().nonnegative("Price must be zero or positive"),
   min_quantity: z.number().int().positive(),
   max_quantity: z.number().int().positive().nullable(),

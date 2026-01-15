@@ -52,7 +52,7 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse): Promise<voi
     }
 
     const items = cart.items as CartItem[]
-    const currencyCode = cart.currency_code || "sgd"
+    const currencyCode = cart.currency_code || "myr"
 
     const itemsToRemove: string[] = []
     const itemsToUpdate: Array<{ id: string; unit_price: number; metadata: any }> = []

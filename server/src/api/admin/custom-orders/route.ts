@@ -414,7 +414,7 @@ export const GET = withAdminAuth(async (req, res) => {
       discount_total: discountTotal,
       coupon_code: (order as any).metadata?.applied_coupon_code || null,
       total: orderTotalWithShipping,
-      currency: order.currency_code || "sgd",
+      currency: order.currency_code || "myr",
       items_count: itemsCount,
       items: formattedItems,
       tracking_number: extension?.tracking_number || null,

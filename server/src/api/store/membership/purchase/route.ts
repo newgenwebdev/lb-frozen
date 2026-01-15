@@ -109,7 +109,7 @@ export const POST = async (
       // Flow 2: Legacy - create and confirm PaymentIntent server-side
       paymentIntent = await stripe.paymentIntents.create({
         amount,
-        currency: "sgd",
+        currency: "myr",
         payment_method: payment_method_id,
         confirm: true,
         automatic_payment_methods: {

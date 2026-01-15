@@ -83,7 +83,7 @@ class EasyParcelOrderModuleService extends MedusaService({
       receiver_phone: data.receiver_phone,
       receiver_address: data.receiver_address,
       receiver_postcode: data.receiver_postcode,
-      receiver_country: data.receiver_country || "SG",
+      receiver_country: data.receiver_country || "MY",
       status: data.status || "rate_checked",
       tracking_url: data.tracking_url ?? null,
       metadata: data.metadata ?? null,

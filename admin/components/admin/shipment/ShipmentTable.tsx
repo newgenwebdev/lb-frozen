@@ -6,7 +6,7 @@ import { DeleteConfirmationModal } from "@/components/ui";
 import { useDeleteShippingOption } from "@/lib/api/queries";
 import { useToast } from "@/contexts/ToastContext";
 
-type SortField = "displayId" | "name" | "baseRateSGD" | "eta" | "status";
+type SortField = "displayId" | "name" | "baseRateMYR" | "eta" | "status";
 type SortDirection = "asc" | "desc";
 
 type ShipmentTableProps = {
@@ -81,8 +81,8 @@ export function ShipmentTable({
         case "name":
           comparison = a.name.localeCompare(b.name);
           break;
-        case "baseRateSGD":
-          comparison = a.baseRateSGD - b.baseRateSGD;
+        case "baseRateMYR":
+          comparison = a.baseRateMYR - b.baseRateMYR;
           break;
         case "eta":
           comparison = a.eta.localeCompare(b.eta);
@@ -205,11 +205,11 @@ export function ShipmentTable({
                 <th className="text-left py-3 px-3 font-geist text-[12px] font-medium tracking-[-0.12px] text-[#6A7282]">
                   <button
                     type="button"
-                    onClick={() => handleSort("baseRateSGD")}
-                    className={`flex items-center gap-2 cursor-pointer hover:text-[#030712] transition-colors ${sortField === "baseRateSGD" ? "text-[#030712]" : ""}`}
+                    onClick={() => handleSort("baseRateMYR")}
+                    className={`flex items-center gap-2 cursor-pointer hover:text-[#030712] transition-colors ${sortField === "baseRateMYR" ? "text-[#030712]" : ""}`}
                   >
                     <span>Price</span>
-                    <SortIcon field="baseRateSGD" />
+                    <SortIcon field="baseRateMYR" />
                   </button>
                 </th>
                 <th className="text-left py-3 px-3 font-geist text-[12px] font-medium tracking-[-0.12px] text-[#6A7282]">
@@ -252,7 +252,7 @@ export function ShipmentTable({
                   </td>
                   <td className="py-4 px-3">
                     <span className="font-public text-[14px] font-medium text-[#030712]">
-                      {formatPrice(shipment.baseRateSGD)}
+                      {formatPrice(shipment.baseRateMYR)}
                     </span>
                   </td>
                   <td className="py-4 px-3">

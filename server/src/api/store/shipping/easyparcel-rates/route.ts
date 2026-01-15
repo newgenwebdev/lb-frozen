@@ -124,11 +124,11 @@ export const POST = async (
 
     // Sender (pickup) info from settings
     params.append("bulk[0][pick_code]", senderSettings.sender_postcode)
-    params.append("bulk[0][pick_country]", senderSettings.sender_country || "SG")
+    params.append("bulk[0][pick_country]", senderSettings.sender_country || "MY")
 
     // Receiver info
     params.append("bulk[0][send_code]", body.receiver_postcode)
-    params.append("bulk[0][send_country]", "SG") // Singapore only
+    params.append("bulk[0][send_country]", "MY") // Malaysia only
 
     // Package details
     params.append("bulk[0][weight]", weight.toString())

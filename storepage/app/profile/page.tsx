@@ -16,25 +16,37 @@ import {
 } from "@/components/ui/select";
 import ProfileSidebar from "@/components/layout/ProfileSidebar";
 import { useAuthContext } from "@/lib/AuthContext";
+import { useOrdersQuery } from "@/lib/queries";
 import * as api from "@/lib/api";
+import { useProfileForm } from "@/lib/forms";
+import { Controller } from "react-hook-form";
 
 export default function ProfilePage() {
   const router = useRouter();
   const { customer, loading, role, roleInfo, refreshCustomer } = useAuthContext();
+  const { data: ordersData } = useOrdersQuery();
+  const orders = ordersData || [];
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Form state - initialized from customer data
-  const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [gender, setGender] = useState<string>("other");
-  const [dobDay, setDobDay] = useState("");
-  const [dobMonth, setDobMonth] = useState("");
-  const [dobYear, setDobYear] = useState("");
-  const [profileImage, setProfileImage] = useState<string>("");
-  const [saving, setSaving] = useState(false);
+  // React Hook Form for profile
+  const {
+    register,
+    handleSubmit,
+    control,
+    reset,
+    watch,
+    setValue,
+    formState: { errors, isDirty, isSubmitting },
+  } = useProfileForm();
+  
+  const profileImage = watch("profileImage");
+  const fullName = watch("fullName");
+  const email = watch("email");
+  
+  // Local UI state
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   // Update form when customer data loads
   useEffect(() => {
@@ -43,23 +55,35 @@ export default function ProfilePage() {
       console.log('[PROFILE] Metadata:', customer.metadata);
       console.log('[PROFILE] Profile image:', customer.metadata?.profile_image);
       
-      const name = [customer.first_name, customer.last_name].filter(Boolean).join(" ");
-      setFullName(name);
-      setPhone(customer.phone?.replace(/^\+60\s*/, "") || "");
-      setEmail(customer.email || "");
-      // Get metadata fields if available
-      if (customer.metadata) {
-        setGender(customer.metadata.gender || "other");
-        setProfileImage(customer.metadata.profile_image || "");
-        if (customer.metadata.date_of_birth) {
-          const dob = new Date(customer.metadata.date_of_birth);
-          setDobDay(dob.getDate().toString());
-          setDobMonth(dob.toLocaleString('default', { month: 'long' }));
-          setDobYear(dob.getFullYear().toString());
+      const fullName = [customer.first_name, customer.last_name].filter(Boolean).join(" ");
+      const phone = customer.phone?.replace(/^\+60\s*/, "") || "";
+      const dateOfBirth = customer.metadata?.date_of_birth as string | undefined;
+      
+      let dobDay = "";
+      let dobMonth = "";
+      let dobYear = "";
+      
+      if (dateOfBirth) {
+        const parts = dateOfBirth.split("-");
+        if (parts.length === 3) {
+          dobYear = parts[0];
+          dobMonth = new Date(dateOfBirth).toLocaleString('default', { month: 'long' }).toLowerCase();
+          dobDay = parts[2];
         }
       }
+      
+      reset({
+        fullName,
+        phone,
+        email: customer.email,
+        gender: (customer.metadata?.gender as "male" | "female" | "other") || "other",
+        dobDay,
+        dobMonth,
+        dobYear,
+        profileImage: (customer.metadata?.profile_image as string) || "",
+      });
     }
-  }, [customer]);
+  }, [customer, reset]);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -75,6 +99,20 @@ export default function ProfilePage() {
     return `Since ${date.toLocaleString('default', { month: 'short' })}, ${date.getFullYear()}`;
   };
 
+  // Calculate order statistics
+  const orderStats = {
+    totalProducts: orders?.reduce((sum: number, order: any) => {
+      return sum + (order.items?.reduce((itemSum: number, item: any) => itemSum + (item.quantity || 0), 0) || 0);
+    }, 0) || 0,
+    totalPayment: orders?.reduce((sum: number, order: any) => {
+      // Only count captured/paid orders
+      if (order.payment_status === 'captured' || order.payment_status === 'paid') {
+        return sum + (order.total || 0);
+      }
+      return sum;
+    }, 0) || 0,
+  };
+
   // Month name to number helper
   const monthNameToNumber = (monthName: string): number => {
     const months: Record<string, number> = {
@@ -85,36 +123,35 @@ export default function ProfilePage() {
     return months[monthName.toLowerCase()] || 1;
   };
 
-  // Handle save
-  const handleSave = async () => {
+  // Handle save with react-hook-form
+  const onSubmit = async (data: any) => {
     if (!customer) return;
 
-    setSaving(true);
     setSaveError(null);
     setSaveSuccess(false);
 
     try {
       // Split full name into first and last name
-      const nameParts = fullName.trim().split(/\s+/);
+      const nameParts = data.fullName.trim().split(/\s+/);
       const firstName = nameParts[0] || "";
       const lastName = nameParts.slice(1).join(" ") || "";
 
       // Build date of birth if provided
       let dateOfBirth: string | null = null;
-      if (dobDay && dobMonth && dobYear) {
-        const monthNum = monthNameToNumber(dobMonth);
-        dateOfBirth = `${dobYear}-${String(monthNum).padStart(2, '0')}-${String(dobDay).padStart(2, '0')}`;
+      if (data.dobDay && data.dobMonth && data.dobYear) {
+        const monthNum = monthNameToNumber(data.dobMonth);
+        dateOfBirth = `${data.dobYear}-${String(monthNum).padStart(2, '0')}-${String(data.dobDay).padStart(2, '0')}`;
       }
 
       await api.updateCustomer({
         first_name: firstName,
         last_name: lastName,
-        phone: phone ? `+60${phone.replace(/^\+60\s*/, '')}` : undefined,
+        phone: data.phone ? `+60${data.phone.replace(/^\+60\s*/, '')}` : undefined,
         metadata: {
           ...(customer.metadata || {}),
-          gender,
+          gender: data.gender,
           date_of_birth: dateOfBirth,
-          // Note: profile_image is saved separately via uploadProfileImage
+          profile_image: data.profileImage,
         },
       });
 
@@ -125,37 +162,45 @@ export default function ProfilePage() {
     } catch (error) {
       console.error("Failed to update profile:", error);
       setSaveError("Failed to update profile. Please try again.");
-    } finally {
-      setSaving(false);
     }
   };
 
   // Handle reset
   const handleReset = () => {
     if (customer) {
-      const name = [customer.first_name, customer.last_name].filter(Boolean).join(" ");
-      setFullName(name);
-      setPhone(customer.phone?.replace(/^\+60\s*/, "") || "");
-      setGender(customer.metadata?.gender || "other");
-      setProfileImage(customer.metadata?.profile_image || "");
-      if (customer.metadata?.date_of_birth) {
-        const dob = new Date(customer.metadata.date_of_birth);
-        setDobDay(dob.getDate().toString());
-        setDobMonth(dob.toLocaleString('default', { month: 'long' }));
-        setDobYear(dob.getFullYear().toString());
-      } else {
-        setDobDay("");
-        setDobMonth("");
-        setDobYear("");
+      const fullName = [customer.first_name, customer.last_name].filter(Boolean).join(" ");
+      const phone = customer.phone?.replace(/^\+60\s*/, "") || "";
+      const dateOfBirth = customer.metadata?.date_of_birth as string | undefined;
+      
+      let dobDay = "";
+      let dobMonth = "";
+      let dobYear = "";
+      
+      if (dateOfBirth) {
+        const parts = dateOfBirth.split("-");
+        if (parts.length === 3) {
+          dobYear = parts[0];
+          dobMonth = new Date(dateOfBirth).toLocaleString('default', { month: 'long' }).toLowerCase();
+          dobDay = parts[2];
+        }
       }
+      
+      reset({
+        fullName,
+        phone,
+        email: customer.email,
+        gender: (customer.metadata?.gender as "male" | "female" | "other") || "other",
+        dobDay,
+        dobMonth,
+        dobYear,
+        profileImage: (customer.metadata?.profile_image as string) || "",
+      });
     }
     setSaveError(null);
     setSaveSuccess(false);
   };
 
   // Handle profile image upload
-  const [uploadingImage, setUploadingImage] = useState(false);
-  
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -177,10 +222,12 @@ export default function ProfilePage() {
     setSaveError(null);
 
     try {
-      // Upload file directly using FormData (like admin uploads)
+      // Upload file directly using FormData
       const imageUrl = await api.uploadProfileImage(file);
       console.log('[PROFILE] Image uploaded:', imageUrl);
-      setProfileImage(imageUrl);
+      
+      // Update form value
+      setValue("profileImage", imageUrl, { shouldDirty: true });
       
       // Refresh customer data to get updated metadata
       await refreshCustomer();
@@ -254,10 +301,12 @@ export default function ProfilePage() {
                   </Label>
                   <Input
                     id="fullname"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
+                    {...register("fullName")}
                     className="h-12"
                   />
+                  {errors.fullName && (
+                    <p className="text-xs text-red-500 mt-1">{errors.fullName.message}</p>
+                  )}
                 </div>
 
                 {/* Phone number */}
@@ -277,11 +326,13 @@ export default function ProfilePage() {
                     </div>
                     <Input
                       id="phone"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      {...register("phone")}
                       className="flex-1 h-12"
                     />
                   </div>
+                  {errors.phone && (
+                    <p className="text-xs text-red-500 mt-1">{errors.phone.message}</p>
+                  )}
                 </div>
 
                 {/* Gender */}
@@ -292,16 +343,22 @@ export default function ProfilePage() {
                   >
                     Gender
                   </Label>
-                  <Select value={gender} onValueChange={setGender}>
-                    <SelectTrigger className="w-full h-12">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="male">Male</SelectItem>
-                      <SelectItem value="female">Female</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Controller
+                    name="gender"
+                    control={control}
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger className="w-full h-12">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="male">Male</SelectItem>
+                          <SelectItem value="female">Female</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
                 </div>
 
                 {/* Email */}
@@ -315,8 +372,7 @@ export default function ProfilePage() {
                   <Input
                     id="email"
                     type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    {...register("email")}
                     className="h-12"
                     disabled
                   />
@@ -330,36 +386,40 @@ export default function ProfilePage() {
                   </Label>
                   <div className="grid grid-cols-3 gap-3">
                     <Input
-                      value={dobDay}
-                      onChange={(e) => setDobDay(e.target.value)}
+                      {...register("dobDay")}
                       placeholder="Day"
                       type="number"
                       min="1"
                       max="31"
                       className="h-12"
                     />
-                    <Select value={dobMonth} onValueChange={setDobMonth}>
-                      <SelectTrigger className="w-full h-12!">
-                        <SelectValue placeholder="Month" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="January">January</SelectItem>
-                        <SelectItem value="February">February</SelectItem>
-                        <SelectItem value="March">March</SelectItem>
-                        <SelectItem value="April">April</SelectItem>
-                        <SelectItem value="May">May</SelectItem>
-                        <SelectItem value="June">June</SelectItem>
-                        <SelectItem value="July">July</SelectItem>
-                        <SelectItem value="August">August</SelectItem>
-                        <SelectItem value="September">September</SelectItem>
-                        <SelectItem value="October">October</SelectItem>
-                        <SelectItem value="November">November</SelectItem>
-                        <SelectItem value="December">December</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Controller
+                      name="dobMonth"
+                      control={control}
+                      render={({ field }) => (
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <SelectTrigger className="w-full h-12!">
+                            <SelectValue placeholder="Month" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="January">January</SelectItem>
+                            <SelectItem value="February">February</SelectItem>
+                            <SelectItem value="March">March</SelectItem>
+                            <SelectItem value="April">April</SelectItem>
+                            <SelectItem value="May">May</SelectItem>
+                            <SelectItem value="June">June</SelectItem>
+                            <SelectItem value="July">July</SelectItem>
+                            <SelectItem value="August">August</SelectItem>
+                            <SelectItem value="September">September</SelectItem>
+                            <SelectItem value="October">October</SelectItem>
+                            <SelectItem value="November">November</SelectItem>
+                            <SelectItem value="December">December</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
                     <Input
-                      value={dobYear}
-                      onChange={(e) => setDobYear(e.target.value)}
+                      {...register("dobYear")}
                       placeholder="Year"
                       type="number"
                       min="1900"
@@ -387,17 +447,17 @@ export default function ProfilePage() {
                 <Button
                   variant="outline"
                   onClick={handleReset}
-                  disabled={saving}
+                  disabled={isSubmitting}
                   className="px-6 sm:px-8 h-11 sm:h-12 text-sm sm:text-base text-gray-700 border-gray-300 w-full sm:w-auto"
                 >
                   Reset all
                 </Button>
                 <Button 
-                  onClick={handleSave}
-                  disabled={saving}
+                  onClick={handleSubmit(onSubmit)}
+                  disabled={isSubmitting || !isDirty}
                   className="px-6 sm:px-8 h-11 sm:h-12 text-sm sm:text-base bg-linear-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white w-full sm:w-auto"
                 >
-                  {saving ? "Saving..." : "Save changes"}
+                  {isSubmitting ? "Saving..." : "Save changes"}
                 </Button>
               </div>
             </div>
@@ -560,7 +620,7 @@ export default function ProfilePage() {
                         Product purchase
                       </p>
                       <p className="text-base sm:text-lg font-bold text-gray-900">
-                        65 Products
+                        {orderStats.totalProducts} Products
                       </p>
                     </div>
                     <div className="border-t sm:border-t-0 sm:border-r border-gray-200" />
@@ -569,7 +629,7 @@ export default function ProfilePage() {
                         Total Payment
                       </p>
                       <p className="text-base sm:text-lg font-bold text-gray-900">
-                        RM5,230.00
+                        RM{(orderStats.totalPayment / 100).toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </p>
                     </div>
                   </div>

@@ -1,6 +1,7 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { z } from "zod"
+import { REVIEW_MODULE } from "../../../../modules/review"
 
 /**
  * Search Query Schema
@@ -120,11 +121,31 @@ export const GET = async (
     )
   }
 
-  // Apply metadata filters
+  // Get all reviews for products to calculate real ratings
+  let allProductRatings: Record<string, number> = {} // product_id -> average_rating
+  try {
+    const reviewModule = req.scope.resolve(REVIEW_MODULE) as any
+    const allProductIds = products.map((p: any) => p.id)
+    const allReviews = await reviewModule.listReviews({ product_id: allProductIds })
+    
+    for (const product of products) {
+      const productReviews = allReviews.filter((r: any) => r.product_id === product.id)
+      if (productReviews.length > 0) {
+        const sum = productReviews.reduce((acc: number, r: any) => acc + r.rating, 0)
+        allProductRatings[product.id] = sum / productReviews.length
+      }
+    }
+  } catch (e) {
+    console.warn("Could not fetch reviews for rating filter:", e)
+  }
+
+  // Apply filters
   if (min_rating !== undefined) {
     products = products.filter((p: any) => {
-      const rating = Number(p.metadata?.rating) || 0
-      return rating >= min_rating
+      const rating = allProductRatings[p.id] || 0
+      // Exact match: round rating and compare
+      const roundedRating = Math.round(rating)
+      return roundedRating === min_rating
     })
   }
 
@@ -258,16 +279,66 @@ export const GET = async (
     }
   }
 
-  // Calculate rating distribution for all products (not just paginated)
+  // Calculate rating distribution from already-fetched ratings (allProductRatings)
+  // Count exact matches per rating level (not cumulative)
   const ratingCounts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
-  for (const p of products) {
-    const rating = Math.floor(Number(p.metadata?.rating) || 0)
-    if (rating >= 1 && rating <= 5) {
-      // Count products with this rating or higher
-      for (let r = 1; r <= rating; r++) {
-        ratingCounts[r as keyof typeof ratingCounts]++
+  for (const product of products) {
+    const avgRating = allProductRatings[product.id]
+    if (avgRating && avgRating > 0) {
+      const roundedRating = Math.round(avgRating)
+      if (roundedRating >= 1 && roundedRating <= 5) {
+        ratingCounts[roundedRating as keyof typeof ratingCounts]++
       }
     }
+  }
+
+  // Get review stats for paginated products only (for display - need total_reviews too)
+  let productReviewStats: Record<string, { average_rating: number; total_reviews: number }> = {}
+  try {
+    const reviewModule = req.scope.resolve(REVIEW_MODULE) as any
+    const productIds = paginatedProducts.map((p: any) => p.id)
+    
+    // Get all reviews for these products
+    const allReviews = await reviewModule.listReviews({ product_id: productIds })
+    
+    // Calculate stats per product
+    for (const product of paginatedProducts) {
+      const productReviews = allReviews.filter((r: any) => r.product_id === product.id)
+      if (productReviews.length > 0) {
+        const sum = productReviews.reduce((acc: number, r: any) => acc + r.rating, 0)
+        productReviewStats[product.id] = {
+          average_rating: parseFloat((sum / productReviews.length).toFixed(1)),
+          total_reviews: productReviews.length,
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("Could not fetch review stats:", e)
+  }
+
+  // Get sold count for all paginated products from order items
+  let productSoldCounts: Record<string, number> = {}
+  try {
+    const orderModule = req.scope.resolve(Modules.ORDER) as any
+    
+    for (const product of paginatedProducts) {
+      const productVariantIds = product.variants?.map((v: any) => v.id) || []
+      
+      if (productVariantIds.length > 0) {
+        const orderItems = await orderModule.listOrderLineItems(
+          { variant_id: productVariantIds },
+          { select: ["id", "quantity"] }
+        )
+        
+        const soldCount = orderItems.reduce((total: number, item: any) => {
+          return total + (item.quantity || 0)
+        }, 0)
+        
+        productSoldCounts[product.id] = soldCount
+      }
+    }
+  } catch (e) {
+    console.warn("Could not fetch sold counts:", e)
   }
 
   // Format response
@@ -343,6 +414,8 @@ export const GET = async (
       status: product.status,
       created_at: product.created_at,
       updated_at: product.updated_at,
+      review_stats: productReviewStats[product.id] || null,
+      sold_count: productSoldCounts[product.id] || 0,
     }
   })
 

@@ -14,8 +14,8 @@ const ShippingSetting = model.define("shipping_setting", {
   sender_phone: model.text(), // Contact phone
   sender_address: model.text(), // Street address
   sender_unit: model.text().nullable(), // Unit number (optional)
-  sender_postcode: model.text(), // 6-digit postal code
-  sender_country: model.text().default("SG"), // Country code (default Singapore)
+  sender_postcode: model.text(), // Postal code
+  sender_country: model.text().default("MY"), // Country code (default Malaysia)
 })
 
 export default ShippingSetting

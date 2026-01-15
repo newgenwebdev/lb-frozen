@@ -66,7 +66,7 @@ export function VariantTable({
 
     // Ensure prices array exists
     if (!updated[index].prices || updated[index].prices.length === 0) {
-      updated[index].prices = [{ currency_code: "sgd", amount }];
+      updated[index].prices = [{ currency_code: "myr", amount }];
     } else {
       updated[index].prices[0] = {
         ...updated[index].prices[0],
@@ -174,7 +174,7 @@ export function VariantTable({
               onChange={(e) => onGlobalDiscountToggle?.(e.target.checked)}
               className="peer sr-only"
             />
-            <div className="h-6 w-11 rounded-full bg-[#E5E7EB] transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:bg-[#030712] peer-checked:after:translate-x-5"></div>
+            <div className="h-6 w-11 rounded-full bg-[#E5E7EB] transition-colors after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:bg-[#030712] peer-checked:after:translate-x-5"></div>
           </label>
           <span className="font-geist text-[14px] font-medium tracking-[-0.14px] text-[#030712]">
             Set Discount Global

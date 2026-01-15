@@ -189,7 +189,7 @@ export type MembershipPointsFormData = {
   monthsUntilExpiry: number;
 
   // Redemption Rules
-  valuePer1SGD: number;
+  valuePer1MYR: number;
   redeemStep: number;
   minimumPointsPerOrder: number;
   maxPercentOrderPayableByPoints: number;

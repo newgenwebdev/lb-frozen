@@ -54,8 +54,8 @@ const ALLOWED_EXTENSIONS = new Set([
   '.mp4', '.webm',
 ])
 
-// Security: Maximum file size (10MB)
-const MAX_FILE_SIZE = 10 * 1024 * 1024
+// Security: Maximum file size (50MB - supports video uploads)
+const MAX_FILE_SIZE = 50 * 1024 * 1024
 
 /**
  * Service to handle file storage using MinIO.

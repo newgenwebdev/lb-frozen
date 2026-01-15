@@ -74,8 +74,6 @@ export default function AddProductPage(): React.JSX.Element {
   const [globalDiscountValue, setGlobalDiscountValue] = useState<number>(0);
 
   // Product metadata fields
-  const [rating, setRating] = useState<string>("");
-  const [soldCount, setSoldCount] = useState<string>("");
   const [onSale, setOnSale] = useState<boolean>(false);
   const [flashSale, setFlashSale] = useState<boolean>(false);
   const [trending, setTrending] = useState<boolean>(false);
@@ -177,6 +175,17 @@ export default function AddProductPage(): React.JSX.Element {
     setValue("hasVariants", hasVariants);
   }, [hasVariants, setValue]);
 
+  // Auto-select inventory location when data is loaded
+  useEffect(() => {
+    if (stockLocationsData && stockLocationsData.length > 0) {
+      const currentLocation = watch("inventoryLocation");
+      // Only auto-select if not already selected
+      if (!currentLocation) {
+        setValue("inventoryLocation", stockLocationsData[0].id);
+      }
+    }
+  }, [stockLocationsData, setValue, watch]);
+
   // Sync variants and options to form when they change
   useEffect(() => {
     if (hasVariants) {
@@ -231,7 +240,7 @@ export default function AddProductPage(): React.JSX.Element {
         existingVariant || {
           title,
           sku: generateVariantSku(productHandle, title),
-          prices: [{ currency_code: "sgd", amount: 0 }],
+          prices: [{ currency_code: "myr", amount: 0 }],
           options: combo,
           manage_inventory: true,
           allow_backorder: false,
@@ -305,7 +314,7 @@ export default function AddProductPage(): React.JSX.Element {
           sortedTiers.forEach((tier, tierIndex) => {
             const maxQty = calculateMaxQty(sortedTiers, tierIndex);
             const wholesalePrice: WholesalePriceFormData = {
-              currency_code: "sgd",
+              currency_code: "myr",
               amount: tier.price,
               min_quantity: tier.minQty,
               max_quantity: maxQty ?? null,
@@ -371,7 +380,7 @@ export default function AddProductPage(): React.JSX.Element {
       const buildDefaultVariantPrices = () => {
         return [
           {
-            currency_code: "sgd",
+            currency_code: "myr",
             amount: convertPriceToCents(data.basePrice || "0"),
           },
         ];
@@ -428,9 +437,6 @@ export default function AddProductPage(): React.JSX.Element {
           inventoryLocation: data.inventoryLocation,
           // Brand association
           brand_id: data.brand || null,
-          // Store display metadata
-          rating: rating ? parseFloat(rating) : undefined,
-          sold_count: soldCount ? parseInt(soldCount) : undefined,
           // Badge and deals metadata
           on_sale: onSale,
           flash_sale: flashSale,
@@ -481,24 +487,33 @@ export default function AddProductPage(): React.JSX.Element {
       };
 
       const selectedLocationId = data.inventoryLocation;
+      console.log("[Inventory Setup] Location:", selectedLocationId, "Has Variants:", hasVariants, "Variants:", variants.map(v => ({ title: v.title, qty: v.inventory_quantity })));
+      
       if (selectedLocationId && product.variants) {
-        const inventoryPromises = product.variants.map((variant, index) => {
+        const inventoryPromises = product.variants.map((apiVariant) => {
+          // Match form variant to API variant by title (more reliable than index)
+          const formVariant = hasVariants
+            ? variants.find(v => v.title === apiVariant.title)
+            : null;
+          
           const quantity = hasVariants
-            ? variants[index]?.inventory_quantity || 0
+            ? formVariant?.inventory_quantity || 0
             : parseInt(data.availableQuantity || "0");
+
+          console.log(`[Inventory Setup] Variant "${apiVariant.title}": formVariant found=${!!formVariant}, quantity=${quantity}`);
 
           if (quantity > 0) {
             return setupVariantInventory(
-              { id: variant.id, sku: variant.sku || undefined, title: variant.title },
+              { id: apiVariant.id, sku: apiVariant.sku || undefined, title: apiVariant.title },
               quantity,
               selectedLocationId,
               product.id // Pass productId for inventory linking
             ).then((result) => {
               if (result.success) {
-                inventoryResults.success.push(variant.title);
+                inventoryResults.success.push(apiVariant.title);
               } else {
                 inventoryResults.failed.push({
-                  title: variant.title,
+                  title: apiVariant.title,
                   error: result.error || "Unknown error",
                 });
               }
@@ -1032,52 +1047,11 @@ export default function AddProductPage(): React.JSX.Element {
             )}
           </div>
 
-          {/* Store Display Section */}
+          {/* Badges & Deals Section */}
           <div className="mt-6">
             <h3 className="mb-4 font-geist text-[15px] font-medium tracking-[-0.15px] text-[#020817]">
-              Store Display
+              Badges & Deals
             </h3>
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              {/* Rating */}
-              <div>
-                <label className="mb-2 block font-geist text-[14px] font-medium leading-[150%] tracking-[-0.14px] text-[#020817]">
-                  Rating
-                  <span className="ml-2 font-geist text-[12px] font-normal text-[#6A7282]">(Optional)</span>
-                </label>
-                <input
-                  type="number"
-                  placeholder="e.g 4.5"
-                  value={rating}
-                  onChange={(e) => setRating(e.target.value)}
-                  step="0.1"
-                  min="0"
-                  max="5"
-                  className="w-full rounded-lg border border-[#E3E3E3] bg-white py-3 px-4 font-geist text-[16px] font-normal tracking-[-0.16px] text-[#030712] outline-none transition-colors placeholder:text-[#6A7282] focus:border-black"
-                />
-                <p className="mt-1 font-geist text-[12px] text-[#6A7282]">
-                  Product rating (0-5 stars)
-                </p>
-              </div>
-
-              {/* Sold Count */}
-              <div>
-                <label className="mb-2 block font-geist text-[14px] font-medium leading-[150%] tracking-[-0.14px] text-[#020817]">
-                  Sold Count
-                  <span className="ml-2 font-geist text-[12px] font-normal text-[#6A7282]">(Optional)</span>
-                </label>
-                <input
-                  type="number"
-                  placeholder="e.g 1203"
-                  value={soldCount}
-                  onChange={(e) => setSoldCount(e.target.value)}
-                  min="0"
-                  className="w-full rounded-lg border border-[#E3E3E3] bg-white py-3 px-4 font-geist text-[16px] font-normal tracking-[-0.16px] text-[#030712] outline-none transition-colors placeholder:text-[#6A7282] focus:border-black"
-                />
-                <p className="mt-1 font-geist text-[12px] text-[#6A7282]">
-                  Number of units sold
-                </p>
-              </div>
-            </div>
 
             {/* Badges & Deals */}
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 mt-6">

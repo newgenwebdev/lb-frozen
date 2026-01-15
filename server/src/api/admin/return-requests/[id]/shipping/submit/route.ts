@@ -6,31 +6,44 @@ import { EASYPARCEL_RETURN_MODULE } from "../../../../../../modules/easyparcel-r
 import { withAdminAuth } from "../../../../../../utils/admin-auth";
 
 /**
- * Format and validate Singapore phone number for EasyParcel
+ * Format and validate Malaysia phone number for EasyParcel
  */
-function formatSingaporePhone(phone: string): string | null {
+function formatMalaysiaPhone(phone: string): string | null {
   if (!phone) return null;
 
   // Remove all non-digit characters
   let cleaned = phone.replace(/\D/g, "");
 
-  // Remove country code if present (65)
-  if (cleaned.startsWith("65") && cleaned.length > 8) {
+  // Remove country code if present (60)
+  if (cleaned.startsWith("60") && cleaned.length > 9) {
     cleaned = cleaned.slice(2);
   }
 
-  // Singapore mobile numbers are 8 digits starting with 8 or 9
-  if (cleaned.length === 8 && (cleaned.startsWith("8") || cleaned.startsWith("9"))) {
+  // Remove leading 0 if present
+  if (cleaned.startsWith("0")) {
+    cleaned = cleaned.slice(1);
+  }
+
+  // Malaysia mobile numbers are 9-10 digits starting with 1
+  if ((cleaned.length === 9 || cleaned.length === 10) && cleaned.startsWith("1")) {
     return cleaned;
   }
 
-  // Singapore landlines are 8 digits starting with 6
-  if (cleaned.length === 8 && cleaned.startsWith("6")) {
+  // Malaysia landlines are 8-9 digits starting with 3, 4, 5, 6, 7, 8, 9
+  if ((cleaned.length === 8 || cleaned.length === 9) && /^[3-9]/.test(cleaned)) {
+    return cleaned;
+  }
+
+  // Return original cleaned number if it looks reasonable
+  if (cleaned.length >= 8 && cleaned.length <= 11) {
     return cleaned;
   }
 
   return null;
 }
+
+// Alias for backward compatibility
+const formatSingaporePhone = formatMalaysiaPhone;
 
 interface SubmitRequest {
   service_id: string;

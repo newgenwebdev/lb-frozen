@@ -3,7 +3,7 @@
  * Handles all cart-related operations
  */
 
-import { apiClient } from './client';
+import { apiClient, getAuthHeaders } from './client';
 import type { Cart, LineItem } from './types';
 
 const CART_ID_KEY =
@@ -37,7 +37,7 @@ export function clearStoredCartId(): void {
  * Get default region ID
  */
 async function getDefaultRegionId(): Promise<string> {
-  const defaultRegion = process.env.NEXT_PUBLIC_DEFAULT_REGION || 'sg';
+  const defaultRegion = process.env.NEXT_PUBLIC_DEFAULT_REGION || 'my';
   
   try {
     const response = await apiClient.get<{ regions: any[] }>('/store/regions');
@@ -67,19 +67,58 @@ export async function createCart(): Promise<Cart> {
  * Get cart by ID
  */
 export async function getCart(cartId: string): Promise<Cart> {
-  const response = await apiClient.get<{ cart: Cart }>(`/store/carts/${cartId}`);
+  const response = await apiClient.get<{ cart: Cart }>(
+    `/store/carts/${cartId}?fields=*items,*items.variant,*items.variant.product`
+  );
   return response.cart;
 }
 
 /**
  * Get or create cart
+ * 
+ * IMPORTANT: This function includes validation to detect carts with completed
+ * payment sessions (PaymentIntent succeeded). If a cart has a completed payment,
+ * we clear it and create a new cart to prevent "Could not delete all payment sessions"
+ * errors from Medusa when trying to refresh payment collections.
+ * 
+ * Note: In Medusa v2, the cart is automatically associated with the authenticated
+ * customer through the auth session/token. No need to manually set customer_id.
  */
 export async function getOrCreateCart(): Promise<Cart> {
   const cartId = getStoredCartId();
 
   if (cartId) {
     try {
-      return await getCart(cartId);
+      const cart = await getCart(cartId);
+      
+      // Check if cart has completed_at (order already created) or has succeeded payment sessions
+      // This prevents the "Could not delete all payment sessions" error
+      if ((cart as any).completed_at) {
+        console.log('Cart already completed, creating new cart');
+        clearStoredCartId();
+        return createCart();
+      }
+      
+      // Check for payment collection with succeeded payment intent
+      // We need to create a new cart if the payment has already succeeded
+      const paymentCollection = (cart as any).payment_collection;
+      if (paymentCollection?.payment_sessions?.length > 0) {
+        const hasSucceededPayment = paymentCollection.payment_sessions.some(
+          (session: any) => 
+            session.status === 'authorized' || 
+            session.status === 'captured' ||
+            session.data?.status === 'succeeded' ||
+            session.data?.status === 'requires_capture'
+        );
+        
+        if (hasSucceededPayment) {
+          console.log('Cart has succeeded payment session, creating new cart');
+          clearStoredCartId();
+          return createCart();
+        }
+      }
+      
+      return cart;
     } catch (error) {
       console.log('Cart not found, creating new cart');
       clearStoredCartId();
@@ -99,7 +138,7 @@ export async function addToCart(
   const cart = await getOrCreateCart();
 
   const response = await apiClient.post<{ cart: Cart }>(
-    `/store/carts/${cart.id}/line-items`,
+    `/store/carts/${cart.id}/line-items?fields=*items,*items.variant,*items.variant.product`,
     {
       variant_id: variantId,
       quantity,
@@ -120,7 +159,7 @@ export async function updateCartItem(
   if (!cartId) throw new Error('No cart found');
 
   const response = await apiClient.post<{ cart: Cart }>(
-    `/store/carts/${cartId}/line-items/${lineItemId}`,
+    `/store/carts/${cartId}/line-items/${lineItemId}?fields=*items,*items.variant,*items.variant.product`,
     { quantity }
   );
 
@@ -129,16 +168,23 @@ export async function updateCartItem(
 
 /**
  * Remove item from cart
+ * Note: Medusa returns the deleted line item, not the cart. We need to fetch cart after delete.
  */
 export async function removeFromCart(lineItemId: string): Promise<Cart> {
   const cartId = getStoredCartId();
   if (!cartId) throw new Error('No cart found');
 
-  const response = await apiClient.delete<{ cart: Cart }>(
+  // Delete the line item
+  await apiClient.delete<{ id: string; object: string; deleted: boolean }>(
     `/store/carts/${cartId}/line-items/${lineItemId}`
   );
 
-  return response.cart;
+  // Fetch updated cart after deletion
+  const cartResponse = await apiClient.get<{ cart: Cart }>(
+    `/store/carts/${cartId}?fields=*items,*items.variant,*items.variant.product`
+  );
+
+  return cartResponse.cart;
 }
 
 /**
@@ -248,6 +294,10 @@ export async function selectShippingMethod(
 export async function completeCart(): Promise<{ order: any }> {
   const cartId = getStoredCartId();
   if (!cartId) throw new Error('No cart found');
+
+  const headers = getAuthHeaders();
+  console.log('Completing cart with ID:', cartId);
+  console.log('Request headers:', headers);
 
   const response = await apiClient.post<{ order: any }>(
     `/store/carts/${cartId}/complete`

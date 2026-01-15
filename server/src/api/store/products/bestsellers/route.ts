@@ -1,6 +1,7 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { ProductListQuerySchema } from "../schemas"
+import { REVIEW_MODULE } from "../../../../modules/review"
 
 /**
  * GET /store/products/bestsellers
@@ -198,6 +199,27 @@ export const GET = async (
       ? "mixed"
       : "fallback"
 
+  // Get review stats for all products
+  let productReviewStats: Record<string, { average_rating: number; total_reviews: number }> = {}
+  try {
+    const reviewModule = req.scope.resolve(REVIEW_MODULE) as any
+    const productIds = bestsellerProducts.map((p: any) => p.id)
+    const allReviews = await reviewModule.listReviews({ product_id: productIds })
+    
+    for (const product of bestsellerProducts) {
+      const productReviews = allReviews.filter((r: any) => r.product_id === product.id)
+      if (productReviews.length > 0) {
+        const sum = productReviews.reduce((acc: number, r: any) => acc + r.rating, 0)
+        productReviewStats[product.id] = {
+          average_rating: parseFloat((sum / productReviews.length).toFixed(1)),
+          total_reviews: productReviews.length,
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("Could not fetch review stats:", e)
+  }
+
   // Format response with calculated prices
   const formattedProducts = bestsellerProducts.map((product: any) => ({
     id: product.id,
@@ -233,8 +255,9 @@ export const GET = async (
     status: product.status,
     created_at: product.created_at,
     updated_at: product.updated_at,
+    review_stats: productReviewStats[product.id] || null,
     // Include sales data if available
-    quantity_sold: productSales.get(product.id) || 0,
+    sold_count: productSales.get(product.id) || 0,
   }))
 
   res.json({

@@ -18,3 +18,6 @@ export * from './orders';
 export * from './points';
 export * from './membership';
 export * from './content';
+export * from './payment';
+export * from './payment-methods';
+export * from './reviews';

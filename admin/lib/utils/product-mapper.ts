@@ -7,13 +7,13 @@
 import type { MedusaProduct, AdminProduct } from "../types/product"
 
 /**
- * Format price from cents to Singapore Dollar string
+ * Format price from cents to Malaysian Ringgit string
  * @param amountInCents - Price in cents (e.g., 6415)
- * @returns Formatted price string (e.g., "$64.15")
+ * @returns Formatted price string (e.g., "RM64.15")
  */
 export function formatPrice(amountInCents: number): string {
   const amountInDollars = amountInCents / 100
-  return `$${amountInDollars.toFixed(2)}`
+  return `RM${amountInDollars.toFixed(2)}`
 }
 
 /**

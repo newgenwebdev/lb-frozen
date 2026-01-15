@@ -1,6 +1,7 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { ProductListQuerySchema } from "../schemas"
+import { REVIEW_MODULE } from "../../../../modules/review"
 
 /**
  * GET /store/products/bulk-deals
@@ -146,6 +147,52 @@ export const GET = async (
     return
   }
 
+  // Get review stats for all products
+  let productReviewStats: Record<string, { average_rating: number; total_reviews: number }> = {}
+  try {
+    const reviewModule = req.scope.resolve(REVIEW_MODULE) as any
+    const productIds = productsToReturn.map((p: any) => p.id)
+    const allReviews = await reviewModule.listReviews({ product_id: productIds })
+    
+    for (const product of productsToReturn) {
+      const productReviews = allReviews.filter((r: any) => r.product_id === product.id)
+      if (productReviews.length > 0) {
+        const sum = productReviews.reduce((acc: number, r: any) => acc + r.rating, 0)
+        productReviewStats[product.id] = {
+          average_rating: parseFloat((sum / productReviews.length).toFixed(1)),
+          total_reviews: productReviews.length,
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("Could not fetch review stats:", e)
+  }
+
+  // Get sold count for all products from order items
+  let productSoldCounts: Record<string, number> = {}
+  try {
+    const orderModule = req.scope.resolve(Modules.ORDER) as any
+    
+    for (const product of productsToReturn) {
+      const productVariantIds = product.variants?.map((v: any) => v.id) || []
+      
+      if (productVariantIds.length > 0) {
+        const orderItems = await orderModule.listOrderLineItems(
+          { variant_id: productVariantIds },
+          { select: ["id", "quantity"] }
+        )
+        
+        const soldCount = orderItems.reduce((total: number, item: any) => {
+          return total + (item.quantity || 0)
+        }, 0)
+        
+        productSoldCounts[product.id] = soldCount
+      }
+    }
+  } catch (e) {
+    console.warn("Could not fetch sold counts:", e)
+  }
+
   // Format response with prices including min_quantity for bulk tiers
   const formattedProducts = productsToReturn.map((product: any) => {
     // Filter to only include variants that have bulk pricing
@@ -210,6 +257,8 @@ export const GET = async (
       status: product.status,
       created_at: product.created_at,
       updated_at: product.updated_at,
+      review_stats: productReviewStats[product.id] || null,
+      sold_count: productSoldCounts[product.id] || 0,
     }
   })
 

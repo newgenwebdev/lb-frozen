@@ -239,7 +239,7 @@ export const POST = async (
         )
 
         const price = prices.find(
-          (p: any) => p.currency_code === (cart.currency_code || "sgd")
+          (p: any) => p.currency_code === (cart.currency_code || "myr")
         ) || prices[0]
 
         if (price) {

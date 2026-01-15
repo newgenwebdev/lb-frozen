@@ -50,7 +50,7 @@ class ShippingSettingsModuleService extends MedusaService({
         sender_address: data.sender_address,
         sender_unit: data.sender_unit ?? null,
         sender_postcode: data.sender_postcode,
-        sender_country: data.sender_country || "SG",
+        sender_country: data.sender_country || "MY",
       })
       return updated
     } else {
@@ -61,7 +61,7 @@ class ShippingSettingsModuleService extends MedusaService({
         sender_address: data.sender_address,
         sender_unit: data.sender_unit ?? null,
         sender_postcode: data.sender_postcode,
-        sender_country: data.sender_country || "SG",
+        sender_country: data.sender_country || "MY",
       })
       return created
     }

@@ -197,7 +197,7 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse): Promise<void
                 { select: ["amount", "currency_code", "min_quantity", "max_quantity"] }
               )
 
-              const currencyCode = cart.currency_code || "sgd"
+              const currencyCode = cart.currency_code || "myr"
 
               // Check if there's a lower bulk tier that applies
               const applicableTier = getApplicableBulkTier(
@@ -280,7 +280,7 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse): Promise<void
                 { select: ["amount", "currency_code", "min_quantity", "max_quantity"] }
               )
 
-              const currencyCode = cart.currency_code || "sgd"
+              const currencyCode = cart.currency_code || "myr"
               const applicableTier = getApplicableBulkTier(currentQty, prices as any, currencyCode)
 
               if (applicableTier && applicableTier.amount !== item.unit_price) {

@@ -210,11 +210,11 @@ export async function deletePWPRule(id: string): Promise<void> {
 // ============================================================
 
 /**
- * Format currency value for display (SGD)
+ * Format currency value for display (MYR)
  */
 function formatCurrency(value: number): string {
   const dollars = value / 100; // Convert from cents
-  return `$${dollars.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+  return `RM${dollars.toLocaleString("en-MY", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 }
 
 /**

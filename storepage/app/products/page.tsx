@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense } from "react";
-import { SearchResultsContent } from "../search/results/page";
+import { SearchResultsContent } from "@/components/shared/SearchResultsContent";
 
 export default function ProductsPage() {
   return (

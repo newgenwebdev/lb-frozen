@@ -181,7 +181,7 @@ export default async function cartUpdatedHandler({
           { select: ["amount", "currency_code", "min_quantity", "max_quantity"] }
         )
 
-        const currencyCode = cart.currency_code || "sgd"
+        const currencyCode = cart.currency_code || "myr"
         const applicableTier = getApplicableBulkTier(currentQty, prices as any, currencyCode)
         const basePrice = getBasePrice(prices as any, currencyCode)
 

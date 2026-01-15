@@ -1,10 +1,28 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+/**
+ * AuthContext - Modernized with Zustand + React Query
+ * 
+ * This provides backward compatibility with the old AuthContext
+ * while using Zustand for state and React Query for data fetching.
+ */
+
+import { createContext, useContext, useEffect, ReactNode } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as api from './api';
 import type { Customer } from './api/types';
+import { useAuthStore } from './stores/authStore';
+import { usePaymentStore } from './stores/paymentStore';
+import { useCartStore } from './stores/cartStore';
+import { useWishlistStore } from './stores/wishlistStore';
+import { useCheckoutStore, clearPersistedCheckout } from './stores/checkoutStore';
+import { clearStoredCartId } from './api/cart';
 
-const AUTH_STORAGE_KEY = 'lb-frozen-auth-state';
+// Query keys
+const AUTH_QUERY_KEYS = {
+  customer: ['auth', 'customer'] as const,
+  role: ['auth', 'role'] as const,
+};
 
 interface CustomerRoleInfo {
   slug: string;
@@ -12,12 +30,6 @@ interface CustomerRoleInfo {
   description: string;
   can_see_bulk_prices: boolean;
   can_see_vip_prices: boolean;
-}
-
-interface StoredAuthState {
-  customer: Customer | null;
-  role: string;
-  roleInfo: CustomerRoleInfo | null;
 }
 
 interface AuthContextType {
@@ -39,40 +51,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-// Helper to get stored auth state from sessionStorage
-function getStoredAuthState(): StoredAuthState | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const stored = sessionStorage.getItem(AUTH_STORAGE_KEY);
-    if (stored) {
-      return JSON.parse(stored);
-    }
-  } catch (e) {
-    console.error('[AUTH] Failed to parse stored auth state:', e);
-  }
-  return null;
-}
-
-// Helper to save auth state to sessionStorage
-function saveAuthState(state: StoredAuthState): void {
-  if (typeof window === 'undefined') return;
-  try {
-    sessionStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(state));
-  } catch (e) {
-    console.error('[AUTH] Failed to save auth state:', e);
-  }
-}
-
-// Helper to clear auth state from sessionStorage
-function clearAuthState(): void {
-  if (typeof window === 'undefined') return;
-  try {
-    sessionStorage.removeItem(AUTH_STORAGE_KEY);
-  } catch (e) {
-    console.error('[AUTH] Failed to clear auth state:', e);
-  }
-}
-
 const DEFAULT_ROLE_INFO: CustomerRoleInfo = {
   slug: 'retail',
   name: 'Retail',
@@ -82,119 +60,140 @@ const DEFAULT_ROLE_INFO: CustomerRoleInfo = {
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [customer, setCustomer] = useState<Customer | null>(null);
-  const [role, setRole] = useState<string>('retail');
-  const [roleInfo, setRoleInfo] = useState<CustomerRoleInfo | null>(null);
-  const [loading, setLoading] = useState(true); // Start with loading true
-  const [error, setError] = useState<Error | null>(null);
-  const [hydrated, setHydrated] = useState(false);
+  const queryClient = useQueryClient();
+  
+  // Get state and actions from Zustand stores
+  const {
+    customer,
+    role,
+    roleInfo,
+    isInitialized,
+    setCustomer,
+    setRole,
+    setInitialized,
+    logout: storeLogout,
+  } = useAuthStore();
+  
+  // Get reset functions from other stores
+  const resetPaymentStore = usePaymentStore((state) => state.reset);
+  const resetCheckoutStore = useCheckoutStore((state) => state.resetCheckout);
+  const clearCart = useCartStore((state) => state.clearCart);
+  const switchWishlistToAuthenticated = useWishlistStore((state) => state.switchToAuthenticated);
+  const switchWishlistToGuest = useWishlistStore((state) => state.switchToGuest);
 
-  // Hydrate from sessionStorage on client mount
-  useEffect(() => {
-    const stored = getStoredAuthState();
-    if (stored?.customer) {
-      setCustomer(stored.customer);
-      setRole(stored.role);
-      setRoleInfo(stored.roleInfo);
-      setLoading(false);
-    }
-    setHydrated(true);
-  }, []);
+  // Fetch customer data with React Query
+  const customerQuery = useQuery({
+    queryKey: AUTH_QUERY_KEYS.customer,
+    queryFn: async () => {
+      if (!api.isAuthenticated()) {
+        // Fetch guest role
+        try {
+          const roleData = await api.getCustomerRole();
+          setRole(roleData.role, roleData.role_info);
+        } catch {
+          setRole('retail', DEFAULT_ROLE_INFO);
+        }
+        setInitialized(true);
+        return null;
+      }
 
-  // Save to sessionStorage whenever auth state changes (only after hydration)
-  useEffect(() => {
-    if (!hydrated) return;
-    if (customer || role !== 'retail' || roleInfo) {
-      saveAuthState({ customer, role, roleInfo });
-    }
-  }, [customer, role, roleInfo, hydrated]);
-
-  const refreshCustomer = useCallback(async () => {
-    try {
-      setLoading(true);
       const currentCustomer = await api.getCurrentCustomer();
       setCustomer(currentCustomer);
-      
+
+      // Fetch role
       if (currentCustomer) {
         const roleData = await api.getCustomerRole();
-        setRole(roleData.role);
-        setRoleInfo(roleData.role_info);
+        setRole(roleData.role, roleData.role_info);
       }
-      
-      setError(null);
-    } catch (err) {
-      console.error('[AUTH] Failed to refresh customer:', err);
-      setError(err as Error);
-      setCustomer(null);
-      setRole('retail');
-      setRoleInfo(null);
-      clearAuthState();
-    } finally {
-      setLoading(false);
-    }
-  }, []);
 
-  // After hydration, check if we need to fetch or clear
-  useEffect(() => {
-    if (!hydrated) return;
-    
-    const hasToken = api.isAuthenticated();
-    const hasCachedCustomer = !!customer;
-    
-    if (hasToken && !hasCachedCustomer) {
-      // Have token but no cached data - need to fetch
-      refreshCustomer();
-    } else if (!hasToken && hasCachedCustomer) {
-      // Token was removed (logged out elsewhere) - clear state
-      setCustomer(null);
-      setRole('retail');
-      setRoleInfo(DEFAULT_ROLE_INFO);
-      clearAuthState();
-      setLoading(false);
-    } else {
-      // Either: have both token + cache, or have neither
-      setLoading(false);
-    }
-  }, [hydrated]); // Run after hydration
-
-  const login = useCallback(
-    async (credentials: { email: string; password: string }) => {
-      try {
-        const response = await api.login(credentials);
-        setCustomer(response.customer);
-        
-        const roleData = await api.getCustomerRole();
-        setRole(roleData.role);
-        setRoleInfo(roleData.role_info);
-        
-        // Save to sessionStorage
-        saveAuthState({
-          customer: response.customer,
-          role: roleData.role,
-          roleInfo: roleData.role_info,
-        });
-        
-        return response.customer;
-      } catch (err) {
-        setError(err as Error);
-        throw err;
-      }
+      setInitialized(true);
+      return currentCustomer;
     },
-    []
-  );
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
 
-  const logout = useCallback(async () => {
-    try {
+  // Login mutation
+  const loginMutation = useMutation({
+    mutationFn: async (credentials: { email: string; password: string }) => {
+      const response = await api.login(credentials);
+      return response.customer;
+    },
+    onSuccess: async (loginCustomer) => {
+      setCustomer(loginCustomer);
+
+      // Fetch role after login
+      const roleData = await api.getCustomerRole();
+      setRole(roleData.role, roleData.role_info);
+
+      // IMPORTANT: Switch wishlist to authenticated mode (clear guest wishlist)
+      switchWishlistToAuthenticated();
+
+      // IMPORTANT: Clear guest cart and create new authenticated cart
+      // This ensures the new cart is created with the authenticated session
+      // so orders will be associated with the customer, not as guest
+      clearCart();
+      clearStoredCartId();
+      
+      // Also clear checkout form data from previous session
+      resetCheckoutStore();
+      clearPersistedCheckout();
+
+      // Invalidate and refetch - cart query will create new cart with auth session
+      queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEYS.customer });
+      queryClient.invalidateQueries({ queryKey: ['cart'], exact: false });
+    },
+  });
+
+  // Logout mutation
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
       await api.logout();
-      setCustomer(null);
-      setRole('retail');
-      setRoleInfo(DEFAULT_ROLE_INFO);
-      clearAuthState();
-    } catch (err) {
-      setError(err as Error);
-      throw err;
-    }
-  }, []);
+    },
+    onSuccess: () => {
+      // Clear auth state
+      storeLogout();
+      
+      // IMPORTANT: Switch wishlist back to guest mode
+      switchWishlistToGuest();
+      
+      // IMPORTANT: Clear payment store (guest address, saved cards selection, etc.)
+      resetPaymentStore();
+      
+      // IMPORTANT: Clear checkout store (shipping address, guest address form, etc.)
+      resetCheckoutStore();
+      clearPersistedCheckout(); // Also clear localStorage
+      
+      // IMPORTANT: Clear cart state and localStorage cart ID
+      // This ensures a new cart is created for the next user/guest
+      clearCart();
+      clearStoredCartId();
+      
+      // Clear all React Query cache
+      queryClient.clear();
+    },
+  });
+
+  // Login function (for backward compatibility)
+  const login = async (credentials: { email: string; password: string }): Promise<Customer> => {
+    const result = await loginMutation.mutateAsync(credentials);
+    return result;
+  };
+
+  // Logout function (for backward compatibility)
+  const logout = async (): Promise<void> => {
+    await logoutMutation.mutateAsync();
+  };
+
+  // Refresh customer function (for backward compatibility)
+  const refreshCustomer = async (): Promise<void> => {
+    await queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEYS.customer });
+    await customerQuery.refetch();
+  };
+
+  // Determine loading state
+  const loading = !isInitialized || customerQuery.isLoading;
 
   return (
     <AuthContext.Provider
@@ -203,7 +202,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role,
         roleInfo,
         loading,
-        error,
+        error: customerQuery.error as Error | null,
         isAuthenticated: !!customer,
         isVIP: role === 'vip',
         isBulk: role === 'bulk',

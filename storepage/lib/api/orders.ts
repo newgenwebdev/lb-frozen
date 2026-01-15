@@ -19,7 +19,7 @@ export async function getOrders(params?: {
   if (params?.offset) queryParams.append('offset', params.offset.toString());
 
   const queryString = queryParams.toString();
-  const endpoint = `/store/customers/me/orders${queryString ? `?${queryString}` : ''}`;
+  const endpoint = `/store/customer-orders${queryString ? `?${queryString}` : ''}`;
 
   return apiClient.get(endpoint);
 }
@@ -28,7 +28,7 @@ export async function getOrders(params?: {
  * Get order by ID
  */
 export async function getOrder(orderId: string): Promise<{ order: Order }> {
-  return apiClient.get(`/store/customer-orders/${orderId}`);
+  return apiClient.get(`/store/customer-orders/${orderId}?fields=*items,*items.variant,*items.variant.product`);
 }
 
 /**

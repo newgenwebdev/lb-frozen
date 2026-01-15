@@ -3,13 +3,27 @@
 import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useCart } from "@/lib/hooks";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { useCartContext } from "@/lib/CartContext";
+import { useToast } from "@/components/ui/toast";
+
+// Type for item to remove
+interface RemoveItemData {
+  id: string;
+  title: string;
+  price: number;
+  image?: string;
+}
 
 export default function CartPage() {
   const router = useRouter();
-  const { cart, loading, updateItem, removeItem } = useCart();
+  const { cart, loading, updateItem, removeItem } = useCartContext();
+  const { showToast } = useToast();
   const [isShippingOpen, setIsShippingOpen] = useState(false);
+  const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
+  const [itemToRemove, setItemToRemove] = useState<RemoveItemData | null>(null);
+  const [clearAllDialogOpen, setClearAllDialogOpen] = useState(false);
+  const [clearingAll, setClearingAll] = useState(false);
 
   const handleQuantityChange = async (itemId: string, newQuantity: number) => {
     if (newQuantity < 1) return;
@@ -17,18 +31,44 @@ export default function CartPage() {
       await updateItem(itemId, newQuantity);
     } catch (error) {
       console.error("Failed to update quantity:", error);
-      alert("Failed to update quantity");
+      showToast("Failed to update quantity", "error");
     }
   };
 
   const handleRemoveItem = async (itemId: string) => {
     try {
       await removeItem(itemId);
+      setRemoveDialogOpen(false);
+      setItemToRemove(null);
     } catch (error) {
       console.error("Failed to remove item:", error);
-      alert("Failed to remove item");
+      showToast("Failed to remove item", "error");
     }
   };
+
+  const openRemoveDialog = (item: RemoveItemData) => {
+    setItemToRemove(item);
+    setRemoveDialogOpen(true);
+  };
+
+  const handleClearAll = async () => {
+    setClearingAll(true);
+    try {
+      // Remove items one by one
+      for (const item of cartItems) {
+        await removeItem(item.id);
+      }
+      setClearAllDialogOpen(false);
+      showToast("Cart cleared successfully", "success");
+    } catch (error) {
+      console.error("Failed to clear cart:", error);
+      showToast("Failed to clear cart", "error");
+    } finally {
+      setClearingAll(false);
+    }
+  };
+
+  const cartItems = cart?.items || [];
 
   if (loading) {
     return (
@@ -41,7 +81,6 @@ export default function CartPage() {
     );
   }
 
-  const cartItems = cart?.items || [];
   const subtotal = cart?.subtotal || 0;
   const total = cart?.total || 0;
   const shipping = 0; // Free shipping
@@ -61,28 +100,124 @@ export default function CartPage() {
           <h1 className="text-xl lg:text-3xl font-bold text-gray-900">
             Your cart ({cartItems.length} items)
           </h1>
-          <button 
-            className="text-sm lg:text-base text-red-600 font-medium hover:text-red-700 transition-colors"
-            onClick={() => {
-              if (confirm("Are you sure you want to clear your cart?")) {
-                cartItems.forEach(item => handleRemoveItem(item.id));
-              }
-            }}
-          >
-            Clear all
-          </button>
+          {cartItems.length > 0 && (
+            <button 
+              className="text-sm lg:text-base text-red-600 font-medium hover:text-red-700 transition-colors"
+              onClick={() => setClearAllDialogOpen(true)}
+            >
+              Clear all
+            </button>
+          )}
           <div className=""></div>
         </div>
         
         {cartItems.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-600 mb-4">Your cart is empty</p>
-            <button
-              onClick={() => router.push("/")}
-              className="bg-[#23429B] text-white px-6 py-3 rounded-lg hover:bg-[#1a3278] transition-colors"
-            >
-              Continue Shopping
-            </button>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+            {/* Left Column - Empty Cart Illustration */}
+            <div className="lg:col-span-2 lg:border lg:border-gray-200 flex flex-col items-center justify-center py-16 lg:py-24">
+              <Image
+                src="/illustration-cart-empty.png"
+                alt="Empty cart"
+                width={200}
+                height={200}
+                className="mb-6"
+              />
+              <h2 className="text-xl lg:text-2xl font-bold text-gray-900 mb-2">No products yet</h2>
+              <p className="text-gray-500 mb-6">Added products will appear here</p>
+              <button
+                onClick={() => router.push("/")}
+                className="border border-gray-300 text-gray-700 px-6 py-2.5 rounded-full hover:bg-gray-50 transition-colors font-medium"
+              >
+                Explore products
+              </button>
+            </div>
+
+            {/* Right Column - Order Summary */}
+            <div className="lg:col-span-1">
+              <div className="bg-gray-50 rounded-2xl p-4 lg:p-6 sticky top-4">
+                {/* Shipping Address */}
+                <div className="flex items-start gap-3 pb-4 border-b border-gray-200">
+                  <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center border border-gray-200">
+                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900">Shipping to</p>
+                    <p className="text-sm text-gray-500">Select delivery address</p>
+                  </div>
+                  <button className="text-gray-400">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Order Summary */}
+                <div className="pt-4">
+                  <h3 className="font-semibold text-gray-900 mb-4">Order summary</h3>
+                  
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Subtotal (0 items)</span>
+                      <span className="font-medium">RM0.00</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500 flex items-center gap-1">
+                        Savings
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <circle cx="12" cy="12" r="10" strokeWidth={1.5} />
+                          <path strokeLinecap="round" strokeWidth={1.5} d="M12 16v-4m0-4h.01" />
+                        </svg>
+                      </span>
+                      <span className="font-medium text-green-600">-RM0.00</span>
+                    </div>
+                    <div className="flex justify-between border-t border-gray-200 pt-3">
+                      <span className="text-gray-500">Shipping</span>
+                      <span className="font-medium text-green-600">RM0</span>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-200">
+                    <span className="font-semibold text-gray-900">Estimated total</span>
+                    <span className="text-xl font-bold text-[#23429B]">RM0.00</span>
+                  </div>
+
+                  <button
+                    disabled
+                    className="w-full mt-4 py-3.5 rounded-full font-medium text-white bg-linear-to-r from-[#23429B] to-[#C52129] opacity-50 cursor-not-allowed"
+                  >
+                    Proceed to Checkout
+                  </button>
+
+                  <p className="text-xs text-gray-500 text-center mt-3 flex items-center justify-center gap-1">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="10" strokeWidth={1.5} />
+                      <path strokeLinecap="round" strokeWidth={1.5} d="M12 16v-4m0-4h.01" />
+                    </svg>
+                    You can apply promo code and coin on the next step
+                  </p>
+                </div>
+
+                {/* Premium Member Banner */}
+                <div className="mt-6 bg-linear-to-r from-[#8B1538] to-[#C52129] rounded-2xl p-4 text-white relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-24 h-24 opacity-20">
+                    <svg viewBox="0 0 100 100" fill="currentColor">
+                      <circle cx="80" cy="20" r="60" />
+                    </svg>
+                  </div>
+                  <span className="inline-block bg-yellow-400 text-yellow-900 text-xs font-semibold px-3 py-1 rounded-full mb-2">
+                    Premium member
+                  </span>
+                  <h4 className="font-semibold mb-1">Save more with LB Frozen Premium</h4>
+                  <p className="text-sm text-white/80 mb-3">More discount, more benefits, just for you</p>
+                  <button className="bg-white text-gray-900 px-4 py-2 rounded-full text-sm font-medium hover:bg-gray-100 transition-colors">
+                    Learn more
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
@@ -146,12 +281,28 @@ export default function CartPage() {
 
                           {/* Quantity Controls */}
                           <div className="flex items-center gap-2 lg:gap-4">
-                            <button 
-                              onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
-                              className="w-8 h-8 lg:w-10 lg:h-10 bg-gray-100 rounded-lg lg:rounded-xl flex items-center justify-center hover:bg-gray-200 transition-colors"
-                            >
-                              <span className="text-lg lg:text-xl text-gray-600">−</span>
-                            </button>
+                            {item.quantity > 1 ? (
+                              <button 
+                                onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
+                                className="w-8 h-8 lg:w-10 lg:h-10 bg-gray-100 rounded-lg lg:rounded-xl flex items-center justify-center hover:bg-gray-200 transition-colors"
+                              >
+                                <span className="text-lg lg:text-xl text-gray-600">−</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => openRemoveDialog({
+                                  id: item.id,
+                                  title: item.title,
+                                  price: unitPrice,
+                                  image: product?.thumbnail,
+                                })}
+                                className="w-8 h-8 lg:w-10 lg:h-10 bg-red-50 rounded-lg lg:rounded-xl flex items-center justify-center hover:bg-red-100 transition-colors"
+                              >
+                                <svg className="w-4 h-4 lg:w-5 lg:h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            )}
                             <span className="text-sm lg:text-lg font-medium w-6 lg:w-8 text-center">
                               {item.quantity}
                             </span>
@@ -160,12 +311,6 @@ export default function CartPage() {
                               className="w-8 h-8 lg:w-10 lg:h-10 bg-gray-100 rounded-lg lg:rounded-xl flex items-center justify-center hover:bg-gray-200 transition-colors"
                             >
                               <span className="text-lg lg:text-xl text-gray-600">+</span>
-                            </button>
-                            <button
-                              onClick={() => handleRemoveItem(item.id)}
-                              className="ml-2 text-red-600 hover:text-red-700 text-sm"
-                            >
-                              Remove
                             </button>
                           </div>
                         </div>
@@ -330,6 +475,133 @@ export default function CartPage() {
           </div>
         )}
       </div>
+
+      {/* Remove Item Dialog */}
+      <Dialog open={removeDialogOpen} onOpenChange={setRemoveDialogOpen}>
+        <DialogContent className="sm:max-w-md p-6 rounded-3xl">
+          <DialogTitle className="sr-only">Remove item from cart</DialogTitle>
+          <div className="flex flex-col items-center text-center">
+            {/* Close Button */}
+            <button
+              onClick={() => setRemoveDialogOpen(false)}
+              className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* Illustration */}
+            <div className="mb-6">
+              <Image
+                src="/illustration-remove-cart.png"
+                alt="Remove from cart"
+                width={200}
+                height={160}
+                className="mx-auto"
+              />
+            </div>
+
+            {/* Title */}
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Remove item from cart?</h2>
+            <p className="text-gray-500 mb-6">
+              Remove this item? You can add it again later if you change your mind.
+            </p>
+
+            {/* Product Info */}
+            {itemToRemove && (
+              <div className="w-full bg-gray-50 rounded-2xl p-4 flex items-center gap-4 mb-6">
+                <div className="w-16 h-16 bg-white rounded-xl flex items-center justify-center overflow-hidden shrink-0">
+                  {itemToRemove.image ? (
+                    <Image
+                      src={itemToRemove.image}
+                      alt={itemToRemove.title}
+                      width={60}
+                      height={60}
+                      className="object-contain"
+                    />
+                  ) : (
+                    <div className="text-gray-400 text-xs">No Image</div>
+                  )}
+                </div>
+                <div className="text-left">
+                  <p className="font-medium text-gray-900 line-clamp-1">{itemToRemove.title}</p>
+                  <p className="text-lg font-bold text-gray-900">RM{(itemToRemove.price / 100).toFixed(2)}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="w-full space-y-3">
+              <button
+                onClick={() => itemToRemove && handleRemoveItem(itemToRemove.id)}
+                className="w-full py-3.5 rounded-full font-medium text-white bg-[#C52129] hover:bg-[#a51b22] transition-colors"
+              >
+                Remove
+              </button>
+              <button
+                onClick={() => setRemoveDialogOpen(false)}
+                className="w-full py-3.5 rounded-full font-medium text-gray-700 border border-gray-300 hover:bg-gray-50 transition-colors"
+              >
+                No, keep this
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Clear All Confirmation Dialog */}
+      <Dialog open={clearAllDialogOpen} onOpenChange={setClearAllDialogOpen}>
+        <DialogContent className="sm:max-w-md p-0 rounded-2xl overflow-hidden">
+          <DialogTitle className="sr-only">Clear cart confirmation</DialogTitle>
+          <button
+            onClick={() => setClearAllDialogOpen(false)}
+            className="absolute right-4 top-4 text-gray-400 hover:text-gray-600 z-10"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+
+          <div className="p-6 text-center">
+            {/* Warning Icon */}
+            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </div>
+
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Clear your cart?</h2>
+            <p className="text-gray-500 mb-6">
+              Are you sure you want to remove all {cartItems.length} items from your cart? This action cannot be undone.
+            </p>
+
+            <div className="space-y-3">
+              <button
+                onClick={handleClearAll}
+                disabled={clearingAll}
+                className="w-full py-3.5 rounded-full font-medium text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {clearingAll ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Clearing...
+                  </>
+                ) : (
+                  "Yes, clear all"
+                )}
+              </button>
+              <button
+                onClick={() => setClearAllDialogOpen(false)}
+                disabled={clearingAll}
+                className="w-full py-3.5 rounded-full font-medium text-gray-700 border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

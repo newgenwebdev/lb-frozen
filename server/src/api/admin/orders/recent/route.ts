@@ -175,7 +175,7 @@ export const GET = withAdminAuth(async (req, res) => {
       customer_name: formatCustomerName(customer),
       customer_email: order.email || customer?.email || "",
       total: orderTotal,
-      currency: order.currency_code || "sgd",
+      currency: order.currency_code || "myr",
       items_count: itemsCount,
       created_at: order.created_at,
       status: displayStatus

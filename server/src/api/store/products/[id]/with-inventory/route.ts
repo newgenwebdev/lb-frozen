@@ -1,5 +1,7 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
+import { REVIEW_MODULE } from "../../../../../modules/review"
+import type ReviewModuleService from "../../../../../modules/review/services/review"
 
 /**
  * GET /store/products/:id/with-inventory
@@ -149,7 +151,76 @@ export const GET = async (
   }
 
   // ========================================
-  // 3. Format response
+  // 3. Get review stats
+  // ========================================
+  let reviewStats = {
+    average_rating: 0,
+    total_reviews: 0,
+    rating_breakdown: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+  }
+
+  try {
+    const reviewService = req.scope.resolve<ReviewModuleService>(REVIEW_MODULE)
+    reviewStats = await reviewService.getProductRatingStats(id)
+  } catch (err) {
+    console.warn(`[PRODUCT-WITH-INVENTORY] Failed to fetch review stats: ${err}`)
+  }
+
+  // ========================================
+  // 4. Calculate sold count from completed orders
+  // ========================================
+  let soldCount = 0
+  let recentSoldCount = 0 // Sold in last 7 days
+  try {
+    const orderModule = req.scope.resolve(Modules.ORDER)
+    
+    // Get all variant IDs for this product
+    const variantIds = product.variants?.map((v: any) => v.id) || []
+    
+    if (variantIds.length > 0) {
+      // Get all orders with items (similar approach to analytics endpoint)
+      const allOrders = await orderModule.listOrders(
+        {},
+        { relations: ["items"], take: 1000 }
+      )
+      
+      // Calculate date 7 days ago
+      const sevenDaysAgo = new Date()
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+      
+      // Process orders - skip cancelled orders
+      for (const order of allOrders) {
+        // Skip cancelled orders - they don't count towards sales
+        if (order.status === "canceled") {
+          continue
+        }
+        
+        // Check if order is within last 7 days
+        const orderDate = new Date(order.created_at)
+        const isRecent = orderDate >= sevenDaysAgo
+        
+        // Process items in this order
+        if (order.items) {
+          for (const item of order.items as any[]) {
+            // Check if this item is for one of our product's variants
+            if (item.variant_id && variantIds.includes(item.variant_id)) {
+              const qty = Number(item.quantity) || 0
+              soldCount += qty
+              
+              if (isRecent) {
+                recentSoldCount += qty
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error(`[PRODUCT-WITH-INVENTORY] Failed to calculate sold count:`, err)
+  }
+
+  // ========================================
+  // 5. Format response
   // ========================================
   const formattedProduct = {
     id: product.id,
@@ -191,6 +262,12 @@ export const GET = async (
     status: product.status,
     created_at: product.created_at,
     updated_at: product.updated_at,
+    // Review stats from review module
+    review_stats: reviewStats,
+    // Sold count from orders
+    sold_count: soldCount,
+    // Recent sold count (last 7 days) for trending
+    recent_sold_count: recentSoldCount,
   }
 
   res.json({

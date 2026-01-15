@@ -11,7 +11,7 @@ const Coupon = model.define("coupon", {
   name: model.text(), // Display name for the coupon
   type: model.enum(["percentage", "fixed"]).default("percentage"),
   value: model.number().default(0), // Percentage value (0-100) or fixed amount in cents
-  currency_code: model.text().default("SGD"), // For fixed amount coupons
+  currency_code: model.text().default("MYR"), // For fixed amount coupons
   status: model.enum(["active", "non-active"]).default("active"),
   starts_at: model.dateTime().nullable(),
   ends_at: model.dateTime().nullable(),

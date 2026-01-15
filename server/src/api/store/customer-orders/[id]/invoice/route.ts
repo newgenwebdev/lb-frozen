@@ -111,7 +111,7 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse): Promise<void
 
   // Calculate totals
   const items = order.items || []
-  const currencyCode = order.currency_code || "sgd"
+  const currencyCode = order.currency_code || "myr"
 
   const subtotal = items.reduce((sum, item) =>
     sum + (item.unit_price || 0) * (item.quantity || 0), 0)
@@ -164,7 +164,7 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse): Promise<void
   // Company info (right side)
   doc.fontSize(10).font("Helvetica")
   doc.text("LB Frozen", 400, 50, { align: "right" })
-  doc.text("Singapore", 400, 65, { align: "right" })
+  doc.text("Malaysia", 400, 65, { align: "right" })
 
   // Invoice details
   doc.fontSize(10).font("Helvetica")

@@ -419,25 +419,17 @@ export async function getVariantInventoryQuantity(
       return 0
     }
 
-    // If locationId is specified, find that specific location
-    // Use available_quantity (stocked - reserved) to show actual available stock
+    // For admin panel, return stocked_quantity (total stock) not available_quantity
+    // Admin needs to see total inventory, not just what's available after reservations
     if (locationId) {
       const level = levels.find(l => l.location_id === locationId)
       if (!level) return 0
-      // Check for undefined explicitly since available_quantity can be 0
-      if (typeof level.available_quantity === 'number') {
-        return level.available_quantity
-      }
-      return Math.max(0, (level.stocked_quantity || 0) - (level.reserved_quantity || 0))
+      return level.stocked_quantity || 0
     }
 
-    // Otherwise return the first location's quantity
+    // Otherwise return the first location's stocked quantity
     const firstLevel = levels[0]
-    // Check for undefined explicitly since available_quantity can be 0
-    if (typeof firstLevel.available_quantity === 'number') {
-      return firstLevel.available_quantity
-    }
-    return Math.max(0, (firstLevel.stocked_quantity || 0) - (firstLevel.reserved_quantity || 0))
+    return firstLevel.stocked_quantity || 0
   } catch (error) {
     console.warn(`Could not get inventory quantity for variant ${variantId}:`, error)
     return 0

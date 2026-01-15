@@ -11,9 +11,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { useCategories } from "@/lib/hooks";
+import { useCategoriesQuery, useOrdersQuery } from "@/lib/queries";
 import { useAuthContext } from "@/lib/AuthContext";
+import { useCartContext } from "@/lib/CartContext";
+import { useWishlist } from "@/lib/WishlistContext";
 
 export default function ProtectedNavbar() {
   const router = useRouter();
@@ -21,26 +30,36 @@ export default function ProtectedNavbar() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isCategoriesOpen, setIsCategoriesOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
   const { customer, loading: authLoading, logout } = useAuthContext();
+  const { cartCount } = useCartContext();
+  const { wishlistCount } = useWishlist();
+  const { data: orders } = useOrdersQuery();
 
   const isLoggedIn = !!customer;
-  const wishlistCount = 4;
-  const cartCount = 2;
-  
+  // Calculate dynamic counts
+  const ordersCount = orders?.length || 0;
+
   // Get user info from customer data
   const userName = customer?.first_name || "User";
-  const userFullName = customer ? [customer.first_name, customer.last_name].filter(Boolean).join(" ") || "User" : "Guest";
+  const userFullName = customer
+    ? [customer.first_name, customer.last_name].filter(Boolean).join(" ") ||
+      "User"
+    : "Guest";
   const userEmail = customer?.email || "";
-  const userInitials = customer 
-    ? `${customer.first_name?.charAt(0) || ''}${customer.last_name?.charAt(0) || ''}`.toUpperCase() || 'U'
-    : 'U';
+  const userInitials = customer
+    ? `${customer.first_name?.charAt(0) || ""}${
+        customer.last_name?.charAt(0) || ""
+      }`.toUpperCase() || "U"
+    : "U";
   const profileImage = (customer?.metadata as any)?.profile_image || null;
-  const ordersCount = 4;
 
   const isSearchPage = pathname === "/search";
 
-  const { categories, loading: categoriesLoading } = useCategories();
+  const { data: categoriesData, isLoading: categoriesLoading } =
+    useCategoriesQuery();
+  const categories = categoriesData || [];
 
   const seafoodTrends = [
     { name: "Salmon Fillets", image: "/salmon-fillets.png" },
@@ -68,22 +87,32 @@ export default function ProtectedNavbar() {
   return (
     <>
       {/* Top Bar / Breadcrumbs */}
-      <div className="bg-white border-b border-gray-200 px-4 lg:px-6 relative py-2 z-100">
+      <div className="bg-white border-b border-gray-200 px-4 lg:px-6 relative py-2 z-50">
         <div className="flex items-center justify-between text-xs lg:text-sm">
           <div className="flex items-center gap-3 lg:gap-6 text-gray-600">
             <>
-              <a href="#" className="hover:text-gray-900 underline hidden lg:inline">
+              <a
+                href="#"
+                className="hover:text-gray-900 underline hidden lg:inline"
+              >
                 Free shipping
               </a>
               <span className="hidden lg:inline">•</span>
-              <a href="#" className="hover:text-gray-900 underline hidden lg:inline">
+              <a
+                href="#"
+                className="hover:text-gray-900 underline hidden lg:inline"
+              >
                 Free returns
               </a>
               <span className="lg:hidden">Free shipping & returns</span>
             </>
           </div>
           <div className="flex items-center gap-2">
-            <svg className="w-3 h-3 lg:w-4 lg:h-4" fill="currentColor" viewBox="0 0 20 20">
+            <svg
+              className="w-3 h-3 lg:w-4 lg:h-4"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
               <path
                 fillRule="evenodd"
                 d="M10 18a8 8 0 100-16 8 8 0 000 16zM4.332 8.027a6.012 6.012 0 011.912-2.706C6.512 5.73 6.974 6 7.5 6A1.5 1.5 0 019 7.5V8a2 2 0 004 0 2 2 0 011.523-1.943A5.977 5.977 0 0116 10c0 .34-.028.675-.083 1H15a2 2 0 00-2 2v2.197A5.973 5.973 0 0110 16v-2a2 2 0 00-2-2 2 2 0 01-2-2 2 2 0 00-1.668-1.973z"
@@ -95,7 +124,7 @@ export default function ProtectedNavbar() {
         </div>
       </div>
 
-      <nav className="bg-white border-b border-gray-200 px-4 lg:px-6 py-3 relative z-100">
+      <nav className="bg-white border-b border-gray-200 px-4 lg:px-6 py-3 relative z-50">
         <div className="flex items-center justify-between gap-4">
           {/* Mobile Menu Button */}
           <button
@@ -179,9 +208,11 @@ export default function ProtectedNavbar() {
               </svg>
             </button>
 
-            {/* Wishlist - Only show when logged in */}
-            {isLoggedIn && (
-            <button className="relative text-gray-600 hover:text-gray-900 transition-colors hidden lg:block">
+            {/* Wishlist */}
+            <Link
+              href="/wishlist"
+              className="relative text-gray-600 hover:text-gray-900 transition-colors hidden lg:block"
+            >
               <svg
                 className="w-6 h-6"
                 fill="none"
@@ -200,11 +231,9 @@ export default function ProtectedNavbar() {
                   {wishlistCount}
                 </span>
               )}
-            </button>
-            )}
+            </Link>
 
-            {/* Cart - Only show when logged in */}
-            {isLoggedIn && (
+            {/* Cart */}
             <Link
               href="/cart"
               className="relative text-gray-600 hover:text-gray-900 transition-colors"
@@ -228,7 +257,6 @@ export default function ProtectedNavbar() {
                 </span>
               )}
             </Link>
-            )}
 
             {/* User Profile / Login */}
             {isLoggedIn ? (
@@ -245,7 +273,9 @@ export default function ProtectedNavbar() {
                       />
                     ) : (
                       <div className="w-7 h-7 lg:w-9 lg:h-9 bg-orange-300 rounded-full flex items-center justify-center">
-                        <span className="text-white font-semibold text-xs lg:text-sm">{userInitials}</span>
+                        <span className="text-white font-semibold text-xs lg:text-sm">
+                          {userInitials}
+                        </span>
                       </div>
                     )}
                     <span className="text-xs lg:text-sm font-medium text-gray-800 hidden md:inline">
@@ -289,7 +319,9 @@ export default function ProtectedNavbar() {
                         <span className="text-sm font-semibold text-gray-900">
                           {userFullName}
                         </span>
-                        <span className="text-xs text-gray-500">{userEmail}</span>
+                        <span className="text-xs text-gray-500">
+                          {userEmail}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -334,7 +366,9 @@ export default function ProtectedNavbar() {
                         {ordersCount}
                       </Badge>
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => router.push("/payment-method")}>
+                    <DropdownMenuItem
+                      onClick={() => router.push("/payment-method")}
+                    >
                       <svg
                         className="w-4 h-4 mr-2 shrink-0"
                         fill="none"
@@ -350,7 +384,9 @@ export default function ProtectedNavbar() {
                       </svg>
                       <span>Payment method</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => router.push("/my-address")}>
+                    <DropdownMenuItem
+                      onClick={() => router.push("/my-address")}
+                    >
                       <svg
                         className="w-4 h-4 mr-2 shrink-0"
                         fill="none"
@@ -372,7 +408,9 @@ export default function ProtectedNavbar() {
                       </svg>
                       <span>My address</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => router.push("/help-support")}>
+                    <DropdownMenuItem
+                      onClick={() => router.push("/help-support")}
+                    >
                       <svg
                         className="w-4 h-4 mr-2 shrink-0"
                         fill="none"
@@ -391,10 +429,7 @@ export default function ProtectedNavbar() {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       className="text-red-600 focus:text-red-600"
-                      onClick={async () => {
-                        await logout();
-                        router.push("/");
-                      }}
+                      onClick={() => setShowLogoutDialog(true)}
                     >
                       <svg
                         className="w-4 h-4 mr-2"
@@ -420,7 +455,10 @@ export default function ProtectedNavbar() {
             ) : (
               <Link
                 href="/login"
-                className="flex items-center gap-1.5 lg:gap-2.5 bg-[#23429B] hover:bg-[#1a3278] text-white rounded-full px-3 lg:px-4 py-1.5 lg:py-2 transition-colors"
+                className="flex items-center gap-1.5 lg:gap-2.5 text-white rounded-full px-3 lg:px-4 py-1.5 lg:py-2 transition-colors"
+                style={{
+                  background: "linear-gradient(to right, #23429B, #C52129)",
+                }}
               >
                 <svg
                   className="w-4 h-4 lg:w-5 lg:h-5"
@@ -444,13 +482,7 @@ export default function ProtectedNavbar() {
 
       {/* Navigation Menu */}
       <div className="hidden md:flex justify-center bg-white">
-        <div className="inline-flex items-center gap-4 lg:gap-8 px-4 lg:px-8 py-3 lg:py-4 bg-white rounded-b-2xl shadow-sm relative z-100">
-          <Link
-            href="/products"
-            className="text-xs lg:text-sm font-medium text-gray-700 hover:text-gray-900"
-          >
-            ALL PRODUCTS
-          </Link>
+        <div className="inline-flex items-center gap-4 lg:gap-8 px-4 lg:px-8 py-3 lg:py-4 bg-white rounded-b-2xl shadow-sm relative z-50">
           <button
             onClick={() => setIsCategoriesOpen(!isCategoriesOpen)}
             className="flex items-center gap-2 text-xs lg:text-sm font-medium text-gray-700 hover:text-gray-900 hover:cursor-pointer"
@@ -472,30 +504,57 @@ export default function ProtectedNavbar() {
               />
             </svg>
           </button>
-          <a
-            href="#"
-            className="text-xs lg:text-sm font-medium text-gray-700 hover:text-gray-900"
+          <button
+            onClick={() => {
+              if (pathname === "/") {
+                document
+                  .getElementById("flash-sale")
+                  ?.scrollIntoView({ behavior: "smooth" });
+              } else {
+                router.push("/#flash-sale");
+              }
+            }}
+            className="text-xs lg:text-sm font-medium text-gray-700 hover:text-gray-900 cursor-pointer"
           >
             FLASH SALE
-          </a>
-          <a
-            href="#"
-            className="text-xs lg:text-sm font-medium text-gray-700 hover:text-gray-900"
+          </button>
+          <button
+            onClick={() => {
+              if (pathname === "/") {
+                document
+                  .getElementById("trending")
+                  ?.scrollIntoView({ behavior: "smooth" });
+              } else {
+                router.push("/#trending");
+              }
+            }}
+            className="text-xs lg:text-sm font-medium text-gray-700 hover:text-gray-900 cursor-pointer"
           >
             TOP SALES
-          </a>
-          <a
-            href="#"
-            className="text-xs lg:text-sm font-medium text-gray-700 hover:text-gray-900"
+          </button>
+          <button
+            onClick={() => {
+              if (pathname === "/") {
+                document
+                  .getElementById("contact-us")
+                  ?.scrollIntoView({ behavior: "smooth" });
+              } else {
+                router.push("/#contact-us");
+              }
+            }}
+            className="text-xs lg:text-sm font-medium text-gray-700 hover:text-gray-900 cursor-pointer"
           >
             CONTACT US
-          </a>
+          </button>
         </div>
       </div>
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 bg-black/50 z-200" onClick={() => setIsMobileMenuOpen(false)}>
+        <div
+          className="md:hidden fixed inset-0 bg-black/50 z-60"
+          onClick={() => setIsMobileMenuOpen(false)}
+        >
           <div
             className="absolute left-0 top-0 bottom-0 w-64 bg-white shadow-lg"
             onClick={(e) => e.stopPropagation()}
@@ -507,8 +566,18 @@ export default function ProtectedNavbar() {
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="text-gray-600 hover:text-gray-900"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </button>
               </div>
@@ -530,15 +599,51 @@ export default function ProtectedNavbar() {
               >
                 CATEGORIES
               </button>
-              <a href="#" className="block px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg">
+              <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  if (pathname === "/") {
+                    document
+                      .getElementById("flash-sale")
+                      ?.scrollIntoView({ behavior: "smooth" });
+                  } else {
+                    router.push("/#flash-sale");
+                  }
+                }}
+                className="block w-full text-left px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg cursor-pointer"
+              >
                 FLASH SALE
-              </a>
-              <a href="#" className="block px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg">
+              </button>
+              <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  if (pathname === "/") {
+                    document
+                      .getElementById("trending")
+                      ?.scrollIntoView({ behavior: "smooth" });
+                  } else {
+                    router.push("/#trending");
+                  }
+                }}
+                className="block w-full text-left px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg cursor-pointer"
+              >
                 TOP SALES
-              </a>
-              <a href="#" className="block px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg">
+              </button>
+              <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  if (pathname === "/") {
+                    document
+                      .getElementById("contact-us")
+                      ?.scrollIntoView({ behavior: "smooth" });
+                  } else {
+                    router.push("/#contact-us");
+                  }
+                }}
+                className="block w-full text-left px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg cursor-pointer"
+              >
                 CONTACT US
-              </a>
+              </button>
             </div>
           </div>
         </div>
@@ -547,7 +652,7 @@ export default function ProtectedNavbar() {
       {/* Categories Modal Overlay */}
       {isCategoriesOpen && (
         <div
-          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-90"
+          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40"
           onClick={() => setIsCategoriesOpen(false)}
         />
       )}
@@ -555,7 +660,7 @@ export default function ProtectedNavbar() {
       {/* Categories Modal Content */}
       {isCategoriesOpen && (
         <div
-          className="fixed left-0 right-0 z-90
+          className="fixed left-0 right-0 z-40
            flex justify-center px-4 lg:px-6"
           style={{ top: "160px" }}
         >
@@ -563,13 +668,20 @@ export default function ProtectedNavbar() {
             className="bg-white rounded-2xl lg:rounded-3xl shadow-2xl overflow-hidden w-full max-w-6xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex flex-col lg:flex-row" style={{ height: "70vh", maxHeight: "600px" }}>
+            <div
+              className="flex flex-col lg:flex-row"
+              style={{ height: "70vh", maxHeight: "600px" }}
+            >
               {/* Left Sidebar - Categories */}
               <div className="w-full lg:w-64 bg-gray-50 border-b lg:border-b-0 lg:border-r border-gray-200 shrink-0 overflow-y-auto max-h-[30vh] lg:max-h-full">
                 {categoriesLoading ? (
-                  <div className="px-6 py-4 text-sm text-gray-500">Loading categories...</div>
+                  <div className="px-6 py-4 text-sm text-gray-500">
+                    Loading categories...
+                  </div>
                 ) : categories.length === 0 ? (
-                  <div className="px-6 py-4 text-sm text-gray-500">No categories available</div>
+                  <div className="px-6 py-4 text-sm text-gray-500">
+                    No categories available
+                  </div>
                 ) : (
                   categories.map((category) => (
                     <Link
@@ -609,6 +721,57 @@ export default function ProtectedNavbar() {
           </div>
         </div>
       )}
+
+      {/* Logout Confirmation Dialog */}
+      <Dialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+        <DialogContent className="sm:max-w-md p-0 overflow-hidden">
+          <div className="flex flex-col items-center p-6 pt-8">
+            {/* Illustration */}
+            <div className="mb-6">
+              <Image
+                src="/illustration-logout.png"
+                alt="Logout"
+                width={180}
+                height={180}
+                className="mx-auto"
+              />
+            </div>
+
+            {/* Title */}
+            <DialogHeader className="text-center">
+              <DialogTitle className="text-xl font-bold text-gray-900 mb-2">
+                Leaving so soon?
+              </DialogTitle>
+              <DialogDescription className="text-gray-500 text-sm">
+                You&apos;re about to log out. Don&apos;t worry, your items will stay in the cart for later!
+              </DialogDescription>
+            </DialogHeader>
+
+            {/* Buttons */}
+            <div className="w-full mt-6 space-y-3">
+              <button
+                onClick={async () => {
+                  setShowLogoutDialog(false);
+                  await logout();
+                  router.push("/");
+                }}
+                className="w-full py-3 text-white font-medium rounded-full transition-opacity hover:opacity-90"
+                style={{
+                  background: "linear-gradient(to right, #23429B, #C52129)",
+                }}
+              >
+                Yes, log-out
+              </button>
+              <button
+                onClick={() => setShowLogoutDialog(false)}
+                className="w-full py-3 text-gray-700 font-medium hover:text-gray-900 transition-colors"
+              >
+                No, keep here
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

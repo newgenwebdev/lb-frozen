@@ -35,7 +35,7 @@ export interface SearchResponse extends PaginatedResponse<Product> {
  * Get default region ID for price calculation
  */
 async function getDefaultRegionId(): Promise<string> {
-  const defaultRegion = process.env.NEXT_PUBLIC_DEFAULT_REGION || 'sg';
+  const defaultRegion = process.env.NEXT_PUBLIC_DEFAULT_REGION || 'my';
   
   try {
     const response = await apiClient.get<{ regions: any[] }>('/store/regions');

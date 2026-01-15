@@ -8,7 +8,7 @@ export const mockOrderStats: OrderStats = {
   unpaid_orders: 1916,
   pending_orders: 1299,
   refunded_orders: 256,
-  currency: "sgd",
+  currency: "myr",
   paid_percentage: 47.2, // (2423 / 5129) * 100
 };
 
@@ -32,7 +32,7 @@ export const mockOrders: Order[] = [
     tax_total: 0,
     discount_total: 0,
     total: 2879,
-    currency: "sgd",
+    currency: "myr",
     items_count: 3,
     items: [
       {
@@ -83,7 +83,7 @@ export const mockOrders: Order[] = [
     tax_total: 0,
     discount_total: 0,
     total: 2879,
-    currency: "sgd",
+    currency: "myr",
     items_count: 1,
     items: [
       {
@@ -122,7 +122,7 @@ export const mockOrders: Order[] = [
     tax_total: 0,
     discount_total: 0,
     total: 2879,
-    currency: "sgd",
+    currency: "myr",
     items_count: 1,
     items: [
       {
@@ -161,7 +161,7 @@ export const mockOrders: Order[] = [
     tax_total: 0,
     discount_total: 0,
     total: 4000,
-    currency: "sgd",
+    currency: "myr",
     items_count: 2,
     items: [
       {
@@ -200,7 +200,7 @@ export const mockOrders: Order[] = [
     tax_total: 0,
     discount_total: 500,
     total: 5300,
-    currency: "sgd",
+    currency: "myr",
     items_count: 4,
     items: [
       {
@@ -255,7 +255,7 @@ const additionalOrders: Order[] = [
     tax_total: 0,
     discount_total: 0,
     total: 1800,
-    currency: "sgd",
+    currency: "myr",
     items_count: 1,
     items: [
       {
@@ -294,7 +294,7 @@ const additionalOrders: Order[] = [
     tax_total: 0,
     discount_total: 0,
     total: 2500,
-    currency: "sgd",
+    currency: "myr",
     items_count: 2,
     items: [
       {
@@ -333,7 +333,7 @@ const additionalOrders: Order[] = [
     tax_total: 0,
     discount_total: 200,
     total: 4700,
-    currency: "sgd",
+    currency: "myr",
     items_count: 3,
     items: [
       {
@@ -372,7 +372,7 @@ const additionalOrders: Order[] = [
     tax_total: 0,
     discount_total: 0,
     total: 3800,
-    currency: "sgd",
+    currency: "myr",
     items_count: 2,
     items: [
       {
@@ -423,7 +423,7 @@ const additionalOrders: Order[] = [
     tax_total: 0,
     discount_total: 100,
     total: 2050,
-    currency: "sgd",
+    currency: "myr",
     items_count: 1,
     items: [
       {
@@ -462,7 +462,7 @@ const additionalOrders: Order[] = [
     tax_total: 0,
     discount_total: 500,
     total: 6200,
-    currency: "sgd",
+    currency: "myr",
     items_count: 5,
     items: [
       {
@@ -501,7 +501,7 @@ const additionalOrders: Order[] = [
     tax_total: 0,
     discount_total: 0,
     total: 2500,
-    currency: "sgd",
+    currency: "myr",
     items_count: 2,
     items: [
       {

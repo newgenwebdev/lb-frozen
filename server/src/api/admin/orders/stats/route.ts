@@ -194,7 +194,7 @@ export const GET = withAdminAuth(async (req, res) => {
     pending_orders: pendingOrders,
     refunded_orders: refundedOrders,
 
-    currency: "sgd",
+    currency: "myr",
     paid_percentage: paidPercentage,
   });
 });

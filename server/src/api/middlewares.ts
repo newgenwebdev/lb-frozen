@@ -1,6 +1,10 @@
 import { defineMiddlewares } from "@medusajs/framework/http"
+import { json } from "body-parser"
 import { rateLimitAuth, rateLimitRegistration } from "./middlewares/rate-limit"
 import { securityHeaders } from "./middlewares/security-headers"
+
+// Custom body parser with larger limit for uploads
+const largeBodyParser = json({ limit: "50mb" })
 
 /**
  * Global middleware configuration for Medusa API
@@ -14,6 +18,20 @@ import { securityHeaders } from "./middlewares/security-headers"
  */
 export default defineMiddlewares({
   routes: [
+    // ===== FILE UPLOAD ENDPOINTS =====
+    // Increase body size limit for file uploads (50MB)
+    // Must be defined BEFORE security headers to override default body parser
+    {
+      matcher: "/store/uploads",
+      method: ["POST"],
+      bodyParser: { sizeLimit: 1024 * 1024 * 50 }, // 50MB
+    },
+    {
+      matcher: "/admin/uploads",
+      method: ["POST"],
+      bodyParser: { sizeLimit: 1024 * 1024 * 50 }, // 50MB
+    },
+
     // ===== GLOBAL SECURITY HEADERS =====
     // Apply security headers to all API endpoints
     {

@@ -55,7 +55,7 @@ export const GET = async (
     config: {
       program_type: config.program_type,           // "free" or "paid"
       price: Number(config.price),                 // Price in cents (0 for free)
-      currency: "sgd",                             // TODO: Make configurable from admin settings
+      currency: "myr",                             // TODO: Make configurable from admin settings
       duration_months: config.duration_months,     // null = lifetime
       auto_enroll_on_first_order: config.auto_enroll_on_first_order,
       evaluation_period_months: config.evaluation_period_months,
