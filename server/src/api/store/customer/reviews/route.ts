@@ -177,7 +177,7 @@ export const POST = async (
     rating: data.rating,
     title: data.title || null,
     content: data.content || null,
-    images: data.images && data.images.length > 0 ? { items: data.images } : { items: [] },
+    images: data.images && data.images.length > 0 ? data.images : [],
     is_verified_purchase: true, // Always true since we require order
     is_approved: true,
   })

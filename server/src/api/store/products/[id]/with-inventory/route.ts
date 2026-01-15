@@ -153,7 +153,11 @@ export const GET = async (
   // ========================================
   // 3. Get review stats
   // ========================================
-  let reviewStats = {
+  let reviewStats: {
+    average_rating: number
+    total_reviews: number
+    rating_breakdown: { 1: number; 2: number; 3: number; 4: number; 5: number }
+  } = {
     average_rating: 0,
     total_reviews: 0,
     rating_breakdown: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
@@ -161,7 +165,18 @@ export const GET = async (
 
   try {
     const reviewService = req.scope.resolve<ReviewModuleService>(REVIEW_MODULE)
-    reviewStats = await reviewService.getProductRatingStats(id)
+    const stats = await reviewService.getProductRatingStats(id)
+    reviewStats = {
+      average_rating: stats.average_rating,
+      total_reviews: stats.total_reviews,
+      rating_breakdown: {
+        1: stats.rating_breakdown[1] || 0,
+        2: stats.rating_breakdown[2] || 0,
+        3: stats.rating_breakdown[3] || 0,
+        4: stats.rating_breakdown[4] || 0,
+        5: stats.rating_breakdown[5] || 0,
+      },
+    }
   } catch (err) {
     console.warn(`[PRODUCT-WITH-INVENTORY] Failed to fetch review stats: ${err}`)
   }

@@ -67,9 +67,9 @@ export function AddAddressDialog({
     setValue,
     watch,
     formState: { errors, isSubmitting },
-  } = useAddressForm(editAddress);
+  } = useAddressForm(editAddress ?? undefined);
   
-  const isDefaultAddress = watch("isDefaultShipping") || false;
+  const isDefaultAddress = watch("is_default_shipping") || false;
   
   // React Query mutations
   const addAddressMutation = useAddAddressMutation();
@@ -79,29 +79,29 @@ export function AddAddressDialog({
   useEffect(() => {
     if (editAddress) {
       reset({
-        firstName: editAddress.first_name || "",
-        lastName: editAddress.last_name || "",
+        first_name: editAddress.first_name || "",
+        last_name: editAddress.last_name || "",
         city: editAddress.city || "",
         province: editAddress.province || "",
-        buildingType: editAddress.company || "",
-        buildingNumber: editAddress.address_2 || "",
-        phoneNumber: editAddress.phone?.replace(/^\+60\s*/, "") || "",
-        postalCode: editAddress.postal_code || "",
-        address1: editAddress.address_1 || "",
-        isDefaultShipping: editAddress.is_default_shipping || false,
+        company: editAddress.company || "",
+        address_2: editAddress.address_2 || "",
+        phone: editAddress.phone?.replace(/^\+60\s*/, "") || "",
+        postal_code: editAddress.postal_code || "",
+        address_1: editAddress.address_1 || "",
+        is_default_shipping: editAddress.is_default_shipping || false,
       });
     } else {
       reset({
-        firstName: "",
-        lastName: "",
+        first_name: "",
+        last_name: "",
         city: "",
         province: "",
-        buildingType: "",
-        buildingNumber: "",
-        phoneNumber: "",
-        postalCode: "",
-        address1: "",
-        isDefaultShipping: false,
+        company: "",
+        address_2: "",
+        phone: "",
+        postal_code: "",
+        address_1: "",
+        is_default_shipping: false,
       });
     }
   }, [editAddress, open, reset]);
@@ -109,17 +109,17 @@ export function AddAddressDialog({
   const onSubmit = async (data: any) => {
     try {
       const addressPayload = {
-        first_name: data.firstName,
-        last_name: data.lastName,
-        address_1: data.address1,
-        address_2: data.buildingNumber,
+        first_name: data.first_name,
+        last_name: data.last_name,
+        address_1: data.address_1,
+        address_2: data.address_2,
         city: data.city,
         province: data.province,
-        postal_code: data.postalCode,
+        postal_code: data.postal_code,
         country_code: "my", // Malaysia
-        phone: data.phoneNumber ? `+60${data.phoneNumber.replace(/^0/, "")}` : "",
-        company: data.buildingType,
-        is_default_shipping: data.isDefaultShipping,
+        phone: data.phone ? `+60${data.phone.replace(/^0/, "")}` : "",
+        company: data.company,
+        is_default_shipping: data.is_default_shipping,
       };
 
       if (editAddress?.id) {
@@ -157,31 +157,31 @@ export function AddAddressDialog({
         {/* First Name and Last Name */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4">
           <div className="space-y-2">
-            <Label htmlFor="firstName" className="text-xs lg:text-sm font-medium">
+            <Label htmlFor="first_name" className="text-xs lg:text-sm font-medium">
               First name
             </Label>
             <Input
-              id="firstName"
+              id="first_name"
               placeholder="Ahmad"
-              {...register("firstName")}
+              {...register("first_name")}
               className="h-10 lg:h-12 px-3 py-2 text-sm lg:text-base"
             />
-            {errors.firstName && (
-              <p className="text-xs text-red-500">{errors.firstName.message}</p>
+            {errors.first_name && (
+              <p className="text-xs text-red-500">{errors.first_name.message}</p>
             )}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="lastName" className="text-xs lg:text-sm font-medium">
+            <Label htmlFor="last_name" className="text-xs lg:text-sm font-medium">
               Last name
             </Label>
             <Input
-              id="lastName"
+              id="last_name"
               placeholder="Fauzi"
-              {...register("lastName")}
+              {...register("last_name")}
               className="h-10 lg:h-12 px-3 py-2 text-sm lg:text-base"
             />
-            {errors.lastName && (
-              <p className="text-xs text-red-500">{errors.lastName.message}</p>
+            {errors.last_name && (
+              <p className="text-xs text-red-500">{errors.last_name.message}</p>
             )}
           </div>
         </div>
@@ -261,14 +261,14 @@ export function AddAddressDialog({
         {/* Building Type and Building Number */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4">
           <div className="space-y-2">
-            <Label htmlFor="buildingType" className="text-xs lg:text-sm font-medium">
+            <Label htmlFor="company" className="text-xs lg:text-sm font-medium">
               Building type
             </Label>
             <Controller
-              name="buildingType"
+              name="company"
               control={control}
               render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
+                <Select value={field.value || ""} onValueChange={field.onChange}>
                   <SelectTrigger className="h-10! lg:h-12! w-full px-3! py-2! text-sm lg:text-base">
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
@@ -285,13 +285,13 @@ export function AddAddressDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="buildingNumber" className="text-xs lg:text-sm font-medium">
+            <Label htmlFor="address_2" className="text-xs lg:text-sm font-medium">
               Unit/Building number
             </Label>
             <Input
-              id="buildingNumber"
+              id="address_2"
               placeholder="12A"
-              {...register("buildingNumber")}
+              {...register("address_2")}
               className="h-10 lg:h-12 px-3 py-2 text-sm lg:text-base"
             />
           </div>
@@ -300,7 +300,7 @@ export function AddAddressDialog({
         {/* Phone Number and Zip Code */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4">
           <div className="space-y-2">
-            <Label htmlFor="phoneNumber" className="text-xs lg:text-sm font-medium">
+            <Label htmlFor="phone" className="text-xs lg:text-sm font-medium">
               Phone number
             </Label>
             <div className="flex gap-2">
@@ -309,45 +309,45 @@ export function AddAddressDialog({
                 <span className="text-xs lg:text-sm font-medium">+60</span>
               </div>
               <Input
-                id="phoneNumber"
+                id="phone"
                 placeholder="12-3456 7890"
-                {...register("phoneNumber")}
+                {...register("phone")}
                 className="h-10 lg:h-12 px-3 py-2 flex-1 text-sm lg:text-base"
               />
             </div>
-            {errors.phoneNumber && (
-              <p className="text-xs text-red-500">{errors.phoneNumber.message}</p>
+            {errors.phone && (
+              <p className="text-xs text-red-500">{errors.phone.message}</p>
             )}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="postalCode" className="text-xs lg:text-sm font-medium">
+            <Label htmlFor="postal_code" className="text-xs lg:text-sm font-medium">
               Zip Code
             </Label>
             <Input
-              id="postalCode"
+              id="postal_code"
               placeholder="50050"
-              {...register("postalCode")}
+              {...register("postal_code")}
               className="h-10 lg:h-12 px-3 py-2 text-sm lg:text-base"
             />
-            {errors.postalCode && (
-              <p className="text-xs text-red-500">{errors.postalCode.message}</p>
+            {errors.postal_code && (
+              <p className="text-xs text-red-500">{errors.postal_code.message}</p>
             )}
           </div>
         </div>
 
         {/* Full Address */}
         <div className="space-y-2">
-          <Label htmlFor="address1" className="text-xs lg:text-sm font-medium">
+          <Label htmlFor="address_1" className="text-xs lg:text-sm font-medium">
             Full address
           </Label>
           <Textarea
-            id="address1"
+            id="address_1"
             placeholder="No 10, Jalan Bukit, Taman Impian, 50050 Kuala Lumpur, Malaysia"
-            {...register("address1")}
+            {...register("address_1")}
             className="min-h-24 lg:min-h-30 resize-none text-sm lg:text-base"
           />
-          {errors.address1 && (
-            <p className="text-xs text-red-500">{errors.address1.message}</p>
+          {errors.address_1 && (
+            <p className="text-xs text-red-500">{errors.address_1.message}</p>
           )}
         </div>
 
@@ -355,12 +355,12 @@ export function AddAddressDialog({
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 lg:gap-0 pt-3 lg:pt-4">
           <div className="flex items-center gap-3">
             <Controller
-              name="isDefaultShipping"
+              name="is_default_shipping"
               control={control}
               render={({ field }) => (
                 <Switch
                   id="default-address"
-                  checked={field.value}
+                  checked={field.value ?? false}
                   onCheckedChange={field.onChange}
                 />
               )}

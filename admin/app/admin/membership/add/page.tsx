@@ -39,7 +39,7 @@ export default function AddMembershipPage(): React.JSX.Element {
     monthsUntilExpiry: 24,
 
     // Redemption Rules
-    valuePer1SGD: 0.1,
+    valuePer1MYR: 0.1,
     redeemStep: 10,
     minimumPointsPerOrder: 10,
     maxPercentOrderPayableByPoints: 10,
@@ -210,9 +210,9 @@ export default function AddMembershipPage(): React.JSX.Element {
             <FormSection title="Redemption Rules">
               <div className="space-y-4">
                 <FormNumberInput
-                  label="Value per 1 SGD"
-                  value={formData.valuePer1SGD}
-                  onChange={(value) => handleInputChange("valuePer1SGD", value)}
+                  label="Value per 1 MYR"
+                  value={formData.valuePer1MYR}
+                  onChange={(value) => handleInputChange("valuePer1MYR", value)}
                   min={0}
                   step={0.1}
                 />
