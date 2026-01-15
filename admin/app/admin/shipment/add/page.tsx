@@ -87,9 +87,9 @@ export default function AddShipmentPage(): React.JSX.Element {
     }
 
     // Convert form data to API format
-    // Medusa stores prices in cents - only SGD
+    // Medusa stores prices in cents - only MYR
     const prices: ShippingOptionPrice[] = [
-      { currency_code: "sgd", amount: Math.round(formData.price * 100) },
+      { currency_code: "myr", amount: Math.round(formData.price * 100) },
     ];
 
     const apiData: ShippingOptionFormData = {

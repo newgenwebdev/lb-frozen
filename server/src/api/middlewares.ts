@@ -1,10 +1,6 @@
 import { defineMiddlewares } from "@medusajs/framework/http"
-import express from "express"
 import { rateLimitAuth, rateLimitRegistration } from "./middlewares/rate-limit"
 import { securityHeaders } from "./middlewares/security-headers"
-
-// Custom body parser with larger limit for uploads
-const largeBodyParser = express.json({ limit: "50mb" })
 
 /**
  * Global middleware configuration for Medusa API
