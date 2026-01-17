@@ -42,7 +42,7 @@ export function VariantTable({
       try {
         const { getVariantInventoryDetails } = await import("@/lib/api/inventory")
         const results = await Promise.all(
-          variants.map((v) => getVariantInventoryDetails(v.id, v.sku))
+          variants.map((v:any) => getVariantInventoryDetails(v.id, v.sku))
         )
         if (mounted) setVariantInventory(results)
       } catch (err) {
