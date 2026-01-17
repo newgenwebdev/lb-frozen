@@ -7,7 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AddToCartSuccessDialog } from "@/components/shared/AddToCartSuccessDialog";
 import { ProductReviews } from "@/components/shared/ProductReviews";
+import { ProductImageGallery } from "@/components/shared/ProductImageGallery";
+import { ShareDialog } from "@/components/shared/ShareDialog";
 import { useAuthContext } from "@/lib/AuthContext";
+import { useWishlist } from "@/lib/WishlistContext";
 import { useToast } from "@/components/ui/toast";
 import { useUIStore } from "@/lib/stores";
 import { useProductQuery, useAddToCartMutation } from "@/lib/queries";
@@ -102,6 +105,7 @@ export default function ProductDetailPage() {
   const router = useRouter();
   const productId = params.id as string;
   const { customer, isAuthenticated } = useAuthContext();
+  const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
   const { showToast } = useToast();
 
   // Use React Query for product data fetching
@@ -116,6 +120,7 @@ export default function ProductDetailPage() {
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState("about");
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
   
   // Zustand UI store for cart success dialog
   const { cartSuccessDialog, showCartSuccess, hideCartSuccess } = useUIStore();
@@ -311,74 +316,48 @@ export default function ProductDetailPage() {
     );
   }
 
-  const productImage =
-    product.thumbnail || product.images?.[0]?.url || "/placeholder-product.png";
   const displayStock = variantOptions.length > 0 ? variantStock : totalStock;
+
+  // Wishlist handler
+  const handleWishlistClick = () => {
+    if (isInWishlist(productId)) {
+      removeFromWishlist(productId);
+      showToast("Removed from wishlist", "success");
+    } else {
+      // addToWishlist needs full product info, not just productId
+      addToWishlist({
+        product_id: productId,
+        variant_id: selectedVariant?.id || product.variants?.[0]?.id || "",
+        title: product.title,
+        handle: product.handle || productId,
+        thumbnail: product.thumbnail,
+        price: currentPrice,
+        original_price: metadata.discount > 0 ? originalPrice : undefined,
+        currency: "myr",
+      });
+      showToast("Added to wishlist", "success");
+    }
+  };
+
+  // Share handler
+  const handleShareClick = () => {
+    setShareDialogOpen(true);
+  };
 
   return (
     <div className="mx-auto px-4 lg:px-6 py-4 lg:py-8">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12">
         {/* Left - Image Gallery */}
         <div className="space-y-4">
-          <div className="relative bg-gray-50 rounded-2xl lg:rounded-3xl aspect-square flex items-center justify-center p-6 lg:p-12">
-            {metadata.discount > 0 && (
-              <Badge className="absolute top-2 left-2 lg:top-4 lg:left-4 bg-[#C52129] text-white hover:bg-[#C52129] text-xs">
-                {metadata.discount}% OFF
-              </Badge>
-            )}
-            <button className="absolute top-2 right-2 lg:top-4 lg:right-4 w-8 h-8 lg:w-10 lg:h-10 bg-white rounded-full flex items-center justify-center hover:bg-gray-100">
-              <svg
-                className="w-4 h-4 lg:w-5 lg:h-5 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                />
-              </svg>
-            </button>
-            <button className="absolute top-2 right-12 lg:top-4 lg:right-16 w-8 h-8 lg:w-10 lg:h-10 bg-white rounded-full flex items-center justify-center hover:bg-gray-100">
-              <svg
-                className="w-4 h-4 lg:w-5 lg:h-5 text-gray-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
-                />
-              </svg>
-            </button>
-            <button className="absolute bottom-2 right-2 lg:bottom-4 lg:right-4 w-8 h-8 lg:w-10 lg:h-10 bg-white rounded-full flex items-center justify-center hover:bg-gray-100">
-              <svg
-                className="w-4 h-4 lg:w-5 lg:h-5 text-gray-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
-                />
-              </svg>
-            </button>
-            <Image
-              src={productImage}
-              alt={product.title}
-              width={400}
-              height={400}
-              className="object-contain"
-            />
-          </div>
+          <ProductImageGallery
+            images={product.images || []}
+            thumbnail={product.thumbnail}
+            productTitle={product.title}
+            discount={metadata.discount}
+            isInWishlist={isInWishlist(productId)}
+            onWishlistClick={handleWishlistClick}
+            onShareClick={handleShareClick}
+          />
 
           {/* Tabs Section */}
           <div className="mt-4 lg:mt-6 border border-gray-200 rounded-2xl lg:rounded-3xl">
@@ -419,6 +398,7 @@ export default function ProductDetailPage() {
               {activeTab === "reviews" && (
                 <ProductReviews
                   productId={productId}
+                  productName={product.title}
                   isAuthenticated={isAuthenticated}
                   customerName={customer ? `${customer.first_name || ''} ${customer.last_name || ''}`.trim() : undefined}
                 />
@@ -737,6 +717,13 @@ export default function ProductDetailPage() {
         open={cartSuccessDialog.open}
         onOpenChange={(open) => !open && hideCartSuccess()}
         product={cartSuccessDialog.product}
+      />
+
+      <ShareDialog
+        open={shareDialogOpen}
+        onOpenChange={setShareDialogOpen}
+        productTitle={product.title}
+        productUrl={typeof window !== 'undefined' ? window.location.href : ''}
       />
     </div>
   );

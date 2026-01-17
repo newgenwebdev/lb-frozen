@@ -236,60 +236,6 @@ const PAGE_CONFIG: PageConfig[] = [
     ),
   },
   {
-    path: "/admin/promos",
-    title: "Promos",
-    matchType: "section",
-    icon: (
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="20"
-        height="20"
-        viewBox="0 0 16 16"
-        fill="none"
-      >
-        <rect
-          x="1.33398"
-          y="7.33594"
-          width="9.33722"
-          height="6.66944"
-          rx="1.33333"
-          stroke="#030712"
-          strokeWidth="1.25"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M5.00195 11.6708L7.00279 9.66992"
-          stroke="#030712"
-          strokeWidth="1.25"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M4.44141 7.33615L5.60856 2.98768C5.70012 2.64603 5.92387 2.35486 6.23044 2.17843C6.537 2.002 6.90117 1.95481 7.24257 2.04728L13.6853 3.77467C14.0269 3.86623 14.3181 4.08999 14.4945 4.39655C14.6709 4.70311 14.7181 5.06728 14.6256 5.40869L13.5919 9.27029C13.4008 9.98198 12.6704 10.4053 11.9579 10.2174L10.6707 9.87054"
-          stroke="#030712"
-          strokeWidth="1.25"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M7.16955 11.8042C7.16953 11.8226 7.1546 11.8375 7.13619 11.8375C7.11779 11.8375 7.10287 11.8226 7.10286 11.8042C7.10285 11.7858 7.11776 11.7709 7.13617 11.7708C7.14502 11.7708 7.15352 11.7743 7.15979 11.7806C7.16605 11.7869 7.16956 11.7954 7.16955 11.8042"
-          stroke="#030712"
-          strokeWidth="1.25"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M4.90198 9.53664C4.90195 9.55504 4.88702 9.56995 4.86862 9.56994C4.85021 9.56994 4.83529 9.55502 4.83528 9.53661C4.83527 9.5182 4.85018 9.50327 4.86859 9.50325C4.87745 9.50324 4.88594 9.50675 4.89221 9.51302C4.89847 9.51928 4.90199 9.52778 4.90198 9.53664"
-          stroke="#030712"
-          strokeWidth="1.25"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    ),
-  },
-  {
     path: "/admin/customers",
     title: "Customers",
     matchType: "section",
@@ -384,6 +330,16 @@ const PAGE_CONFIG: PageConfig[] = [
         <path d="M13.3333 10.8333H6.66666" stroke="#030712" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
         <path d="M13.3333 14.1667H6.66666" stroke="#030712" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
         <path d="M8.33333 7.5H6.66666" stroke="#030712" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    ),
+  },
+  {
+    path: '/admin/reviews',
+    title: 'Reviews',
+    matchType: 'section',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <path d="M10 15.8333L5.83333 17.9167L6.66667 13.3333L3.33333 10L7.91667 9.33333L10 5L12.0833 9.33333L16.6667 10L13.3333 13.3333L14.1667 17.9167L10 15.8333Z" stroke="#030712" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
     ),
   },
@@ -1044,7 +1000,7 @@ export default function AdminLayout({
                     </svg>
                     {!isSidebarCollapsed && "Categories"}
                   </a>
-                  <a
+                  {/* <a
                     href="/admin/brands"
                     className={`font-public flex items-center gap-3 px-3 py-2 rounded-lg text-[14px] font-medium tracking-[-0.14px] transition-all max-lg:py-3 max-lg:text-base ${
                       isInSection("/admin/brands")
@@ -1133,7 +1089,7 @@ export default function AdminLayout({
                       />
                     </svg>
                     {!isSidebarCollapsed && "Promo"}
-                  </a>
+                  </a> */}
                 </div>
               </div>
 
@@ -1689,6 +1645,33 @@ export default function AdminLayout({
                       />
                     </svg>
                     {!isSidebarCollapsed && "Article"}
+                  </a>
+                  <a
+                    href="/admin/reviews"
+                    className={`font-public flex items-center gap-3 px-3 py-2 rounded-lg text-[14px] font-medium tracking-[-0.14px] transition-all max-lg:py-3 max-lg:text-base ${
+                      isInSection("/admin/reviews")
+                        ? "border border-[#D9D9D9] bg-[#FBFBFB] text-[#2F2F2F] shadow-[0_1px_1.5px_0_rgba(44,54,53,0.03)]"
+                        : "border border-transparent text-[#6A7282] hover:border-[#D9D9D9] hover:bg-[#FBFBFB]"
+                    } ${isSidebarCollapsed ? "lg:justify-center" : ""}`}
+                    title="Reviews"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      className="shrink-0"
+                    >
+                      <path
+                        d="M8 12.6667L4.66667 14.3333L5.33333 10.6667L2.66667 8L6.33333 7.46667L8 4L9.66667 7.46667L13.3333 8L10.6667 10.6667L11.3333 14.3333L8 12.6667Z"
+                        stroke={isInSection("/admin/reviews") ? "#2F2F2F" : "#787878"}
+                        strokeWidth="1.25"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                    {!isSidebarCollapsed && "Reviews"}
                   </a>
                 </div>
               </div>

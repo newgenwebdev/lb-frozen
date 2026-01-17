@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useCartContext } from "@/lib/CartContext";
+import { useAuthContext } from "@/lib/AuthContext";
 import { useToast } from "@/components/ui/toast";
 
 // Type for item to remove
@@ -17,13 +18,34 @@ interface RemoveItemData {
 
 export default function CartPage() {
   const router = useRouter();
-  const { cart, loading, updateItem, removeItem } = useCartContext();
+  const { cart, loading, updateItem, removeItem, refreshCart } = useCartContext();
+  const { customer, isAuthenticated } = useAuthContext();
   const { showToast } = useToast();
   const [isShippingOpen, setIsShippingOpen] = useState(false);
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
   const [itemToRemove, setItemToRemove] = useState<RemoveItemData | null>(null);
   const [clearAllDialogOpen, setClearAllDialogOpen] = useState(false);
   const [clearingAll, setClearingAll] = useState(false);
+  
+  // Promo code state
+  const [promoCode, setPromoCode] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState<any>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [applyingPromo, setApplyingPromo] = useState(false);
+
+  // Load applied promo from cart metadata on cart load
+  useEffect(() => {
+    if (cart?.metadata?.applied_membership_promo_id) {
+      setAppliedPromo({
+        code: cart.metadata.applied_membership_promo_name || 'MEMBER PROMO',
+        type: cart.metadata.applied_membership_promo_type || 'percentage',
+        value: cart.metadata.applied_membership_promo_value || 0,
+        discount: cart.metadata.applied_membership_promo_discount || 0,
+      });
+    } else {
+      setAppliedPromo(null);
+    }
+  }, [cart?.metadata?.applied_membership_promo_id]);
 
   const handleQuantityChange = async (itemId: string, newQuantity: number) => {
     if (newQuantity < 1) return;
@@ -68,6 +90,113 @@ export default function CartPage() {
     }
   };
 
+  const applyPromo = async () => {
+    if (!cart?.id) {
+      setPromoError('Cart not found');
+      return;
+    }
+    
+    setApplyingPromo(true);
+    setPromoError(null);
+    
+    try {
+      // Call Medusa backend directly with credentials
+      const backendUrl = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || 'http://localhost:9000';
+      const publishableKey = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_API_KEY;
+      
+      // Get auth token from localStorage
+      const authToken = typeof window !== 'undefined' 
+        ? localStorage.getItem(process.env.NEXT_PUBLIC_AUTH_TOKEN_KEY || 'lb-frozen-auth-token')
+        : null;
+      
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'x-publishable-api-key': publishableKey || '',
+      };
+      
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
+      
+      const response = await fetch(`${backendUrl}/store/membership-promo/apply`, {
+        method: 'POST',
+        headers,
+        credentials: 'include', // Include session cookies
+        body: JSON.stringify({ cart_id: cart.id }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok || !data.success) {
+        setPromoError(data.message || 'Failed to apply promo');
+        return;
+      }
+      
+      const promo = data.cart?.metadata;
+      setAppliedPromo({
+        code: promo?.applied_membership_promo_name || 'MEMBER PROMO',
+        type: promo?.applied_membership_promo_type || 'percentage',
+        value: promo?.applied_membership_promo_value || 0,
+        discount: promo?.applied_membership_promo_discount || 0,
+      });
+      showToast('Membership promo applied successfully!', 'success');
+      
+      // Refresh cart to get updated totals
+      await refreshCart();
+    } catch (error) {
+      console.error('Apply promo error:', error);
+      setPromoError('Failed to apply promo');
+    } finally {
+      setApplyingPromo(false);
+    }
+  };
+
+  const removePromo = async () => {
+    if (!cart?.id) return;
+    
+    try {
+      // Call Medusa backend directly with credentials
+      const backendUrl = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || 'http://localhost:9000';
+      const publishableKey = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_API_KEY;
+      
+      // Get auth token from localStorage
+      const authToken = typeof window !== 'undefined' 
+        ? localStorage.getItem(process.env.NEXT_PUBLIC_AUTH_TOKEN_KEY || 'lb-frozen-auth-token')
+        : null;
+      
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'x-publishable-api-key': publishableKey || '',
+      };
+      
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
+      
+      const response = await fetch(`${backendUrl}/store/membership-promo/remove`, {
+        method: 'POST',
+        headers,
+        credentials: 'include', // Include session cookies
+        body: JSON.stringify({ cart_id: cart.id }),
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        setAppliedPromo(null);
+        showToast('Promo code removed', 'info');
+        
+        // Refresh cart to get updated totals
+        await refreshCart();
+      } else {
+        showToast(data.message || 'Failed to remove promo', 'error');
+      }
+    } catch (error) {
+      console.error('Remove promo error:', error);
+      showToast('Failed to remove promo', 'error');
+    }
+  };
+
   const cartItems = cart?.items || [];
 
   if (loading) {
@@ -82,8 +211,12 @@ export default function CartPage() {
   }
 
   const subtotal = cart?.subtotal || 0;
-  const total = cart?.total || 0;
   const shipping = 0; // Free shipping
+  
+  // Calculate discount from promo (from cart metadata or local state)
+  const discountAmount = cart?.metadata?.applied_membership_promo_discount || appliedPromo?.discount || 0;
+  
+  const total = subtotal - discountAmount + shipping;
 
   return (
     <div className="relative">
@@ -135,27 +268,39 @@ export default function CartPage() {
             {/* Right Column - Order Summary */}
             <div className="lg:col-span-1">
               <div className="bg-gray-50 rounded-2xl p-4 lg:p-6 sticky top-4">
-                {/* Shipping Address */}
-                <div className="flex items-start gap-3 pb-4 border-b border-gray-200">
-                  <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center border border-gray-200">
-                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
+                {/* Shipping Address - Only show if authenticated and has addresses */}
+                {isAuthenticated && customer?.addresses && customer.addresses.length > 0 && (
+                  <div className="flex items-start gap-3 pb-4 border-b border-gray-200 mb-4">
+                    <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center border border-gray-200">
+                      <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">Shipping to</p>
+                      <p className="text-sm text-gray-500">
+                        {(() => {
+                          const defaultAddress = customer.addresses.find(a => a.is_default_shipping) || customer.addresses[0];
+                          const parts = [
+                            defaultAddress.city,
+                            defaultAddress.province,
+                            defaultAddress.address_1
+                          ].filter(Boolean);
+                          return parts.join(", ") || "Select delivery address";
+                        })()}
+                      </p>
+                    </div>
+                    <button className="text-gray-400">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
                   </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-gray-900">Shipping to</p>
-                    <p className="text-sm text-gray-500">Select delivery address</p>
-                  </div>
-                  <button className="text-gray-400">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                </div>
+                )}
 
                 {/* Order Summary */}
-                <div className="pt-4">
+                <div className={isAuthenticated && customer?.addresses && customer.addresses.length > 0 ? "" : "pt-0"}>
                   <h3 className="font-semibold text-gray-900 mb-4">Order summary</h3>
                   
                   <div className="space-y-3 text-sm">
@@ -324,42 +469,16 @@ export default function CartPage() {
           {/* Right Column - Order Summary */}
           <div className="lg:col-span-1">
             <div className="bg-gray-50 rounded-2xl p-3 lg:p-4 mb-4">
-              {/* Shipping Address */}
-              <div className="bg-white rounded-2xl p-4 mb-4">
-                <button
-                  onClick={() => setIsShippingOpen(!isShippingOpen)}
-                  className="w-full flex items-start gap-3 text-left"
-                >
-                  <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center shrink-0 mt-1">
-                    <svg
-                      className="w-5 h-5 text-gray-700"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                      />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-gray-900">
-                        Shipping to
-                      </h3>
+              {/* Shipping Address - Only show if authenticated and has addresses */}
+              {isAuthenticated && customer?.addresses && customer.addresses.length > 0 && (
+                <div className="bg-white rounded-2xl p-4 mb-4">
+                  <button
+                    onClick={() => setIsShippingOpen(!isShippingOpen)}
+                    className="w-full flex items-start gap-3 text-left"
+                  >
+                    <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center shrink-0 mt-1">
                       <svg
-                        className={`w-5 h-5 text-gray-400 transition-transform ${
-                          isShippingOpen ? "rotate-180" : ""
-                        }`}
+                        className="w-5 h-5 text-gray-700"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -368,16 +487,118 @@ export default function CartPage() {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeWidth={2}
-                          d="M19 9l-7 7-7-7"
+                          d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
                         />
                       </svg>
                     </div>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Jakarta, Indonesia, Kebayoran Baru, South Jakarta
-                    </p>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-semibold text-gray-900">
+                          Shipping to
+                        </h3>
+                        <svg
+                          className={`w-5 h-5 text-gray-400 transition-transform ${
+                            isShippingOpen ? "rotate-180" : ""
+                          }`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 9l-7 7-7-7"
+                          />
+                        </svg>
+                      </div>
+                      <p className="text-sm text-gray-600 mt-1">
+                        {(() => {
+                          const defaultAddress = customer.addresses.find(a => a.is_default_shipping) || customer.addresses[0];
+                          const parts = [
+                            defaultAddress.city,
+                            defaultAddress.province,
+                            defaultAddress.address_1
+                          ].filter(Boolean);
+                          return parts.join(", ") || "No address selected";
+                        })()}
+                      </p>
+                    </div>
+                  </button>
+                </div>
+              )}
+
+              {/* Promo Code Section - Members Only */}
+              {isAuthenticated ? (
+                <div className="bg-gray-50 rounded-2xl p-4 mb-4">
+                  <h3 className="font-semibold text-gray-900 mb-3">Member Exclusive Promo</h3>
+                  <p className="text-sm text-gray-600 mb-3">
+                    Click below to automatically apply the best available membership promo to your cart
+                  </p>
+                  <button
+                    onClick={applyPromo}
+                    disabled={applyingPromo || appliedPromo}
+                    className="w-full px-6 py-2.5 bg-[#23429B] text-white rounded-lg font-medium hover:bg-[#1a3275] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {applyingPromo ? 'Applying...' : appliedPromo ? 'Promo Applied ✓' : 'Apply Member Promo'}
+                  </button>
+                  {promoError && (
+                    <p className="text-red-500 text-sm mt-2">{promoError}</p>
+                  )}
+                  {appliedPromo && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 mt-3">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="text-green-800 font-medium">{appliedPromo.code}</p>
+                          <p className="text-green-600 text-sm">
+                            {appliedPromo.type === 'percentage'
+                              ? `${appliedPromo.value}% off`
+                              : `RM${(appliedPromo.value / 100).toFixed(2)} off`
+                            }
+                          </p>
+                        </div>
+                        <button
+                          onClick={removePromo}
+                          className="text-red-500 hover:text-red-700 text-sm font-medium"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
+                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-blue-900 mb-1">Exclusive Member Perks</h3>
+                      <p className="text-blue-700 text-sm mb-3">
+                        Join our membership to unlock promo codes and special discounts on your favorite products.
+                      </p>
+                      <button
+                        onClick={() => router.push('/login?redirect=/cart')}
+                        className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                      >
+                        Join Membership
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
-                </button>
-              </div>
+                </div>
+              )}
 
               {/* Order Summary */}
               <div className="bg-white rounded-2xl p-6">
@@ -390,6 +611,15 @@ export default function CartPage() {
                     <span>Subtotal ({cartItems.length} items)</span>
                     <span className="font-medium">RM{(subtotal / 100).toFixed(2)}</span>
                   </div>
+
+                  {appliedPromo && discountAmount > 0 && (
+                    <div className="flex justify-between text-green-600">
+                      <span>
+                        Discount ({appliedPromo.code})
+                      </span>
+                      <span className="font-medium">-RM{(discountAmount / 100).toFixed(2)}</span>
+                    </div>
+                  )}
 
                   <div className="border-t border-dotted border-gray-300 my-4"></div>
 

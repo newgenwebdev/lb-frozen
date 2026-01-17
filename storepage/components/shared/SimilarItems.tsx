@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useProductsQuery } from "@/lib/queries";
 import { useAuthContext } from "@/lib/AuthContext";
 import { useCartContext } from "@/lib/CartContext";
+import { useWishlist } from "@/lib/WishlistContext";
 import { AddToCartSuccessDialog } from "./AddToCartSuccessDialog";
 import { useToast } from "@/components/ui/toast";
 
@@ -19,6 +20,7 @@ export function SimilarItems({
   currentProductId,
 }: SimilarItemsProps) {
   const { addItem } = useCartContext();
+  const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
   const { showToast } = useToast();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -85,6 +87,31 @@ export function SimilarItems({
     } catch (error) {
       console.error("Failed to add to cart:", error);
       showToast("Failed to add to cart", "error");
+    }
+  };
+
+  const handleWishlistToggle = (e: React.MouseEvent, product: any) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const variant = product.variants?.[0];
+    const price = variant?.calculated_price;
+    
+    if (isInWishlist(product.id)) {
+      removeFromWishlist(product.id);
+      showToast("Removed from wishlist", "info");
+    } else if (variant?.id) {
+      addToWishlist({
+        product_id: product.id,
+        title: product.title,
+        handle: product.handle || product.id,
+        thumbnail: product.thumbnail || undefined,
+        price: price?.calculated_amount || 0,
+        original_price: price?.original_amount,
+        currency: "RM",
+        variant_id: variant.id,
+        variant_title: variant?.title,
+      });
+      showToast("Added to wishlist", "success");
     }
   };
 
@@ -207,6 +234,9 @@ export function SimilarItems({
 
             // Check if trending
             const isTrending = product.metadata?.trending;
+            
+            // Check if in wishlist
+            const isFavorite = isInWishlist(product.id);
 
             return (
               <div key={product.id} className="shrink-0 w-50 lg:w-60">
@@ -232,15 +262,16 @@ export function SimilarItems({
 
                       {/* Heart Button */}
                       <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          // Wishlist functionality
-                        }}
+                        onClick={(e) => handleWishlistToggle(e, product)}
                         className="absolute top-3 right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center hover:bg-gray-100 z-10 shadow-sm"
                       >
                         <svg
-                          className="w-4 h-4 text-gray-400"
-                          fill="none"
+                          className={`w-4 h-4 transition-colors ${
+                            isFavorite
+                              ? "text-[#C52129] fill-current"
+                              : "text-gray-400"
+                          }`}
+                          fill={isFavorite ? "currentColor" : "none"}
                           stroke="currentColor"
                           viewBox="0 0 24 24"
                         >
@@ -295,15 +326,15 @@ export function SimilarItems({
                       )}
 
                       {/* Price Row */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-lg font-bold text-gray-900">
+                      <div className="flex items-end justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-lg font-bold text-gray-900">
                             RM{(price / 100).toFixed(2)}
-                          </span>
+                          </div>
                           {originalPrice > price && (
-                            <span className="text-sm text-[#C52129] line-through">
+                            <div className="text-sm text-[#C52129] line-through">
                               RM{(originalPrice / 100).toFixed(2)}
-                            </span>
+                            </div>
                           )}
                         </div>
 
@@ -318,7 +349,7 @@ export function SimilarItems({
                                 price: price,
                               });
                             }}
-                            className="w-8 h-8 border border-gray-200 rounded-full flex items-center justify-center hover:border-[#23429B] hover:text-[#23429B] transition-colors"
+                            className="w-8 h-8 shrink-0 ml-3 border border-gray-200 rounded-full flex items-center justify-center hover:border-[#23429B] hover:text-[#23429B] transition-colors"
                           >
                             <svg
                               className="w-4 h-4 text-gray-400"

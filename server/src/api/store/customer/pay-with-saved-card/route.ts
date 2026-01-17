@@ -10,9 +10,10 @@ import { createPaymentCollectionForCartWorkflow } from "@medusajs/medusa/core-fl
  */
 export async function POST(req: MedusaRequest, res: MedusaResponse) {
   try {
-    const { payment_method_id, cart_id } = req.body as {
+    const { payment_method_id, cart_id, membership_promo_discount: frontendDiscount } = req.body as {
       payment_method_id: string;
       cart_id: string;
+      membership_promo_discount?: number;
     };
 
     if (!payment_method_id || !cart_id) {
@@ -39,9 +40,10 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     const query = req.scope.resolve(ContainerRegistrationKeys.QUERY);
     const customerService = req.scope.resolve(Modules.CUSTOMER);
     const paymentService = req.scope.resolve(Modules.PAYMENT);
+    const cartModuleService = req.scope.resolve(Modules.CART);
 
-    // Get cart with totals
-    const { data: [cart] } = await query.graph({
+    // Get cart with totals using query.graph
+    const { data: [cartData] } = await query.graph({
       entity: "cart",
       fields: [
         "id",
@@ -57,9 +59,19 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
       filters: { id: cart_id },
     });
 
-    if (!cart) {
+    if (!cartData) {
       return res.status(404).json({ error: "Cart not found" });
     }
+
+    // Get cart metadata separately using cartModuleService (more reliable)
+    // IMPORTANT: Must explicitly select metadata field!
+    const cartWithMetadata = await cartModuleService.retrieveCart(cart_id, {
+      select: ["id", "metadata"],
+    });
+    const cartMetadata = (cartWithMetadata as any)?.metadata || {};
+    
+    console.log("[PAY-SAVED-CARD] Cart metadata from DB:", JSON.stringify(cartMetadata));
+    console.log("[PAY-SAVED-CARD] Frontend discount:", frontendDiscount);
 
     const customer = await customerService.retrieveCustomer(customerId);
     const stripeCustomerId = customer?.metadata?.stripe_customer_id as string;
@@ -70,10 +82,22 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
       });
     }
 
-    const amount = Number(cart.total) || 0;
-    const currency = cart.currency_code || "myr";
+    // Calculate adjusted amount (subtract membership promo discount)
+    // Use cartMetadata from cartModuleService, but fallback to frontend-provided discount
+    const membershipPromoDiscount = cartMetadata?.applied_membership_promo_discount
+      ? Number(cartMetadata.applied_membership_promo_discount)
+      : (frontendDiscount ? Number(frontendDiscount) : 0);
+    const originalAmount = Number(cartData.total) || 0;
+    const amount = Math.max(0, originalAmount - membershipPromoDiscount);
+    const currency = cartData.currency_code || "myr";
 
-    console.log("[PAY-SAVED-CARD] Cart:", { id: cart.id, total: cart.total, amount, currency });
+    console.log("[PAY-SAVED-CARD] Cart:", { 
+      id: cartData.id, 
+      total: cartData.total, 
+      membershipPromoDiscount,
+      adjustedAmount: amount, 
+      currency 
+    });
 
     const minAmounts: Record<string, number> = { myr: 200, usd: 50, sgd: 50 };
     const minAmount = minAmounts[currency.toLowerCase()] || 200;
@@ -135,10 +159,11 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     }
     console.log("[PAY-SAVED-CARD] Stripe PaymentIntent ID:", stripePaymentIntentId);
 
-    // Step 4: Update PaymentIntent to attach customer, then confirm with saved payment method
-    console.log("[PAY-SAVED-CARD] Updating payment intent with customer...");
+    // Step 4: Update PaymentIntent to attach customer and correct amount (with discount)
+    console.log("[PAY-SAVED-CARD] Updating payment intent with customer and correct amount...");
     await stripe.paymentIntents.update(stripePaymentIntentId, {
       customer: stripeCustomerId,
+      amount: amount, // Use adjusted amount with discount applied
     });
 
     console.log("[PAY-SAVED-CARD] Confirming payment intent with saved card...");

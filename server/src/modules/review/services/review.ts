@@ -3,14 +3,18 @@ import Review from "../models/review"
 
 type CreateReviewInput = {
   product_id: string
-  customer_id: string
+  customer_id?: string | null
   order_id?: string | null
   order_item_id?: string | null
+  guest_name?: string | null
+  guest_email?: string | null
+  guest_phone?: string | null
   rating: number
   title?: string | null
   content?: string | null
   images?: string[]
   is_verified_purchase?: boolean
+  is_guest_review?: boolean
   is_approved?: boolean
   is_featured?: boolean
 }
@@ -31,6 +35,7 @@ type ListReviewsFilter = {
   customer_id?: string
   is_approved?: boolean
   is_featured?: boolean
+  is_guest_review?: boolean
 }
 
 /**
@@ -41,7 +46,7 @@ class ReviewModuleService extends MedusaService({
   Review,
 }) {
   /**
-   * Create a new review
+   * Create a new review (supports both customer and guest reviews)
    */
   async createReview(data: CreateReviewInput): Promise<any> {
     // Validate rating is 1-5
@@ -49,14 +54,18 @@ class ReviewModuleService extends MedusaService({
 
     const review = await this.createReviews({
       product_id: data.product_id,
-      customer_id: data.customer_id,
+      customer_id: data.customer_id || null,
       order_id: data.order_id || null,
       order_item_id: data.order_item_id || null,
+      guest_name: data.guest_name || null,
+      guest_email: data.guest_email || null,
+      guest_phone: data.guest_phone || null,
       rating: rating,
       title: data.title || null,
       content: data.content || null,
       images: { items: data.images || [] },
       is_verified_purchase: data.is_verified_purchase || false,
+      is_guest_review: data.is_guest_review || false,
       is_approved: data.is_approved !== undefined ? data.is_approved : true,
       is_featured: data.is_featured || false,
       helpful_count: 0,
@@ -107,12 +116,18 @@ class ReviewModuleService extends MedusaService({
     if (filters.customer_id) where.customer_id = filters.customer_id
     if (filters.is_approved !== undefined) where.is_approved = filters.is_approved
     if (filters.is_featured !== undefined) where.is_featured = filters.is_featured
+    if (filters.is_guest_review !== undefined) where.is_guest_review = filters.is_guest_review
+
+    console.log("Review service listReviewsWithFilters where:", JSON.stringify(where))
+    console.log("Review service listReviewsWithFilters config:", JSON.stringify(config))
 
     const [reviews, count] = await this.listAndCountReviews(where, {
       skip: config?.skip || 0,
       take: config?.take || 10,
       order: config?.order || { created_at: "DESC" },
     })
+
+    console.log("Review service result count:", count, "reviews length:", reviews?.length)
 
     return { reviews, count }
   }
@@ -200,6 +215,20 @@ class ReviewModuleService extends MedusaService({
       customer_id: customerId,
     })
     return count > 0
+  }
+
+  /**
+   * Check if guest has already reviewed a product (by email)
+   */
+  async hasGuestReviewed(productId: string, guestEmail: string): Promise<boolean> {
+    const [reviews] = await this.listReviews(
+      {
+        product_id: productId,
+        guest_email: guestEmail,
+        is_guest_review: true,
+      }
+    )
+    return Array.isArray(reviews) && reviews.length > 0
   }
 
   /**

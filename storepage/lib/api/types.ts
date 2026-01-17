@@ -142,6 +142,7 @@ export interface Address {
   country_code: string;
   phone?: string;
   company?: string;
+  is_default_shipping?: boolean;
   metadata?: Record<string, any>;
 }
 

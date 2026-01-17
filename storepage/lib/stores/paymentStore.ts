@@ -23,6 +23,7 @@ interface CompletedOrder {
   total?: number;
   currency_code?: string;
   shipping_address?: { city: string; province: string; country_code: string } | null;
+  metadata?: Record<string, any> | null;
 }
 
 // Payment store state

@@ -139,7 +139,7 @@ export async function updatePassword(data: {
 export async function requestPasswordReset(
   email: string
 ): Promise<{ message: string }> {
-  return apiClient.post('/store/auth/password-reset', { email });
+  return apiClient.post('/store/customer/reset-password', { email });
 }
 
 /**
@@ -149,7 +149,7 @@ export async function resetPassword(
   token: string,
   password: string
 ): Promise<{ message: string }> {
-  return apiClient.post('/store/auth/password-reset/confirm', {
+  return apiClient.post('/store/customer/reset-password', {
     token,
     password,
   });

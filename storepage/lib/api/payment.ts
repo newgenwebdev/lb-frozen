@@ -5,7 +5,7 @@
 
 import { apiClient } from './client';
 import type { Cart, PaymentSession } from './types';
-import { getStoredCartId } from './cart';
+import { getStoredCartId, getCart } from './cart';
 
 /**
  * Shipping option type
@@ -143,10 +143,25 @@ export async function getStripeClientSecret(paymentCollectionId: string): Promis
 }
 
 /**
+ * Update payment collection amount (for discounts like membership promo)
+ */
+export async function updatePaymentAmount(
+  paymentCollectionId: string,
+  cartId: string,
+  amount: number
+): Promise<{ success: boolean; new_amount?: number }> {
+  return apiClient.post(`/store/payment-collections/${paymentCollectionId}/update-amount`, {
+    cart_id: cartId,
+    amount,
+  });
+}
+
+/**
  * Full payment flow helper
  * 1. Create payment collection
  * 2. Initialize payment session with Stripe
- * 3. Return client secret for Stripe Elements
+ * 3. Update payment amount if there's a membership promo discount
+ * 4. Return client secret for Stripe Elements
  */
 export async function initializeStripePayment(cartId?: string): Promise<{
   paymentCollectionId: string;
@@ -155,6 +170,23 @@ export async function initializeStripePayment(cartId?: string): Promise<{
   const id = cartId || getStoredCartId();
   if (!id) throw new Error('No cart found');
 
+  // First, get the cart to check for membership promo discount
+  // Use getCart which already fetches with +metadata
+  const cart = await getCart(id);
+  
+  console.log('[STRIPE-INIT] Cart fetched:', { 
+    id: cart.id, 
+    total: cart.total, 
+    metadata: (cart as any)?.metadata 
+  });
+  
+  // Calculate adjusted amount (subtract membership promo discount from total)
+  const membershipPromoDiscount = (cart as any)?.metadata?.applied_membership_promo_discount
+    ? Number((cart as any).metadata.applied_membership_promo_discount)
+    : 0;
+  
+  console.log('[STRIPE-INIT] Membership promo discount:', membershipPromoDiscount);
+  
   // Step 1: Create payment collection
   const { payment_collection } = await createPaymentCollection(id);
   console.log('Payment collection created:', payment_collection?.id);
@@ -166,7 +198,31 @@ export async function initializeStripePayment(cartId?: string): Promise<{
   );
   console.log('Payment session:', payment_session);
 
-  // Step 3: Get client secret - check various locations
+  // Step 3: If there's a membership promo discount, update the payment amount
+  console.log(`[STRIPE-INIT] Checking discount: membershipPromoDiscount=${membershipPromoDiscount}, cart.total=${cart.total}`);
+  console.log(`[STRIPE-INIT] Full cart metadata:`, JSON.stringify((cart as any)?.metadata, null, 2));
+  
+  if (membershipPromoDiscount > 0) {
+    const originalTotal = cart.total || 0;
+    const adjustedTotal = Math.max(0, originalTotal - membershipPromoDiscount);
+    
+    console.log(`[STRIPE-INIT] *** APPLYING DISCOUNT ***`);
+    console.log(`[STRIPE-INIT] Original: ${originalTotal} (RM ${(originalTotal/100).toFixed(2)})`);
+    console.log(`[STRIPE-INIT] Discount: ${membershipPromoDiscount} (RM ${(membershipPromoDiscount/100).toFixed(2)})`);
+    console.log(`[STRIPE-INIT] Adjusted: ${adjustedTotal} (RM ${(adjustedTotal/100).toFixed(2)})`);
+    
+    try {
+      const updateResult = await updatePaymentAmount(payment_collection.id, id, adjustedTotal);
+      console.log('[STRIPE-INIT] Payment amount update SUCCESS:', updateResult);
+    } catch (error: any) {
+      console.error('[STRIPE-INIT] Payment amount update FAILED:', error?.message || error);
+      // Continue anyway - better to charge full price than fail completely
+    }
+  } else {
+    console.log('[STRIPE-INIT] No membership promo discount found, skipping amount update');
+  }
+
+  // Step 4: Get client secret - check various locations
   const clientSecret = 
     payment_session?.data?.client_secret || 
     (payment_session as any)?.client_secret ||
@@ -201,9 +257,24 @@ export async function payWithSavedCard(
   const id = cartId || getStoredCartId();
   if (!id) throw new Error('No cart found');
 
+  console.log('[PAY-SAVED-CARD] Starting saved card payment');
+  console.log('[PAY-SAVED-CARD] Cart ID:', id);
+  console.log('[PAY-SAVED-CARD] Payment Method ID:', paymentMethodId);
+
+  // Fetch cart with metadata to get membership promo discount
+  const cart = await getCart(id);
+  const membershipPromoDiscount = (cart as any)?.metadata?.applied_membership_promo_discount
+    ? Number((cart as any).metadata.applied_membership_promo_discount)
+    : 0;
+  
+  console.log('[PAY-SAVED-CARD] Cart metadata:', (cart as any)?.metadata);
+  console.log('[PAY-SAVED-CARD] Membership promo discount:', membershipPromoDiscount);
+
   const payload = {
     payment_method_id: paymentMethodId,
     cart_id: id,
+    // Pass discount info to backend for validation/use
+    membership_promo_discount: membershipPromoDiscount,
   };
 
   console.log('Sending request to /store/customer/pay-with-saved-card');

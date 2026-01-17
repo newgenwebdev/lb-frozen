@@ -24,7 +24,7 @@ export default async function passwordResetHandler({
     Modules.NOTIFICATION
   )
 
-  const resetLink = `${STOREFRONT_URL}/auth/reset-password?token=${data.token}`
+  const resetLink = `${STOREFRONT_URL}/reset-password?token=${data.token}`
 
   try {
     await notificationModuleService.createNotifications({

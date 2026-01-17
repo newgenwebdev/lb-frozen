@@ -204,6 +204,28 @@ export function useLogoutMutation() {
   });
 }
 
+/**
+ * Request password reset mutation
+ */
+export function useRequestPasswordResetMutation() {
+  return useMutation({
+    mutationFn: async (email: string) => {
+      return await api.requestPasswordReset(email);
+    },
+  });
+}
+
+/**
+ * Reset password mutation
+ */
+export function useResetPasswordMutation() {
+  return useMutation({
+    mutationFn: async ({ token, password }: { token: string; password: string }) => {
+      return await api.resetPassword(token, password);
+    },
+  });
+}
+
 // ============================================
 // CART
 // ============================================

@@ -91,6 +91,8 @@ const medusaConfig = {
             resolve: './src/modules/minio-file',
             id: 'minio',
             options: {
+              port: 443,
+              useSsl: true,
               bucket: MINIO_BUCKET,
               accessKey: MINIO_ACCESS_KEY,
               secretKey: MINIO_SECRET_KEY,

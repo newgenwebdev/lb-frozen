@@ -23,11 +23,12 @@ import { Controller } from "react-hook-form";
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { customer, loading, role, roleInfo, refreshCustomer } = useAuthContext();
+  const { customer, loading, role, roleInfo, refreshCustomer } =
+    useAuthContext();
   const { data: ordersData } = useOrdersQuery();
   const orders = ordersData || [];
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // React Hook Form for profile
   const {
     register,
@@ -38,11 +39,11 @@ export default function ProfilePage() {
     setValue,
     formState: { errors, isDirty, isSubmitting },
   } = useProfileForm();
-  
+
   const profileImage = watch("profileImage");
   const fullName = watch("fullName");
   const email = watch("email");
-  
+
   // Local UI state
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -51,32 +52,39 @@ export default function ProfilePage() {
   // Update form when customer data loads
   useEffect(() => {
     if (customer) {
-      console.log('[PROFILE] Customer loaded:', customer);
-      console.log('[PROFILE] Metadata:', customer.metadata);
-      console.log('[PROFILE] Profile image:', customer.metadata?.profile_image);
-      
-      const fullName = [customer.first_name, customer.last_name].filter(Boolean).join(" ");
+      console.log("[PROFILE] Customer loaded:", customer);
+      console.log("[PROFILE] Metadata:", customer.metadata);
+      console.log("[PROFILE] Profile image:", customer.metadata?.profile_image);
+
+      const fullName = [customer.first_name, customer.last_name]
+        .filter(Boolean)
+        .join(" ");
       const phone = customer.phone?.replace(/^\+60\s*/, "") || "";
-      const dateOfBirth = customer.metadata?.date_of_birth as string | undefined;
-      
+      const dateOfBirth = customer.metadata?.date_of_birth as
+        | string
+        | undefined;
+
       let dobDay = "";
       let dobMonth = "";
       let dobYear = "";
-      
+
       if (dateOfBirth) {
         const parts = dateOfBirth.split("-");
         if (parts.length === 3) {
           dobYear = parts[0];
-          dobMonth = new Date(dateOfBirth).toLocaleString('default', { month: 'long' }).toLowerCase();
+          dobMonth = new Date(dateOfBirth).toLocaleString("default", {
+            month: "long",
+          });
           dobDay = parts[2];
         }
       }
-      
+
       reset({
         fullName,
         phone,
         email: customer.email,
-        gender: (customer.metadata?.gender as "male" | "female" | "other") || "other",
+        gender:
+          (customer.metadata?.gender as "male" | "female" | "other") || "other",
         dobDay,
         dobMonth,
         dobYear,
@@ -96,31 +104,53 @@ export default function ProfilePage() {
   const getMemberSince = () => {
     if (!customer?.created_at) return "";
     const date = new Date(customer.created_at);
-    return `Since ${date.toLocaleString('default', { month: 'short' })}, ${date.getFullYear()}`;
+    return `Since ${date.toLocaleString("default", {
+      month: "short",
+    })}, ${date.getFullYear()}`;
   };
 
   // Calculate order statistics
   const orderStats = {
-    totalProducts: orders?.reduce((sum: number, order: any) => {
-      return sum + (order.items?.reduce((itemSum: number, item: any) => itemSum + (item.quantity || 0), 0) || 0);
-    }, 0) || 0,
-    totalPayment: orders?.reduce((sum: number, order: any) => {
-      // Only count captured/paid orders
-      if (order.payment_status === 'captured' || order.payment_status === 'paid') {
-        return sum + (order.total || 0);
-      }
-      return sum;
-    }, 0) || 0,
+    totalProducts:
+      orders?.reduce((sum: number, order: any) => {
+        return (
+          sum +
+          (order.items?.reduce(
+            (itemSum: number, item: any) => itemSum + (item.quantity || 0),
+            0
+          ) || 0)
+        );
+      }, 0) || 0,
+    totalPayment:
+      orders?.reduce((sum: number, order: any) => {
+        // Only count captured/paid orders
+        if (
+          order.payment_status === "captured" ||
+          order.payment_status === "paid"
+        ) {
+          return sum + (order.total || 0);
+        }
+        return sum;
+      }, 0) || 0,
   };
 
   // Month name to number helper
   const monthNameToNumber = (monthName: string): number => {
     const months: Record<string, number> = {
-      'january': 1, 'february': 2, 'march': 3, 'april': 4,
-      'may': 5, 'june': 6, 'july': 7, 'august': 8,
-      'september': 9, 'october': 10, 'november': 11, 'december': 12
+      January: 1,
+      February: 2,
+      March: 3,
+      April: 4,
+      May: 5,
+      June: 6,
+      July: 7,
+      August: 8,
+      September: 9,
+      October: 10,
+      November: 11,
+      December: 12,
     };
-    return months[monthName.toLowerCase()] || 1;
+    return months[monthName] || 1;
   };
 
   // Handle save with react-hook-form
@@ -140,13 +170,18 @@ export default function ProfilePage() {
       let dateOfBirth: string | null = null;
       if (data.dobDay && data.dobMonth && data.dobYear) {
         const monthNum = monthNameToNumber(data.dobMonth);
-        dateOfBirth = `${data.dobYear}-${String(monthNum).padStart(2, '0')}-${String(data.dobDay).padStart(2, '0')}`;
+        dateOfBirth = `${data.dobYear}-${String(monthNum).padStart(
+          2,
+          "0"
+        )}-${String(data.dobDay).padStart(2, "0")}`;
       }
 
       await api.updateCustomer({
         first_name: firstName,
         last_name: lastName,
-        phone: data.phone ? `+60${data.phone.replace(/^\+60\s*/, '')}` : undefined,
+        phone: data.phone
+          ? `+60${data.phone.replace(/^\+60\s*/, "")}`
+          : undefined,
         metadata: {
           ...(customer.metadata || {}),
           gender: data.gender,
@@ -168,28 +203,35 @@ export default function ProfilePage() {
   // Handle reset
   const handleReset = () => {
     if (customer) {
-      const fullName = [customer.first_name, customer.last_name].filter(Boolean).join(" ");
+      const fullName = [customer.first_name, customer.last_name]
+        .filter(Boolean)
+        .join(" ");
       const phone = customer.phone?.replace(/^\+60\s*/, "") || "";
-      const dateOfBirth = customer.metadata?.date_of_birth as string | undefined;
-      
+      const dateOfBirth = customer.metadata?.date_of_birth as
+        | string
+        | undefined;
+
       let dobDay = "";
       let dobMonth = "";
       let dobYear = "";
-      
+
       if (dateOfBirth) {
         const parts = dateOfBirth.split("-");
         if (parts.length === 3) {
           dobYear = parts[0];
-          dobMonth = new Date(dateOfBirth).toLocaleString('default', { month: 'long' }).toLowerCase();
+          dobMonth = new Date(dateOfBirth).toLocaleString("default", {
+            month: "long",
+          });
           dobDay = parts[2];
         }
       }
-      
+
       reset({
         fullName,
         phone,
         email: customer.email,
-        gender: (customer.metadata?.gender as "male" | "female" | "other") || "other",
+        gender:
+          (customer.metadata?.gender as "male" | "female" | "other") || "other",
         dobDay,
         dobMonth,
         dobYear,
@@ -201,12 +243,14 @@ export default function ProfilePage() {
   };
 
   // Handle profile image upload
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
     if (!allowedTypes.includes(file.type)) {
       setSaveError("Invalid image type. Please use JPEG, PNG, GIF, or WebP.");
       return;
@@ -224,11 +268,11 @@ export default function ProfilePage() {
     try {
       // Upload file directly using FormData
       const imageUrl = await api.uploadProfileImage(file);
-      console.log('[PROFILE] Image uploaded:', imageUrl);
-      
+      console.log("[PROFILE] Image uploaded:", imageUrl);
+
       // Update form value
       setValue("profileImage", imageUrl, { shouldDirty: true });
-      
+
       // Refresh customer data to get updated metadata
       await refreshCustomer();
       setSaveSuccess(true);
@@ -305,7 +349,9 @@ export default function ProfilePage() {
                     className="h-12"
                   />
                   {errors.fullName && (
-                    <p className="text-xs text-red-500 mt-1">{errors.fullName.message}</p>
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.fullName.message}
+                    </p>
                   )}
                 </div>
 
@@ -331,7 +377,9 @@ export default function ProfilePage() {
                     />
                   </div>
                   {errors.phone && (
-                    <p className="text-xs text-red-500 mt-1">{errors.phone.message}</p>
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.phone.message}
+                    </p>
                   )}
                 </div>
 
@@ -347,7 +395,10 @@ export default function ProfilePage() {
                     name="gender"
                     control={control}
                     render={({ field }) => (
-                      <Select value={field.value} onValueChange={field.onChange}>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      >
                         <SelectTrigger className="w-full h-12">
                           <SelectValue />
                         </SelectTrigger>
@@ -376,7 +427,9 @@ export default function ProfilePage() {
                     className="h-12"
                     disabled
                   />
-                  <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Email cannot be changed
+                  </p>
                 </div>
 
                 {/* Date of birth */}
@@ -397,7 +450,10 @@ export default function ProfilePage() {
                       name="dobMonth"
                       control={control}
                       render={({ field }) => (
-                        <Select value={field.value} onValueChange={field.onChange}>
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
                           <SelectTrigger className="w-full h-12!">
                             <SelectValue placeholder="Month" />
                           </SelectTrigger>
@@ -452,7 +508,7 @@ export default function ProfilePage() {
                 >
                   Reset all
                 </Button>
-                <Button 
+                <Button
                   onClick={handleSubmit(onSubmit)}
                   disabled={isSubmitting || !isDirty}
                   className="px-6 sm:px-8 h-11 sm:h-12 text-sm sm:text-base bg-linear-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white w-full sm:w-auto"
@@ -465,10 +521,11 @@ export default function ProfilePage() {
             {/* Right Sidebar */}
             <div className="w-full lg:w-96 shrink-0 border-l lg:border-l-0 border-r border-b border-t lg:border-t-0 border-gray-200 rounded-b-lg lg:rounded-bl-none lg:rounded-br-lg overflow-hidden mt-0">
               {/* Profile Card */}
-              <div 
+              <div
                 className="bg-white p-4 sm:p-6 lg:p-8"
                 style={{
-                  background: "linear-gradient(to bottom, #EBF0FEB2, #EBF0FE00)",
+                  background:
+                    "linear-gradient(to bottom, #EBF0FEB2, #EBF0FE00)",
                 }}
               >
                 <div className="pb-6 sm:pb-8">
@@ -481,7 +538,7 @@ export default function ProfilePage() {
                       className="hidden"
                       disabled={uploadingImage}
                     />
-                    <button 
+                    <button
                       onClick={() => fileInputRef.current?.click()}
                       disabled={uploadingImage}
                       className="flex items-center gap-2 text-xs sm:text-sm font-medium text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -514,9 +571,9 @@ export default function ProfilePage() {
 
                   <div className="flex justify-center lg:justify-start">
                     {/* Debug: show profileImage value */}
-                    {process.env.NODE_ENV === 'development' && (
+                    {process.env.NODE_ENV === "development" && (
                       <div className="absolute top-0 left-0 text-xs bg-black text-white p-1 max-w-50 truncate z-50">
-                        IMG: {profileImage || 'empty'}
+                        IMG: {profileImage || "empty"}
                       </div>
                     )}
                     <div className="relative w-32 h-32 sm:w-36 sm:h-36 lg:w-40 lg:h-40">
@@ -526,17 +583,28 @@ export default function ProfilePage() {
                             <div className="w-8 h-8 border-4 border-purple-400 border-t-transparent rounded-full animate-spin" />
                           </div>
                         ) : profileImage ? (
-                          <img
-                            src={profileImage}
-                            alt="Profile"
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              console.error('[PROFILE] Image failed to load:', profileImage);
-                              // Fallback to initials on error
-                              (e.target as HTMLImageElement).style.display = 'none';
-                            }}
-                            onLoad={() => console.log('[PROFILE] Image loaded successfully')}
-                          />
+                          <div className="relative w-full h-full">
+                            <Image
+                              loading="lazy"
+                              src={profileImage}
+                              alt="Profile"
+                              fill
+                              className="object-cover"
+                              onError={(e) => {
+                                console.error(
+                                  "[PROFILE] Image failed to load:",
+                                  profileImage
+                                );
+                                (e.target as HTMLImageElement).style.display =
+                                  "none";
+                              }}
+                              onLoad={() =>
+                                console.log(
+                                  "[PROFILE] Image loaded successfully"
+                                )
+                              }
+                            />
+                          </div>
                         ) : (
                           <div className="w-full h-full bg-linear-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white text-4xl font-bold">
                             {fullName ? fullName.charAt(0).toUpperCase() : "?"}
@@ -584,12 +652,17 @@ export default function ProfilePage() {
                           d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"
                         />
                       </svg>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        role === 'vip' ? 'bg-purple-100 text-purple-800' :
-                        role === 'bulk' ? 'bg-blue-100 text-blue-800' :
-                        role === 'supplier' ? 'bg-green-100 text-green-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                          role === "vip"
+                            ? "bg-purple-100 text-purple-800"
+                            : role === "bulk"
+                            ? "bg-blue-100 text-blue-800"
+                            : role === "supplier"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
                         {roleInfo.name}
                       </span>
                     </div>
@@ -629,7 +702,11 @@ export default function ProfilePage() {
                         Total Payment
                       </p>
                       <p className="text-base sm:text-lg font-bold text-gray-900">
-                        RM{(orderStats.totalPayment / 100).toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        RM
+                        {(orderStats.totalPayment / 100).toLocaleString(
+                          "en-MY",
+                          { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+                        )}
                       </p>
                     </div>
                   </div>

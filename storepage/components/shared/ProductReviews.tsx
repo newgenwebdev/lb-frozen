@@ -12,11 +12,13 @@ import {
 } from "@/lib/api/reviews";
 import type { Review, ReviewStats } from "@/lib/api/reviews";
 import ImageLightbox from "./ImageLightbox";
-import { Play } from "lucide-react";
+import { GuestReviewForm } from "./GuestReviewForm";
+import { Play, MessageSquare } from "lucide-react";
 import { useProductReviewsQuery, useProductReviewStatusQuery } from "@/lib/queries";
 
 interface ProductReviewsProps {
   productId: string;
+  productName: string;
   isAuthenticated: boolean;
   customerName?: string;
 }
@@ -284,6 +286,7 @@ function ReviewCard({
 
 export function ProductReviews({
   productId,
+  productName,
   isAuthenticated,
   customerName,
 }: ProductReviewsProps) {
@@ -300,6 +303,7 @@ export function ProductReviews({
   
   const [sortBy, setSortBy] = useState<"recent" | "helpful" | "high" | "low">("recent");
   const [filterRating, setFilterRating] = useState<number | null>(null);
+  const [showGuestForm, setShowGuestForm] = useState(false);
 
   // Handle helpful click
   const handleHelpful = async (reviewId: string) => {
@@ -429,13 +433,46 @@ export function ProductReviews({
             )}
           </p>
         </div>
+      ) : showGuestForm ? (
+        <div className="bg-white border border-gray-200 rounded-xl p-4 lg:p-6">
+          <GuestReviewForm
+            productId={productId}
+            productName={productName}
+            onSuccess={() => {
+              refetchReviews();
+              setShowGuestForm(false);
+            }}
+            onCancel={() => setShowGuestForm(false)}
+          />
+        </div>
       ) : (
-        <p className="text-sm text-gray-600">
-          <Link href="/otp" className="text-blue-600 hover:underline">
-            Log in
-          </Link>{" "}
-          to write a review. Reviews can only be submitted for products you have purchased.
-        </p>
+        <div className="bg-linear-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 lg:p-6">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+            <div className="flex-1">
+              <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                <MessageSquare className="w-5 h-5 text-blue-600" />
+                Share Your Experience
+              </h4>
+              <p className="text-sm text-gray-700">
+                Have you used this product? Share your thoughts and help others make informed decisions.
+                Your review will be visible after moderation.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowGuestForm(true)}
+              className="w-full lg:w-auto px-6 py-2.5 bg-[#23429B] text-white rounded-lg hover:bg-[#1a3277] transition-colors text-sm font-medium whitespace-nowrap"
+            >
+              Write a Review
+            </button>
+          </div>
+          <p className="text-xs text-gray-600 mt-3">
+            Already have an account?{" "}
+            <Link href="/otp" className="text-blue-600 hover:underline font-medium">
+              Log in
+            </Link>{" "}
+            to write reviews for your purchased products.
+          </p>
+        </div>
       )}
 
       {/* All Reviews */}

@@ -83,9 +83,19 @@ export default function CheckoutPage() {
   // Calculate totals from cart
   const cartItems = cart?.items || [];
   const subtotal = cart?.subtotal ? cart.subtotal / 100 : 0;
-  const discountTotal = cart?.discount_total ? cart.discount_total / 100 : 0;
+  
+  // Get discount from cart.discount_total OR from membership promo in metadata
+  const membershipPromoDiscount = cart?.metadata?.applied_membership_promo_discount 
+    ? Number(cart.metadata.applied_membership_promo_discount) / 100 
+    : 0;
+  const discountTotal = (cart?.discount_total ? cart.discount_total / 100 : 0) + membershipPromoDiscount;
+  
   const shippingCost = cart?.shipping_total ? cart.shipping_total / 100 : 0;
-  const total = cart?.total ? cart.total / 100 : 0;
+  
+  // Recalculate total with membership promo discount
+  const total = cart?.total 
+    ? (cart.total / 100) - membershipPromoDiscount 
+    : subtotal - discountTotal + shippingCost;
 
   // Handle shipping option selection
   const handleShippingOptionSelect = async (optionId: string) => {

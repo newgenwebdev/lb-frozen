@@ -61,6 +61,8 @@ export default function EditProductPage(): React.JSX.Element {
 
   // Reserved inventory tracking (for non-variant products)
   const [reservedQuantity, setReservedQuantity] = useState<number>(0);
+  const [totalStock, setTotalStock] = useState<number | null>(null);
+  const [availableStock, setAvailableStock] = useState<number | null>(null);
 
   // Product metadata fields
   const [onSale, setOnSale] = useState<boolean>(false);
@@ -422,9 +424,11 @@ export default function EditProductPage(): React.JSX.Element {
             const variantId = defaultVariant.id;
             const sku = defaultVariant.sku || generateVariantSku(productData.handle || "", defaultVariant.title);
             const details = await getVariantInventoryDetails(variantId, sku);
-            // Show stocked quantity (not available) so admin can set the actual stock level
+            // Populate values: keep editable field as total stocked quantity
             setValue("availableQuantity", details.stocked.toString());
             setReservedQuantity(details.reserved);
+            setTotalStock(details.stocked);
+            setAvailableStock(details.available);
           } catch (error) {
             console.error("Error fetching inventory details:", error);
           }
@@ -1510,6 +1514,14 @@ export default function EditProductPage(): React.JSX.Element {
                       : "border-[#E3E3E3]"
                   }`}
                 />
+                {/* Inventory breakdown: total, reserved, available */}
+                <div className="mt-2 text-sm text-slate-600">
+                  <div className="flex gap-4">
+                    <div>Total stock: <span className="font-medium">{totalStock ?? (form.watch("availableQuantity") || 0)}</span></div>
+                    <div>Reserved: <span className="font-medium">{reservedQuantity}</span></div>
+                    <div>Available: <span className="font-medium">{availableStock ?? Math.max(0, (Number(form.watch("availableQuantity") || 0) - reservedQuantity))}</span></div>
+                  </div>
+                </div>
                 {/* Reserved quantity info */}
                 {reservedQuantity > 0 && (
                   <div className="mt-2 flex items-start gap-2 rounded-lg bg-[#FEF3C7] px-3 py-2">

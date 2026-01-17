@@ -40,7 +40,7 @@ interface WishlistContextType {
   addToWishlist: (item: Omit<WishlistItem, "id" | "added_at">) => void;
   removeFromWishlist: (productId: string) => void;
   isInWishlist: (productId: string) => boolean;
-  clearWishlist: () => void;
+  clearWishlist: () => Promise<void>;
   wishlistCount: number;
 }
 
@@ -138,14 +138,24 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     if (isAuthenticated) {
       return serverWishlist.some((item: any) => item.product_id === productId);
     } else {
-      return storeIsInWishlist(productId);
+      // Use storeItems directly (already reactive from useWishlistStore)
+      return storeItems.some((item: any) => item.id === productId);
     }
   };
 
-  const clearWishlist = () => {
+  const clearWishlist = async () => {
     if (isAuthenticated) {
-      // For authenticated users, we'd need an API call to clear all
-      // For now, items will be empty when server data loads
+      // For authenticated users, remove all items from server
+      try {
+        // Remove all items in parallel
+        await Promise.all(
+          serverWishlist.map((item: any) => 
+            removeFromWishlistMutation.mutateAsync(item.product_id)
+          )
+        );
+      } catch (error) {
+        console.error("Failed to clear wishlist:", error);
+      }
     } else {
       storeClearWishlist();
     }

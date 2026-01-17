@@ -46,3 +46,14 @@ export async function addToWishlist(data: {
 export async function removeFromWishlist(product_id: string): Promise<void> {
   await apiClient.delete(`/store/wishlist/${product_id}`);
 }
+
+/**
+ * Clear all items from wishlist
+ */
+export async function clearWishlist(): Promise<void> {
+  const wishlistItems = await fetchWishlist();
+  // Remove all items in parallel
+  await Promise.all(
+    wishlistItems.map(item => removeFromWishlist(item.product_id))
+  );
+}

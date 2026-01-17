@@ -49,6 +49,28 @@ export default function LandingPage() {
   const [featuredReviewsPage, setFeaturedReviewsPage] = useState(0);
   const reviewsPerPage = 3;
 
+  // Categories Pagination
+  const [categoriesPage, setCategoriesPage] = useState(0);
+  const categoriesPerPage = 7;
+  const totalCategoriesPages = Math.ceil((categories?.length || 0) / categoriesPerPage);
+
+  const paginatedCategories = categories?.slice(
+    categoriesPage * categoriesPerPage,
+    (categoriesPage + 1) * categoriesPerPage
+  ) || [];
+
+  const handleCategoriesNext = () => {
+    if (categoriesPage < totalCategoriesPages - 1) {
+      setCategoriesPage(prev => prev + 1);
+    }
+  };
+
+  const handleCategoriesPrev = () => {
+    if (categoriesPage > 0) {
+      setCategoriesPage(prev => prev - 1);
+    }
+  };
+
   // State for Top Products by Categories section
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [categoryProductsPage, setCategoryProductsPage] = useState(0);
@@ -72,14 +94,14 @@ export default function LandingPage() {
   const selectedCategory = categories.find(c => c.id === selectedCategoryId);
 
   // Pagination helpers for category products
-  const totalCategoryPages = Math.ceil((categoryProducts?.length || 0) / productsPerPage);
+  const totalCategoryProductsPages = Math.ceil((categoryProducts?.length || 0) / productsPerPage);
   const paginatedCategoryProducts = categoryProducts?.slice(
     categoryProductsPage * productsPerPage,
     (categoryProductsPage + 1) * productsPerPage
   ) || [];
 
   const handleCategoryProductsNext = () => {
-    if (categoryProductsPage < totalCategoryPages - 1) {
+    if (categoryProductsPage < totalCategoryProductsPages - 1) {
       setCategoryProductsPage(prev => prev + 1);
     }
   };
@@ -322,7 +344,7 @@ export default function LandingPage() {
                 </div>
               ))
             ) : (
-              categories.slice(0, 7).map((category) => (
+              paginatedCategories.map((category) => (
                 <div
                   key={category.id}
                   className="bg-gray-100 rounded-xl p-4 hover:shadow-lg transition-shadow cursor-pointer"
@@ -345,6 +367,51 @@ export default function LandingPage() {
               ))
             )}
           </div>
+          
+          {/* Categories Pagination Controls */}
+          {totalCategoriesPages > 1 && (
+            <div className="flex justify-center items-center gap-4 mt-6">
+              <button 
+                onClick={handleCategoriesPrev}
+                disabled={categoriesPage === 0}
+                className={`w-10 h-10 rounded-full flex items-center justify-center border transition-colors ${
+                  categoriesPage === 0 
+                    ? 'border-gray-200 text-gray-300 cursor-not-allowed' 
+                    : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              
+              <div className="flex gap-2">
+                {[...Array(totalCategoriesPages)].map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setCategoriesPage(i)}
+                    className={`w-2.5 h-2.5 rounded-full transition-colors ${
+                      i === categoriesPage ? 'bg-[#23429B]' : 'bg-gray-300 hover:bg-gray-400'
+                    }`}
+                  />
+                ))}
+              </div>
+
+              <button 
+                onClick={handleCategoriesNext}
+                disabled={categoriesPage >= totalCategoriesPages - 1}
+                className={`w-10 h-10 rounded-full flex items-center justify-center border transition-colors ${
+                  categoriesPage >= totalCategoriesPages - 1
+                    ? 'border-gray-200 text-gray-300 cursor-not-allowed' 
+                    : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          )}
 
           {/* Mobile View All Button */}
           <div className="lg:hidden mt-4 text-center">
@@ -754,19 +821,19 @@ export default function LandingPage() {
                           <span className="text-sm text-gray-500">{rating ? rating.toFixed(1) : '0'} ({reviewCount} {reviewCount === 1 ? 'review' : 'reviews'})</span>
                         </div>
                       )}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-xl font-bold text-[#1a2b5f]">
+                      <div className="flex items-end justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xl font-bold text-[#1a2b5f]">
                             {currency}{currentPrice || '0.00'}
-                          </span>
+                          </div>
                           {originalPriceVal && (
-                            <span className="text-sm text-[#C52129] line-through">
+                            <div className="text-sm text-[#C52129] line-through">
                               {currency}{originalPriceVal}
-                            </span>
+                            </div>
                           )}
                         </div>
                         <button 
-                          className="w-10 h-10 border-2 border-gray-200 rounded-full flex items-center justify-center hover:border-[#23429B] hover:text-[#23429B] transition-colors"
+                          className="w-10 h-10 shrink-0 ml-3 border-2 border-gray-200 rounded-full flex items-center justify-center hover:border-[#23429B] hover:text-[#23429B] transition-colors"
                           onClick={(e) => {
                             e.preventDefault();
                             if (variant) {
@@ -1058,9 +1125,9 @@ export default function LandingPage() {
                   </button>
                   <button 
                     onClick={handleCategoryProductsNext}
-                    disabled={categoryProductsPage >= totalCategoryPages - 1}
+                    disabled={categoryProductsPage >= totalCategoryProductsPages - 1}
                     className={`w-10 h-10 bg-white border border-gray-200 rounded-lg flex items-center justify-center transition-colors ${
-                      categoryProductsPage >= totalCategoryPages - 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'
+                      categoryProductsPage >= totalCategoryProductsPages - 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'
                     }`}
                   >
                     <svg
@@ -1181,19 +1248,19 @@ export default function LandingPage() {
                               </span>
                             </div>
                           )}
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <span className="text-lg font-bold text-gray-900">
+                          <div className="flex items-end justify-between">
+                            <div className="flex-1 min-w-0">
+                              <div className="text-lg font-bold text-gray-900">
                                 RM{salePrice ? (salePrice / 100).toFixed(2) : '0.00'}
-                              </span>
+                              </div>
                               {originalPrice && originalPrice > (salePrice || 0) && (
-                                <span className="text-xs text-gray-400 line-through ml-1">
+                                <div className="text-xs text-gray-400 line-through">
                                   RM{(originalPrice / 100).toFixed(2)}
-                                </span>
+                                </div>
                               )}
                             </div>
                             <button 
-                              className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center hover:bg-gray-200"
+                              className="w-8 h-8 shrink-0 ml-3 bg-gray-100 rounded-lg flex items-center justify-center hover:bg-gray-200"
                               onClick={(e) => {
                                 e.preventDefault();
                                 if (variant?.id) {
@@ -1234,9 +1301,9 @@ export default function LandingPage() {
               </div>
 
               {/* Page indicator */}
-              {totalCategoryPages > 1 && (
+              {totalCategoryProductsPages > 1 && (
                 <div className="flex justify-center gap-1 mt-4">
-                  {[...Array(totalCategoryPages)].map((_, i) => (
+                  {[...Array(totalCategoryProductsPages)].map((_, i) => (
                     <button
                       key={i}
                       onClick={() => setCategoryProductsPage(i)}

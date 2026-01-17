@@ -68,7 +68,7 @@ export async function createCart(): Promise<Cart> {
  */
 export async function getCart(cartId: string): Promise<Cart> {
   const response = await apiClient.get<{ cart: Cart }>(
-    `/store/carts/${cartId}?fields=*items,*items.variant,*items.variant.product`
+    `/store/carts/${cartId}?fields=*items,*items.variant,*items.variant.product,+metadata`
   );
   return response.cart;
 }
@@ -138,7 +138,7 @@ export async function addToCart(
   const cart = await getOrCreateCart();
 
   const response = await apiClient.post<{ cart: Cart }>(
-    `/store/carts/${cart.id}/line-items?fields=*items,*items.variant,*items.variant.product`,
+    `/store/carts/${cart.id}/line-items?fields=*items,*items.variant,*items.variant.product,+metadata`,
     {
       variant_id: variantId,
       quantity,
@@ -159,7 +159,7 @@ export async function updateCartItem(
   if (!cartId) throw new Error('No cart found');
 
   const response = await apiClient.post<{ cart: Cart }>(
-    `/store/carts/${cartId}/line-items/${lineItemId}?fields=*items,*items.variant,*items.variant.product`,
+    `/store/carts/${cartId}/line-items/${lineItemId}?fields=*items,*items.variant,*items.variant.product,+metadata`,
     { quantity }
   );
 
@@ -181,7 +181,7 @@ export async function removeFromCart(lineItemId: string): Promise<Cart> {
 
   // Fetch updated cart after deletion
   const cartResponse = await apiClient.get<{ cart: Cart }>(
-    `/store/carts/${cartId}?fields=*items,*items.variant,*items.variant.product`
+    `/store/carts/${cartId}?fields=*items,*items.variant,*items.variant.product,+metadata`
   );
 
   return cartResponse.cart;

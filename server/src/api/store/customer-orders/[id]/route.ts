@@ -141,7 +141,12 @@ export const GET = async (req: MedusaRequest, res: MedusaResponse): Promise<void
     couponDiscountTotal = Number((order as any).metadata.applied_coupon_discount) || 0
   }
 
-  const discountTotal = pwpDiscountTotal + couponDiscountTotal
+  // Calculate membership promo discount from order metadata
+  const membershipPromoDiscount = (order as any).metadata?.applied_membership_promo_discount
+    ? Number((order as any).metadata.applied_membership_promo_discount)
+    : 0
+
+  const discountTotal = pwpDiscountTotal + couponDiscountTotal + membershipPromoDiscount
 
   // Format items with product info
   const formattedItems = order.items?.map((item) => {

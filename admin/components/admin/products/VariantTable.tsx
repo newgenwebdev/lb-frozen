@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import type { ProductVariantFormData, WholesaleTierFormData } from "@/lib/validators/product";
 import { VariantWholesalePricing } from "./VariantWholesalePricing";
 
@@ -34,6 +34,25 @@ export function VariantTable({
   // State for wholesale pricing modal
   const [wholesaleModalOpen, setWholesaleModalOpen] = useState(false);
   const [selectedVariantIndex, setSelectedVariantIndex] = useState<number | null>(null);
+  const [variantInventory, setVariantInventory] = useState<Array<{ stocked: number; reserved: number; available: number }>>([]);
+
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try {
+        const { getVariantInventoryDetails } = await import("@/lib/api/inventory")
+        const results = await Promise.all(
+          variants.map((v) => getVariantInventoryDetails(v.id, v.sku))
+        )
+        if (mounted) setVariantInventory(results)
+      } catch (err) {
+        // ignore errors, leave inventory empty
+      }
+    })()
+    return () => {
+      mounted = false
+    }
+  }, [variants])
 
   const handleVariantChange = (
     index: number,
@@ -263,6 +282,11 @@ export function VariantTable({
                 </th>
                 <th className="border-b border-r border-[#E5E7EB] px-4 py-3 text-left">
                   <span className="font-geist text-[14px] font-medium leading-[150%] tracking-[-0.14px] text-[#6A7282]">
+                    Inventory
+                  </span>
+                </th>
+                <th className="border-b border-r border-[#E5E7EB] px-4 py-3 text-left">
+                  <span className="font-geist text-[14px] font-medium leading-[150%] tracking-[-0.14px] text-[#6A7282]">
                     Wholesale
                   </span>
                 </th>
@@ -325,6 +349,21 @@ export function VariantTable({
                       min="0"
                       className="w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 font-geist text-[14px] font-normal tracking-[-0.14px] text-[#030712] outline-none transition-colors placeholder:text-[#6A7282] focus:border-black"
                     />
+                  </td>
+
+                  {/* Inventory Breakdown */}
+                  <td className="border-b border-r border-[#E5E7EB] px-4 py-4">
+                    <div className="flex flex-col text-sm text-[#6A7282]">
+                      {variantInventory && variantInventory[index] ? (
+                        <>
+                          <span className="font-geist">Total: {variantInventory[index].stocked}</span>
+                          <span className="font-geist">Reserved: {variantInventory[index].reserved}</span>
+                          <span className="font-geist">Available: {variantInventory[index].available}</span>
+                        </>
+                      ) : (
+                        <span className="font-geist text-[13px] text-[#9CA3AF]">No data</span>
+                      )}
+                    </div>
                   </td>
 
                   {/* Wholesale */}

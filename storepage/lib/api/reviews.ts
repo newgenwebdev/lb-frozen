@@ -178,6 +178,29 @@ export interface FeaturedReview {
 }
 
 /**
+ * Guest review data for non-logged in users
+ */
+export interface CreateGuestReviewData {
+  product_id: string;
+  guest_name: string;
+  guest_email: string;
+  guest_phone?: string;
+  rating: number;
+  title?: string;
+  content: string;
+  images?: string[];
+}
+
+/**
+ * Create a guest review (no authentication required)
+ */
+export async function createGuestReview(
+  data: CreateGuestReviewData
+): Promise<{ review: Review; message: string }> {
+  return apiClient.post('/store/reviews', data);
+}
+
+/**
  * Get featured reviews with photos for landing page
  */
 export async function getFeaturedReviews(

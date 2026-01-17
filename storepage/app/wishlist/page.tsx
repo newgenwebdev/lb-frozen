@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { Heart, Trash2, ShoppingCart, ArrowLeft } from "lucide-react";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import ProtectedNavbar from "@/components/layout/ProtectedNavbar";
 import NewsletterFooter from "@/components/shared/NewsletterFooter";
 import { useWishlist, WishlistItem } from "@/lib/WishlistContext";
@@ -17,6 +18,8 @@ export default function WishlistPage() {
   const { items, loading, removeFromWishlist, clearWishlist } = useWishlist();
   const { addItem } = useCartContext();
   const [addingToCart, setAddingToCart] = useState<string | null>(null);
+  const [clearAllDialogOpen, setClearAllDialogOpen] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   const handleAddToCart = async (item: WishlistItem) => {
     // Check if variant_id exists
@@ -41,6 +44,18 @@ export default function WishlistPage() {
 
   const handleRemove = (productId: string) => {
     removeFromWishlist(productId);
+  };
+
+  const handleClearAll = async () => {
+    setClearing(true);
+    try {
+      await clearWishlist();
+      setClearAllDialogOpen(false);
+    } catch (error) {
+      console.error("Failed to clear wishlist:", error);
+    } finally {
+      setClearing(false);
+    }
   };
 
   // Show empty state when no items and not loading
@@ -94,7 +109,7 @@ export default function WishlistPage() {
 
           {items.length > 0 && (
             <button
-              onClick={clearWishlist}
+              onClick={() => setClearAllDialogOpen(true)}
               className="text-red-600 hover:text-red-700 text-sm font-medium flex items-center gap-1"
             >
               <Trash2 className="w-4 h-4" />
@@ -268,6 +283,57 @@ export default function WishlistPage() {
       </div>
 
       <NewsletterFooter />
+
+      {/* Clear All Confirmation Dialog */}
+      <Dialog open={clearAllDialogOpen} onOpenChange={setClearAllDialogOpen}>
+        <DialogContent className="sm:max-w-md p-0 rounded-2xl overflow-hidden">
+          <DialogTitle className="sr-only">Clear wishlist confirmation</DialogTitle>
+          <button
+            onClick={() => setClearAllDialogOpen(false)}
+            className="absolute right-4 top-4 text-gray-400 hover:text-gray-600 z-10"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+
+          <div className="p-6 text-center">
+            {/* Warning Icon */}
+            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Heart className="w-10 h-10 text-red-500" />
+            </div>
+
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Clear your wishlist?</h2>
+            <p className="text-gray-500 mb-6">
+              Are you sure you want to remove all {items.length} items from your wishlist? This action cannot be undone.
+            </p>
+
+            <div className="space-y-3">
+              <button
+                onClick={handleClearAll}
+                disabled={clearing}
+                className="w-full py-3.5 rounded-full font-medium text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {clearing ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Clearing...
+                  </>
+                ) : (
+                  "Yes, clear all"
+                )}
+              </button>
+              <button
+                onClick={() => setClearAllDialogOpen(false)}
+                disabled={clearing}
+                className="w-full py-3.5 rounded-full font-medium text-gray-700 border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

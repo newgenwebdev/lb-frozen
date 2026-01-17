@@ -197,6 +197,15 @@ export default function PaymentPage() {
     queryClient.removeQueries({ queryKey: ['cart'] });
   }, [clearCart, queryClient, resetCheckoutStore]);
   
+  // IMPORTANT: Reset completedOrder if user navigates to payment page with a valid cart
+  // This prevents showing stale success screen from previous order
+  useEffect(() => {
+    if (!paymentLoading && cart && cart.items && cart.items.length > 0 && completedOrder) {
+      // User has items in cart but we're showing success from previous order - reset it
+      setCompletedOrder(null);
+    }
+  }, [paymentLoading, cart, completedOrder, setCompletedOrder]);
+  
   // Sync fetched cards to store and auto-select
   useEffect(() => {
     if (!queryLoadingCards && customer && fetchedCards.length > 0) {
@@ -342,9 +351,19 @@ export default function PaymentPage() {
   // Calculate totals from cart
   const cartItems = cart?.items || [];
   const subtotal = cart?.subtotal ? cart.subtotal / 100 : 0;
-  const discountTotal = cart?.discount_total ? cart.discount_total / 100 : 0;
+  
+  // Get discount from cart.discount_total OR from membership promo in metadata
+  const membershipPromoDiscount = cart?.metadata?.applied_membership_promo_discount 
+    ? Number(cart.metadata.applied_membership_promo_discount) / 100 
+    : 0;
+  const discountTotal = (cart?.discount_total ? cart.discount_total / 100 : 0) + membershipPromoDiscount;
+  
   const shippingCost = cart?.shipping_total ? cart.shipping_total / 100 : 0;
-  const total = cart?.total ? cart.total / 100 : 0;
+  
+  // Recalculate total with membership promo discount
+  const total = cart?.total 
+    ? (cart.total / 100) - membershipPromoDiscount 
+    : subtotal - discountTotal + shippingCost;
 
   // Handle payment submission with saved card
   const handlePayment = async () => {
@@ -398,6 +417,12 @@ export default function PaymentPage() {
             // This clears localStorage, Zustand store, and React Query cache
             clearCartAfterOrder();
             
+            // Calculate adjusted total with membership promo discount
+            const membershipPromoDiscount = cart?.metadata?.applied_membership_promo_discount
+              ? Number(cart.metadata.applied_membership_promo_discount)
+              : 0;
+            const adjustedTotal = Math.max(0, (cart?.total || 0) - membershipPromoDiscount);
+            
             // Show success page instead of redirecting
             setCompletedOrder({
               id: orderResult.order.id,
@@ -409,13 +434,14 @@ export default function PaymentPage() {
                 quantity: item.quantity,
                 total: item.total,
               })) || [],
-              total: cart?.total || 0,
+              total: adjustedTotal,
               currency_code: (cart as any)?.region?.currency_code || 'myr',
               shipping_address: cart?.shipping_address ? {
                 city: cart.shipping_address.city || '',
                 province: cart.shipping_address.province || '',
                 country_code: cart.shipping_address.country_code || 'my',
               } : null,
+              metadata: cart?.metadata || null,
             });
           }
         } else if (result.requiresAction && result.clientSecret) {
@@ -492,32 +518,45 @@ export default function PaymentPage() {
 
             {/* Order Info Card */}
             <div className="bg-gray-50 rounded-xl p-4 mb-6">
-              {completedOrder.items?.map((item, index) => (
-                <div key={index} className="flex items-center gap-4 mb-4 last:mb-0">
-                  <div className="w-16 h-16 bg-white rounded-lg overflow-hidden shrink-0">
-                    {item.thumbnail ? (
-                      <Image
-                        src={item.thumbnail}
-                        alt={item.title}
-                        width={64}
-                        height={64}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                        <span className="text-gray-400 text-xs">No image</span>
-                      </div>
-                    )}
+              {(() => {
+                // Get membership promo discount from metadata
+                const membershipPromoDiscount = (completedOrder as any).metadata?.applied_membership_promo_discount
+                  ? Number((completedOrder as any).metadata.applied_membership_promo_discount)
+                  : 0;
+                
+                // Backend already includes membership promo in discount_total and subtracts from total
+                // So we use completedOrder.total directly
+                
+                return completedOrder.items?.map((item, index) => (
+                  <div key={index} className="flex items-center gap-4 mb-4 last:mb-0">
+                    <div className="w-16 h-16 bg-white rounded-lg overflow-hidden shrink-0">
+                      {item.thumbnail ? (
+                        <Image
+                          src={item.thumbnail}
+                          alt={item.title}
+                          width={64}
+                          height={64}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                          <span className="text-gray-400 text-xs">No image</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs text-gray-500">ID : #ORD-{completedOrder.display_id || completedOrder.id.slice(-8).toUpperCase()}</p>
+                      <p className="font-medium text-gray-900">{item.title}</p>
+                      <p className="text-blue-600 font-semibold">
+                        Total : {formatPrice(completedOrder.total ?? 0)}
+                      </p>
+                      {membershipPromoDiscount > 0 && (
+                        <p className="text-xs text-green-600">🎉 Saved {formatPrice(membershipPromoDiscount)}!</p>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-xs text-gray-500">ID : #ORD-{completedOrder.display_id || completedOrder.id.slice(-8).toUpperCase()}</p>
-                    <p className="font-medium text-gray-900">{item.title}</p>
-                    <p className="text-blue-600 font-semibold">
-                      Total : {formatPrice(completedOrder.total ?? 0)}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                ));
+              })()}
 
               <div className="border-t border-gray-200 pt-4 mt-4 space-y-2">
                 <div className="flex items-center justify-between text-sm">
@@ -775,6 +814,12 @@ export default function PaymentPage() {
                         // This clears localStorage, Zustand store, and React Query cache
                         clearCartAfterOrder();
                         
+                        // Calculate adjusted total with membership promo discount
+                        const membershipPromoDiscount = cart?.metadata?.applied_membership_promo_discount
+                          ? Number(cart.metadata.applied_membership_promo_discount)
+                          : 0;
+                        const adjustedTotal = Math.max(0, (cart?.total || 0) - membershipPromoDiscount);
+                        
                         // Show success page for both guest and logged-in users
                         setCompletedOrder({
                           id: orderId,
@@ -786,13 +831,14 @@ export default function PaymentPage() {
                             quantity: item.quantity,
                             total: item.total,
                           })) || [],
-                          total: cart?.total || 0,
+                          total: adjustedTotal,
                           currency_code: (cart as any)?.region?.currency_code || 'myr',
                           shipping_address: cart?.shipping_address ? {
                             city: cart.shipping_address.city || '',
                             province: cart.shipping_address.province || '',
                             country_code: cart.shipping_address.country_code || 'my',
                           } : null,
+                          metadata: cart?.metadata || null,
                         });
                       }}
                       onError={(error) => setPaymentError(error)}
@@ -1076,46 +1122,48 @@ export default function PaymentPage() {
               hideButton={selectedPaymentMethod === "new"}
             />
 
-            {/* Promo Code */}
-            <div className="bg-white border border-gray-200 rounded-2xl p-6">
-              <h3 className="font-bold text-gray-900 text-lg mb-2">Promo code</h3>
-              <p className="text-sm text-gray-600 mb-4">
-                If you have a promo code, you can enter it here.
-              </p>
-              
-              <div className="flex gap-2">
-                <div className="flex-1 relative">
-                  <svg
-                    className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"
+            {/* Promo Code - Members Only */}
+            {customer && (
+              <div className="bg-white border border-gray-200 rounded-2xl p-6">
+                <h3 className="font-bold text-gray-900 text-lg mb-2">Promo code</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  If you have a promo code, you can enter it here.
+                </p>
+                
+                <div className="flex gap-2">
+                  <div className="flex-1 relative">
+                    <svg
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"
+                      />
+                    </svg>
+                    <Input
+                      placeholder="Enter promo code"
+                      value={promoCode}
+                      onChange={(e) => setPromoCode(e.target.value)}
+                      className="h-12 pl-10 pr-3 py-2"
                     />
-                  </svg>
-                  <Input
-                    placeholder="Enter promo code"
-                    value={promoCode}
-                    onChange={(e) => setPromoCode(e.target.value)}
-                    className="h-12 pl-10 pr-3 py-2"
-                  />
+                  </div>
+                  <button
+                    onClick={handleApplyPromo}
+                    className="px-6 py-3 rounded-full font-semibold text-white"
+                    style={{
+                      background: "linear-gradient(to bottom, #23429B, #C52129)",
+                    }}
+                  >
+                    Apply
+                  </button>
                 </div>
-                <button
-                  onClick={handleApplyPromo}
-                  className="px-6 py-3 rounded-full font-semibold text-white"
-                  style={{
-                    background: "linear-gradient(to bottom, #23429B, #C52129)",
-                  }}
-                >
-                  Apply
-                </button>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

@@ -317,9 +317,9 @@ export default function OverviewPage(): React.JSX.Element {
           titleClassName="font-geist text-[16px] font-medium leading-[120%] tracking-[-0.32px] text-[#030712]"
         >
           {isLoadingTimeseries ? (
-            <div className="flex h-[320px] items-center justify-center text-[#6A7282]">Loading chart data...</div>
+            <div className="flex h-80 items-center justify-center text-[#6A7282]">Loading chart data...</div>
           ) : timeseriesError ? (
-            <div className="flex h-[320px] items-center justify-center text-[#DC2626]">Failed to load chart data</div>
+            <div className="flex h-80 items-center justify-center text-[#DC2626]">Failed to load chart data</div>
           ) : (
             <>
               <div className="mb-6 flex items-end justify-between gap-3">
@@ -354,7 +354,7 @@ export default function OverviewPage(): React.JSX.Element {
                   </div>
                 </div>
               </div>
-              <div className="h-[320px] w-full min-h-80">
+              <div className="h-80 w-full min-h-80">
                 <ResponsiveContainer width="100%" height="100%" minHeight={320}>
                   <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="0" stroke="#F5F5F5" vertical={false} />

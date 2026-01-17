@@ -67,7 +67,7 @@ export class ResendNotificationService extends AbstractNotificationProviderServi
       )
     }
 
-    const emailOptions = notification.data.emailOptions as NotificationEmailOptions
+    const emailOptions = (notification.data.emailOptions as NotificationEmailOptions) || {}
 
     // Compose the message body to send via API to Resend
     const message: CreateEmailOptions = {

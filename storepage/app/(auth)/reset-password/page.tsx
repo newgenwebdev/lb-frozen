@@ -1,27 +1,46 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Navbar from '@/components/layout/Navbar';
 import Button from '@/components/shared/Button';
-import { resetPasswordSchema, type ResetPasswordFormData } from '@/lib/schemas';
+import { 
+  resetPasswordSchema, 
+  type ResetPasswordFormData,
+  forgotPasswordSchema,
+  type ForgotPasswordFormData
+} from '@/lib/schemas';
+import { useRequestPasswordResetMutation, useResetPasswordMutation } from '@/lib/queries';
 
-export default function ResetPasswordPage() {
+function ResetPasswordContent() {
+  const searchParams = useSearchParams();
+  const token = searchParams.get('token');
+  const router = useRouter();
+  
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const {
-    register,
-    handleSubmit,
-    watch,
-    formState: { errors, isSubmitting },
-  } = useForm<ResetPasswordFormData>({
+  // Mutations
+  const requestResetMutation = useRequestPasswordResetMutation();
+  const resetPasswordMutation = useResetPasswordMutation();
+
+  // Request Reset Form
+  const requestForm = useForm<ForgotPasswordFormData>({
+    resolver: zodResolver(forgotPasswordSchema),
+    mode: 'onChange',
+  });
+
+  // Confirm Reset Form
+  const confirmForm = useForm<ResetPasswordFormData>({
     resolver: zodResolver(resetPasswordSchema),
     mode: 'onChange',
   });
 
-  const password = watch('password', '');
+  const password = confirmForm.watch('password', '');
 
   // Password validation states
   const hasSymbol = /[!@#$%^&*(),.?":{}|<>]/.test(password);
@@ -43,18 +62,117 @@ export default function ResetPasswordPage() {
     return 'bg-red-500';
   };
 
-  const onSubmit = async (data: ResetPasswordFormData) => {
-    console.log('Password reset:', data);
-    // TODO: Call API to reset password
+  const onRequestSubmit = async (data: ForgotPasswordFormData) => {
+    setError(null);
+    try {
+      await requestResetMutation.mutateAsync(data.email);
+      setIsSuccess(true);
+    } catch (err: any) {
+      setError(err.message || 'Failed to send reset email. Please try again.');
+    }
   };
 
+  const onConfirmSubmit = async (data: ResetPasswordFormData) => {
+    if (!token) return;
+    setError(null);
+    try {
+      await resetPasswordMutation.mutateAsync({
+        token,
+        password: data.password,
+      });
+      router.push('/reset-password-success');
+    } catch (err: any) {
+      setError(err.message || 'Failed to reset password. The link may have expired.');
+    }
+  };
+
+  // Render: Success State (Check Email)
+  if (isSuccess && !token) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="flex items-center justify-center px-8 py-20">
+          <div className="w-full max-w-md bg-white px-12 py-16 shadow-sm text-center">
+            <h1 className="text-2xl font-semibold text-black mb-3">Check your email</h1>
+            <p className="text-gray-500 mb-8">
+              We have sent a password reset link to your email address.
+            </p>
+            <Button onClick={() => router.push('/login')}>
+              Back to Login
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Render: Request Reset Form (No Token)
+  if (!token) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="flex items-center justify-center px-8 py-20">
+          <div className="w-full max-w-md bg-white px-12 py-16 shadow-sm">
+            <div className="mb-8 text-center">
+              <h1 className="text-2xl font-semibold text-black mb-3">
+                Forgot Password?
+              </h1>
+              <p className="text-sm text-gray-500">
+                Enter your email address and we'll send you a link to reset your password.
+              </p>
+            </div>
+
+            <form onSubmit={requestForm.handleSubmit(onRequestSubmit)} className="space-y-6">
+              {error && (
+                <div className="p-3 bg-red-50 text-red-600 text-sm rounded-md">
+                  {error}
+                </div>
+              )}
+              
+              <div>
+                <label htmlFor="email" className="block text-base font-normal text-black mb-2">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  {...requestForm.register('email')}
+                  placeholder="Enter your email"
+                  className="w-full px-4 py-3.5 border border-gray-200 focus:ring-2 focus:ring-pink-400 focus:border-transparent outline-none transition bg-gray-50 text-gray-700 placeholder:text-gray-400"
+                />
+                {requestForm.formState.errors.email && (
+                  <p className="mt-2 text-xs text-red-500">
+                    {requestForm.formState.errors.email.message}
+                  </p>
+                )}
+              </div>
+
+              <Button 
+                type="submit"
+                disabled={requestForm.formState.isSubmitting}
+              >
+                {requestForm.formState.isSubmitting ? 'Sending...' : 'Send Reset Link'}
+              </Button>
+
+              <div className="text-center mt-4">
+                <a href="/login" className="text-sm text-gray-500 hover:text-black">
+                  Back to Login
+                </a>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Render: Confirm Reset Form (With Token)
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
       
       <div className="flex items-center justify-center px-8 py-20">
         <div className="w-full max-w-md bg-white px-12 py-16 shadow-sm">
-          {/* Title */}
           <div className="mb-8 text-center">
             <h1 className="text-2xl font-semibold text-black mb-3">
               Create new password
@@ -64,8 +182,13 @@ export default function ResetPasswordPage() {
             </p>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={confirmForm.handleSubmit(onConfirmSubmit)} className="space-y-6">
+            {error && (
+              <div className="p-3 bg-red-50 text-red-600 text-sm rounded-md">
+                {error}
+              </div>
+            )}
+
             {/* Password Field */}
             <div>
               <label htmlFor="password" className="block text-base font-normal text-black mb-2">
@@ -75,7 +198,7 @@ export default function ResetPasswordPage() {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   id="password"
-                  {...register('password')}
+                  {...confirmForm.register('password')}
                   placeholder="Enter your password"
                   className="w-full px-4 py-3.5 border border-gray-200 focus:ring-2 focus:ring-pink-400 focus:border-transparent outline-none transition pr-12 bg-gray-50 text-gray-700 placeholder:text-gray-400"
                 />
@@ -90,13 +213,12 @@ export default function ResetPasswordPage() {
                 </button>
               </div>
 
-              {/* Error Message from form validation */}
-              {errors.password && (
+              {confirmForm.formState.errors.password && (
                 <p className="mt-2 text-xs text-red-500 flex items-center gap-1">
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                   </svg>
-                  {errors.password.message}
+                  {confirmForm.formState.errors.password.message}
                 </p>
               )}
 
@@ -157,7 +279,7 @@ export default function ResetPasswordPage() {
                 <input
                   type={showConfirmPassword ? 'text' : 'password'}
                   id="confirmPassword"
-                  {...register('confirmPassword')}
+                  {...confirmForm.register('confirmPassword')}
                   placeholder="Re-enter your password"
                   className="w-full px-4 py-3.5 border border-gray-200 focus:ring-2 focus:ring-pink-400 focus:border-transparent outline-none transition pr-12 bg-gray-50 text-gray-700 placeholder:text-gray-400"
                 />
@@ -171,21 +293,29 @@ export default function ResetPasswordPage() {
                   </svg>
                 </button>
               </div>
-              {errors.confirmPassword && (
-                <p className="mt-2 text-xs text-red-500">{errors.confirmPassword.message}</p>
+              {confirmForm.formState.errors.confirmPassword && (
+                <p className="mt-2 text-xs text-red-500">{confirmForm.formState.errors.confirmPassword.message}</p>
               )}
             </div>
 
             {/* Confirm Button */}
             <Button 
               type="submit"
-              disabled={isSubmitting || passwordStrength < 4}
+              disabled={confirmForm.formState.isSubmitting || passwordStrength < 4}
             >
-              {isSubmitting ? 'Processing...' : 'Confirm'}
+              {confirmForm.formState.isSubmitting ? 'Processing...' : 'Confirm'}
             </Button>
           </form>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ResetPasswordContent />
+    </Suspense>
   );
 }

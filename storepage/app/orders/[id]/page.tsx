@@ -181,28 +181,34 @@ export default function OrderDetailPage() {
                 <h2 className="text-lg font-bold text-gray-900 mb-4">Order Timeline</h2>
                 
                 <div className="space-y-4">
-                  <div className="flex gap-4">
-                    <div className="flex flex-col items-center">
-                      <div className="w-3 h-3 rounded-full bg-blue-600" />
-                      <div className="w-0.5 h-full bg-gray-200" />
-                    </div>
-                    <div className="pb-4">
-                      <p className="font-medium text-gray-900">Order Placed</p>
-                      <p className="text-sm text-gray-500">{formatDate(order.created_at)}</p>
-                    </div>
-                  </div>
-                  
-                  {order.updated_at !== order.created_at && (
-                    <div className="flex gap-4">
-                      <div className="flex flex-col items-center">
-                        <div className="w-3 h-3 rounded-full bg-gray-300" />
+                  {ORDER_STATUSES.map((status, index) => {
+                    const isCompleted = index <= currentStatusIndex;
+                    const isLast = index === ORDER_STATUSES.length - 1;
+                    
+                    if (!isCompleted) return null;
+                    
+                    return (
+                      <div key={status.key} className="flex gap-4">
+                        <div className="flex flex-col items-center">
+                          <div className={`w-3 h-3 rounded-full ${
+                            index === currentStatusIndex ? 'bg-blue-600' : 'bg-green-500'
+                          }`} />
+                          {!isLast && <div className="w-0.5 flex-1 bg-gray-200 mt-1" />}
+                        </div>
+                        <div className={!isLast ? "pb-4" : ""}>
+                          <p className="font-medium text-gray-900">{status.label}</p>
+                          <p className="text-sm text-gray-500">
+                            {index === 0 
+                              ? formatDate(order.created_at)
+                              : index === currentStatusIndex 
+                              ? formatDate(order.updated_at)
+                              : formatDate(order.updated_at)
+                            }
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium text-gray-900">Last Updated</p>
-                        <p className="text-sm text-gray-500">{formatDate(order.updated_at)}</p>
-                      </div>
-                    </div>
-                  )}
+                    );
+                  })}
                 </div>
               </div>
 
@@ -255,42 +261,68 @@ export default function OrderDetailPage() {
               <div className="bg-white rounded-b-lg border-l border-r border-b border-gray-200 p-4 sm:p-6">
                 <h2 className="text-lg font-bold text-gray-900 mb-4">Order Summary</h2>
 
-                <div className="space-y-3">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Subtotal</span>
-                    <span className="text-gray-900">RM{((order.subtotal || 0) / 100).toFixed(2)}</span>
-                  </div>
+                {(() => {
+                  // Get membership promo discount from metadata
+                  const membershipPromoDiscount = (order as any).metadata?.applied_membership_promo_discount
+                    ? Number((order as any).metadata.applied_membership_promo_discount)
+                    : 0;
+                  const membershipPromoName = (order as any).metadata?.applied_membership_promo_name;
+                  
+                  // Non-membership discount (total discount minus membership promo)
+                  // Backend discount_total already includes membership promo
+                  const otherDiscount = Math.max(0, (order.discount_total || 0) - membershipPromoDiscount);
+                  
+                  return (
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Subtotal</span>
+                        <span className="text-gray-900">RM{((order.subtotal || 0) / 100).toFixed(2)}</span>
+                      </div>
 
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Shipping</span>
-                    <span className="text-green-600">
-                      {order.shipping_total ? `RM${(order.shipping_total / 100).toFixed(2)}` : "Free"}
-                    </span>
-                  </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Shipping</span>
+                        <span className="text-green-600">
+                          {order.shipping_total ? `RM${(order.shipping_total / 100).toFixed(2)}` : "Free"}
+                        </span>
+                      </div>
 
-                  {order.discount_total > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Discount</span>
-                      <span className="text-green-600">-RM{((order.discount_total || 0) / 100).toFixed(2)}</span>
+                      {otherDiscount > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Discount</span>
+                          <span className="text-green-600">-RM{(otherDiscount / 100).toFixed(2)}</span>
+                        </div>
+                      )}
+
+                      {membershipPromoDiscount > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Member Discount{membershipPromoName ? ` (${membershipPromoName})` : ""}</span>
+                          <span className="text-green-600">-RM{(membershipPromoDiscount / 100).toFixed(2)}</span>
+                        </div>
+                      )}
+
+                      {order.tax_total > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Tax</span>
+                          <span className="text-gray-900">RM{((order.tax_total || 0) / 100).toFixed(2)}</span>
+                        </div>
+                      )}
+
+                      <div className="border-t border-gray-200 pt-3 mt-3">
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium text-gray-900">Total</span>
+                          <span className="text-xl font-bold text-blue-600">
+                            RM{((order.total || 0) / 100).toFixed(2)}
+                          </span>
+                        </div>
+                        {membershipPromoDiscount > 0 && (
+                          <p className="text-xs text-green-600 mt-1 text-right">
+                            🎉 You saved RM{(membershipPromoDiscount / 100).toFixed(2)} on this order!
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  )}
-
-                  {order.tax_total > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Tax</span>
-                      <span className="text-gray-900">RM{((order.tax_total || 0) / 100).toFixed(2)}</span>
-                    </div>
-                  )}
-
-                  <div className="border-t border-gray-200 pt-3 mt-3">
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium text-gray-900">Total</span>
-                      <span className="text-xl font-bold text-blue-600">
-                        RM{((order.total || 0) / 100).toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+                  );
+                })()}
               </div>
             </div>
 
