@@ -527,14 +527,15 @@ export default function LandingPage() {
                             </svg>
                           )}
                         </button>
-                        <div className="bg-gray-50 aspect-square flex items-center justify-center p-6 rounded-lg">
+                        <div className="aspect-square rounded-lg">
                           {product.thumbnail ? (
                             <Image
                               src={product.thumbnail}
                               alt={product.title || "Product"}
                               width={200}
                               height={200}
-                              className="object-contain"
+                              className="object-cover w-full h-full rounded-2xl lg:rounded-3xl"
+
                             />
                           ) : (
                             <div className="w-48 h-48 bg-gray-200 flex items-center justify-center text-gray-400">
@@ -780,13 +781,13 @@ export default function LandingPage() {
                           />
                         </svg>
                       </button>
-                      <div className="bg-[#E8EBF0] aspect-square flex items-center justify-center p-6">
+                      <div className="aspect-square">
                         <Image
                           src={product.thumbnail || "/placeholder-product.png"}
                           alt={product.title}
                           width={200}
                           height={200}
-                          className="object-contain max-h-45"
+                          className="object-cover h-full w-full"
                         />
                       </div>
                     </div>
@@ -1216,13 +1217,13 @@ export default function LandingPage() {
                               </svg>
                             )}
                           </button>
-                          <div className="bg-gray-50 aspect-square flex items-center justify-center p-6">
+                          <div className="aspect-square">
                             <Image
                               src={product.thumbnail || '/placeholder-product.png'}
                               alt={product.title}
                               width={150}
                               height={150}
-                              className="object-contain"
+                              className="object-cover w-full h-full"
                             />
                           </div>
                         </div>

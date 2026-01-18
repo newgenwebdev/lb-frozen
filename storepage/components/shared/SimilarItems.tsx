@@ -243,7 +243,7 @@ export function SimilarItems({
                 <Link href={`/product/${product.id}`}>
                   <div className="bg-white rounded-2xl overflow-hidden hover:shadow-lg transition-shadow">
                     {/* Image Container */}
-                    <div className="relative bg-gray-50 aspect-square p-4">
+                    <div className="relative aspect-square">
                       {/* Discount Badge */}
                       {discountPercent > 0 && (
                         <div className="absolute top-3 left-3 bg-[#C52129] text-white text-xs font-semibold px-2 py-1 rounded-full z-10">
@@ -287,9 +287,9 @@ export function SimilarItems({
                       <Image
                         src={product.thumbnail || "/placeholder-product.png"}
                         alt={product.title}
-                        width={180}
-                        height={180}
-                        className="object-contain w-full h-full"
+                        width={400}
+                        height={400}
+                        className="object-cover w-full h-full"
                       />
                     </div>
 

@@ -1007,16 +1007,16 @@ export function SearchResultsContent() {
                             </div>
                           )}
                         </div>
-                        <div className="aspect-square flex items-center justify-center p-4 lg:p-6 cursor-pointer">
+                        <div className="aspect-square overflow-hidden cursor-pointer">
                           <Image
                             src={
                               product.thumbnail ||
                               'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"%3E%3Crect fill="%23f3f4f6" width="400" height="400"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%239ca3af" font-family="sans-serif" font-size="24"%3ENo Image%3C/text%3E%3C/svg%3E'
                             }
                             alt={product.title}
-                            width={200}
-                            height={200}
-                            className="object-contain"
+                            width={400}
+                            height={400}
+                            className="object-cover w-full h-full"
                             unoptimized={!product.thumbnail}
                           />
                         </div>

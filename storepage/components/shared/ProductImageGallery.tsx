@@ -2,7 +2,14 @@
 
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
-import { ChevronLeft, ChevronRight, ZoomIn, X, Heart, Share2 } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ZoomIn,
+  X,
+  Heart,
+  Share2,
+} from "lucide-react";
 
 interface ProductImage {
   id: string;
@@ -29,21 +36,26 @@ export function ProductImageGallery({
   onShareClick,
 }: ProductImageGalleryProps) {
   // Build gallery images list - use images array, fallback to thumbnail
-  const galleryImages = images.length > 0 
-    ? images.map(img => img.url) 
-    : thumbnail 
-      ? [thumbnail] 
+  const galleryImages =
+    images.length > 0
+      ? images.map((img) => img.url)
+      : thumbnail
+      ? [thumbnail]
       : ["/placeholder-product.png"];
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [isZoomed, setIsZoomed] = useState(false);
 
   const goToPrevious = () => {
-    setActiveIndex((prev) => (prev === 0 ? galleryImages.length - 1 : prev - 1));
+    setActiveIndex((prev) =>
+      prev === 0 ? galleryImages.length - 1 : prev - 1
+    );
   };
 
   const goToNext = () => {
-    setActiveIndex((prev) => (prev === galleryImages.length - 1 ? 0 : prev + 1));
+    setActiveIndex((prev) =>
+      prev === galleryImages.length - 1 ? 0 : prev + 1
+    );
   };
 
   // Handle keyboard navigation
@@ -62,17 +74,17 @@ export function ProductImageGallery({
 
   // Touch/swipe handling for mobile
   const touchStartX = useRef<number | null>(null);
-  
+
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (touchStartX.current === null) return;
-    
+
     const touchEndX = e.changedTouches[0].clientX;
     const diff = touchStartX.current - touchEndX;
-    
+
     if (Math.abs(diff) > 50) {
       if (diff > 0) {
         goToNext();
@@ -80,7 +92,7 @@ export function ProductImageGallery({
         goToPrevious();
       }
     }
-    
+
     touchStartX.current = null;
   };
 
@@ -88,8 +100,8 @@ export function ProductImageGallery({
     <>
       <div className="space-y-3">
         {/* Main Image */}
-        <div 
-          className="relative bg-gray-50 rounded-2xl lg:rounded-3xl aspect-square flex items-center justify-center p-6 lg:p-12 overflow-hidden group"
+        <div
+          className="relative rounded-2xl lg:rounded-3xl aspect-square overflow-hidden group"
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
         >
@@ -114,10 +126,14 @@ export function ProductImageGallery({
             <button
               onClick={onWishlistClick}
               className="w-8 h-8 lg:w-10 lg:h-10 bg-white rounded-full flex items-center justify-center hover:bg-gray-100 shadow-sm"
-              aria-label={isInWishlist ? "Remove from wishlist" : "Add to wishlist"}
+              aria-label={
+                isInWishlist ? "Remove from wishlist" : "Add to wishlist"
+              }
             >
-              <Heart 
-                className={`w-4 h-4 lg:w-5 lg:h-5 ${isInWishlist ? "fill-red-500 text-red-500" : "text-gray-400"}`} 
+              <Heart
+                className={`w-4 h-4 lg:w-5 lg:h-5 ${
+                  isInWishlist ? "fill-red-500 text-red-500" : "text-gray-400"
+                }`}
               />
             </button>
           </div>
@@ -155,9 +171,9 @@ export function ProductImageGallery({
           <Image
             src={galleryImages[activeIndex]}
             alt={`${productTitle} - Image ${activeIndex + 1}`}
-            width={500}
-            height={500}
-            className="object-contain max-h-full cursor-pointer transition-transform duration-200"
+            width={800}
+            height={800}
+            className="w-full h-full object-cover cursor-pointer transition-transform duration-200"
             onClick={() => setIsZoomed(true)}
             priority={activeIndex === 0}
           />
@@ -184,7 +200,7 @@ export function ProductImageGallery({
 
       {/* Lightbox/Zoom Modal */}
       {isZoomed && (
-        <div 
+        <div
           className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center"
           onClick={() => setIsZoomed(false)}
         >
@@ -201,14 +217,20 @@ export function ProductImageGallery({
           {galleryImages.length > 1 && (
             <>
               <button
-                onClick={(e) => { e.stopPropagation(); goToPrevious(); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goToPrevious();
+                }}
                 className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors z-10"
                 aria-label="Previous image"
               >
                 <ChevronLeft className="w-6 h-6 text-white" />
               </button>
               <button
-                onClick={(e) => { e.stopPropagation(); goToNext(); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goToNext();
+                }}
                 className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors z-10"
                 aria-label="Next image"
               >
@@ -218,7 +240,7 @@ export function ProductImageGallery({
           )}
 
           {/* Zoomed Image */}
-          <div 
+          <div
             className="relative w-full h-full max-w-4xl max-h-[80vh] p-4"
             onClick={(e) => e.stopPropagation()}
           >
@@ -236,7 +258,10 @@ export function ProductImageGallery({
               {galleryImages.map((_, index) => (
                 <button
                   key={index}
-                  onClick={(e) => { e.stopPropagation(); setActiveIndex(index); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveIndex(index);
+                  }}
                   className={`w-2.5 h-2.5 rounded-full transition-all ${
                     index === activeIndex
                       ? "bg-white w-5"
