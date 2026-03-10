@@ -49,6 +49,21 @@ export default function LandingPage() {
   const [featuredReviewsPage, setFeaturedReviewsPage] = useState(0);
   const reviewsPerPage = 3;
 
+  // Banner Carousel
+  const bannerImages = [
+    { src: "/Banner2-1.png", href: "/products" },
+    { src: "/Banner2-2.png", href: "/products" },
+    { src: "/Banner2-3.png", href: "/products" },
+  ];
+  const [currentBanner, setCurrentBanner] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentBanner((prev) => (prev + 1) % bannerImages.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [bannerImages.length]);
+
   // Categories Pagination
   const [categoriesPage, setCategoriesPage] = useState(0);
   const categoriesPerPage = 7;
@@ -207,100 +222,55 @@ export default function LandingPage() {
 
       {/* Main Content */}
       <div className="mx-auto px-4 lg:px-6 py-4 lg:py-8 bg-white">
-        {/* Hero Banner */}
-        <div
-          className="relative bg-linear-to-b from-[#23429B] to-[#C52129] rounded-3xl overflow-hidden mb-8 lg:mb-12"
-          style={{ height: "480px" }}
-        >
-          <div className="absolute inset-0">
-            {/* Left Content */}
-            <div
-              className="absolute left-6 lg:left-12 text-white z-10"
-              style={{ width: "306px", top: "60px" }}
-            >
-              <h1
-                className="font-semibold"
-                style={{
-                  fontSize: "48px",
-                  lineHeight: "110%",
-                  letterSpacing: "0%",
-                  fontFamily: "Inter Tight, Inter, sans-serif",
-                  marginBottom: "89px",
-                }}
-              >
-                Seafood
-                <br />
-                shopping is
-                <br />
-                quicker than
-                <br />
-                ever!
-              </h1>
-              <p className="text-sm" style={{ marginBottom: "12px" }}>
-                Check Information Now!
-              </p>
-              <button className="flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white px-5 py-2.5 rounded-full backdrop-blur-sm transition-all border border-white/30">
-                <svg
-                  className="w-5 h-5"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
-                </svg>
-                Discover more
-              </button>
-            </div>
-
-            {/* Smoky Effect */}
-            <div
-              className="absolute z-2"
-              style={{
-                width: "373px",
-                height: "641px",
-                top: "-77px",
-                left: "680px",
-                background:
-                  "radial-gradient(ellipse at center, #BFC8FB 0%, transparent 70%)",
-                opacity: 1,
-              }}
-            ></div>
-
-            {/* Blue Background Under Bowl */}
-            <div
-              className="absolute z-3"
-              style={{
-                width: "1021px",
-                height: "346.64px",
-                top: "131px",
-                left: "435px",
-                background:
-                  "radial-gradient(ellipse at center, #203C8D 30%, transparent 70%)",
-                opacity: 0.8,
-                borderRadius: "50%",
-              }}
-            ></div>
-
-            {/* Right Image - Seafood Bowl */}
-            <div
-              className="absolute right-0 bottom-0 overflow-hidden z-5"
-              style={{ left: "420px", height: "450px" }}
-            >
-              <Image
-                src="/hero.png"
-                alt="Seafood Bowl"
-                width={924}
-                height={537}
-                priority
-                className="object-cover object-top"
-              />
-            </div>
+        {/* Hero Banner Carousel */}
+        <div className="relative rounded-3xl overflow-hidden mb-8 lg:mb-12" style={{ height: "480px" }}>
+          {/* Slides */}
+          <div
+            className="flex transition-transform duration-700 ease-in-out h-full"
+            style={{ transform: `translateX(-${currentBanner * 100}%)` }}
+          >
+            {bannerImages.map((banner, index) => (
+              <Link key={index} href={banner.href} className="min-w-full h-full relative block">
+                <Image
+                  src={banner.src}
+                  alt={`Banner ${index + 1}`}
+                  fill
+                  priority={index === 0}
+                  className="object-cover"
+                />
+              </Link>
+            ))}
           </div>
+
+          {/* Previous/Next Arrows */}
+          <button
+            onClick={() => setCurrentBanner((prev) => (prev - 1 + bannerImages.length) % bannerImages.length)}
+            className="absolute left-4 top-1/2 -translate-y-1/2 z-20 bg-black/30 hover:bg-black/50 text-white w-10 h-10 rounded-full flex items-center justify-center transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <button
+            onClick={() => setCurrentBanner((prev) => (prev + 1) % bannerImages.length)}
+            className="absolute right-4 top-1/2 -translate-y-1/2 z-20 bg-black/30 hover:bg-black/50 text-white w-10 h-10 rounded-full flex items-center justify-center transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
 
           {/* Carousel Indicators */}
           <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-20">
-            <button className="w-2.5 h-2.5 rounded-full bg-white"></button>
-            <button className="w-2.5 h-2.5 rounded-full bg-white/50"></button>
-            <button className="w-2.5 h-2.5 rounded-full bg-white/50"></button>
+            {bannerImages.map((_banner, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentBanner(index)}
+                className={`w-2.5 h-2.5 rounded-full transition-colors ${
+                  index === currentBanner ? "bg-white" : "bg-white/50"
+                }`}
+              />
+            ))}
           </div>
         </div>
 
