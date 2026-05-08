@@ -499,7 +499,7 @@ export function SearchResultsContent() {
             </Collapsible>
 
             {/* Delivery Speed */}
-            <Collapsible open={deliveryOpen} onOpenChange={setDeliveryOpen}>
+            {/* <Collapsible open={deliveryOpen} onOpenChange={setDeliveryOpen}>
               <div className="mb-6">
                 <CollapsibleTrigger className="flex items-center justify-between mb-3 w-full">
                   <h3 className="text-sm lg:text-base font-semibold">
@@ -587,7 +587,7 @@ export function SearchResultsContent() {
                 </CollapsibleContent>
                 <div className="border-b-2 border-gray-200 border-dotted mt-6" />
               </div>
-            </Collapsible>
+            </Collapsible> */}
 
             {/* Ratings */}
             <Collapsible open={ratingsOpen} onOpenChange={setRatingsOpen}>

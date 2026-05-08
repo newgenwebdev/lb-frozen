@@ -87,7 +87,7 @@ export default function ProtectedNavbar() {
   return (
     <>
       {/* Top Bar / Breadcrumbs */}
-      <div className="bg-white border-b border-gray-200 px-4 lg:px-6 relative py-2 z-50">
+      {/* <div className="bg-white border-b border-gray-200 px-4 lg:px-6 relative py-2 z-50">
         <div className="flex items-center justify-between text-xs lg:text-sm">
           <div className="flex items-center gap-3 lg:gap-6 text-gray-600">
             <>
@@ -122,7 +122,7 @@ export default function ProtectedNavbar() {
             <span className="font-medium">EN</span>
           </div>
         </div>
-      </div>
+      </div> */}
 
       <nav className="bg-white border-b border-gray-200 px-4 lg:px-6 py-3 relative z-50">
         <div className="flex items-center justify-between gap-4">
