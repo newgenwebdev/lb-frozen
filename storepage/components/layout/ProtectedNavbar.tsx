@@ -532,20 +532,18 @@ export default function ProtectedNavbar() {
           >
             TOP SALES
           </button>
-          <button
-            onClick={() => {
-              if (pathname === "/") {
-                document
-                  .getElementById("contact-us")
-                  ?.scrollIntoView({ behavior: "smooth" });
-              } else {
-                router.push("/#contact-us");
-              }
-            }}
+          <Link
+            href="/about-us"
+            className="text-xs lg:text-sm font-medium text-gray-700 hover:text-gray-900 cursor-pointer"
+          >
+            ABOUT US
+          </Link>
+          <Link
+            href="/contact-us"
             className="text-xs lg:text-sm font-medium text-gray-700 hover:text-gray-900 cursor-pointer"
           >
             CONTACT US
-          </button>
+          </Link>
         </div>
       </div>
 
@@ -629,21 +627,20 @@ export default function ProtectedNavbar() {
               >
                 TOP SALES
               </button>
-              <button
-                onClick={() => {
-                  setIsMobileMenuOpen(false);
-                  if (pathname === "/") {
-                    document
-                      .getElementById("contact-us")
-                      ?.scrollIntoView({ behavior: "smooth" });
-                  } else {
-                    router.push("/#contact-us");
-                  }
-                }}
-                className="block w-full text-left px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg cursor-pointer"
+              <Link
+                href="/about-us"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="block px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg"
+              >
+                ABOUT US
+              </Link>
+              <Link
+                href="/contact-us"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="block px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg"
               >
                 CONTACT US
-              </button>
+              </Link>
             </div>
           </div>
         </div>

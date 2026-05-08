@@ -223,7 +223,7 @@ export default function LandingPage() {
       {/* Main Content */}
       <div className="mx-auto px-4 lg:px-6 py-4 lg:py-8 bg-white">
         {/* Hero Banner Carousel */}
-        <div className="relative rounded-3xl overflow-hidden mb-8 lg:mb-12" style={{ height: "480px" }}>
+        <div className="relative rounded-3xl overflow-hidden mb-8 lg:mb-12 h-[200px] sm:h-[300px] md:h-[400px] lg:h-[480px]">
           {/* Slides */}
           <div
             className="flex transition-transform duration-700 ease-in-out h-full"
