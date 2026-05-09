@@ -4,12 +4,40 @@ import { PROMO_MODULE } from "../../../../../modules/promo"
 import { MEMBERSHIP_MODULE } from "../../../../../modules/membership"
 import { TIER_CONFIG_MODULE } from "../../../../../modules/tier-config"
 import { getVerifiedCustomerId } from "../../../../../utils/store-auth"
+import { CUSTOMER_GROUP_IDS } from "../../../../../lib/constants"
 import {
   calculateCartValueExcludingPWP,
   getApplicableBulkTier,
   getBasePrice,
   type CartItem,
 } from "../../../../../utils/cart-validation"
+
+const PRICED_GROUP_IDS = new Set<string>([
+  CUSTOMER_GROUP_IDS.BULK,
+  CUSTOMER_GROUP_IDS.VIP,
+  CUSTOMER_GROUP_IDS.SUPPLIER,
+])
+
+/**
+ * Resolve the cart customer's pricing group (VIP / Supplier / Bulk),
+ * or null for guests / retail customers.
+ */
+async function resolveCartCustomerGroupId(
+  scope: any,
+  customerId: string | null | undefined
+): Promise<string | null> {
+  if (!customerId) return null
+  try {
+    const customerService = scope.resolve(Modules.CUSTOMER)
+    const customer = await customerService.retrieveCustomer(customerId, {
+      relations: ["groups"],
+    })
+    const group = customer.groups?.find((g: any) => PRICED_GROUP_IDS.has(g.id))
+    return group?.id ?? null
+  } catch {
+    return null
+  }
+}
 
 /**
  * POST /store/carts/:id/sync-prices
@@ -53,6 +81,10 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse): Promise<voi
 
     const items = cart.items as CartItem[]
     const currencyCode = cart.currency_code || "myr"
+
+    // Resolve the cart customer's pricing group so role-based prices
+    // (VIP / Supplier / Bulk) take priority over the variant default price.
+    const customerGroupId = await resolveCartCustomerGroupId(req.scope, cart.customer_id)
 
     const itemsToRemove: string[] = []
     const itemsToUpdate: Array<{ id: string; unit_price: number; metadata: any }> = []
@@ -152,13 +184,42 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse): Promise<voi
 
         if (!variantPriceSets.length || !variantPriceSets[0].price_set_id) continue
 
+        // Quantity-tier prices (wholesale) — these have min_quantity set and
+        // are NOT in any role price list, so they're still safe to fetch raw.
         const prices = await pricingModule.listPrices(
-          { price_set_id: [variantPriceSets[0].price_set_id] },
+          {
+            price_set_id: [variantPriceSets[0].price_set_id],
+            // exclude entries that belong to a price list (i.e. role prices)
+            // so that getBasePrice / getApplicableBulkTier only see the
+            // variant's own prices.
+            price_list_id: null as any,
+          },
           { select: ["amount", "currency_code", "min_quantity", "max_quantity"] }
         )
 
         const applicableTier = getApplicableBulkTier(currentQty, prices as any, currencyCode)
-        const basePrice = getBasePrice(prices as any, currencyCode)
+        const variantBasePrice = getBasePrice(prices as any, currencyCode)
+
+        // Customer-aware price via the pricing module — automatically applies
+        // VIP / Supplier price list overrides if the customer's group matches.
+        // For guests / retail customers this resolves to the variant base.
+        let customerAwareBase: number | null = null
+        try {
+          const calculated = await pricingModule.calculatePrices(
+            { id: [variantPriceSets[0].price_set_id] },
+            {
+              context: {
+                currency_code: currencyCode,
+                ...(customerGroupId ? { customer_group_id: customerGroupId } : {}),
+              },
+            }
+          )
+          const amount = (calculated as Array<any>)[0]?.calculated_amount
+          if (amount != null) customerAwareBase = Number(amount)
+        } catch {
+          // Fall back to variant base if calculatePrices fails
+        }
+        if (customerAwareBase === null) customerAwareBase = variantBasePrice
 
         let correctPrice: number
         let isBulkPrice = false
@@ -172,8 +233,8 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse): Promise<voi
           correctPrice = applicableTier.amount
           isBulkPrice = true
           bulkMinQty = applicableTier.min_quantity
-        } else if (basePrice !== null) {
-          correctPrice = basePrice
+        } else if (customerAwareBase !== null) {
+          correctPrice = customerAwareBase
 
           // No bulk tier applies - check for variant metadata discount
           const variant = await productModuleService.retrieveProductVariant(item.variant_id, {
@@ -189,16 +250,16 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse): Promise<voi
             if (discountType === "percentage") {
               // Percentage discount (e.g., 15 means 15% off)
               const discountPercent = Math.min(discountValue, 100) // Cap at 100%
-              discountedPrice = Math.round(basePrice * (1 - discountPercent / 100))
+              discountedPrice = Math.round(customerAwareBase * (1 - discountPercent / 100))
             } else {
               // Fixed discount (value is in cents)
-              discountedPrice = Math.max(0, basePrice - discountValue)
+              discountedPrice = Math.max(0, customerAwareBase - discountValue)
             }
 
-            if (discountedPrice < basePrice) {
+            if (discountedPrice < customerAwareBase) {
               correctPrice = discountedPrice
               isVariantDiscount = true
-              variantDiscountAmount = basePrice - discountedPrice
+              variantDiscountAmount = customerAwareBase - discountedPrice
               variantDiscountType = discountType
             }
           }
@@ -216,7 +277,9 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse): Promise<voi
         if (needsPriceUpdate || needsMetadataUpdate) {
           const newMetadata: Record<string, unknown> = {
             ...item.metadata,
-            original_unit_price: basePrice,
+            // Track the customer-aware base (i.e. their default price before
+            // any wholesale-tier or variant-metadata discount).
+            original_unit_price: customerAwareBase,
           }
 
           // Clear old pricing flags and set new ones

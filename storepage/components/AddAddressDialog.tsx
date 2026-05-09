@@ -75,7 +75,9 @@ export function AddAddressDialog({
   const addAddressMutation = useAddAddressMutation();
   const updateAddressMutation = useUpdateAddressMutation();
 
-  // Reset form when dialog opens/closes or editAddress changes
+  // Reset form when dialog opens/closes or editAddress changes.
+  // country_code must always be set — Zod requires it and the form has no
+  // visible country input. We hard-code "my" since this is a Malaysia store.
   useEffect(() => {
     if (editAddress) {
       reset({
@@ -88,6 +90,7 @@ export function AddAddressDialog({
         phone: editAddress.phone?.replace(/^\+60\s*/, "") || "",
         postal_code: editAddress.postal_code || "",
         address_1: editAddress.address_1 || "",
+        country_code: editAddress.country_code || "my",
         is_default_shipping: editAddress.is_default_shipping || false,
       });
     } else {
@@ -101,6 +104,7 @@ export function AddAddressDialog({
         phone: "",
         postal_code: "",
         address_1: "",
+        country_code: "my",
         is_default_shipping: false,
       });
     }
