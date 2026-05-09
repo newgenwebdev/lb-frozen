@@ -386,6 +386,28 @@ export async function duplicateProduct(id: string): Promise<MedusaProduct> {
 }
 
 /**
+ * Delete a variant from a product.
+ * Used when the admin toggles "Has Variants" off — extra variants must be
+ * removed explicitly because Medusa's product PATCH does not delete missing
+ * entries from the variants array.
+ */
+export async function deleteVariant(productId: string, variantId: string): Promise<void> {
+  await api.delete(`/admin/products/${productId}/variants/${variantId}`)
+}
+
+/**
+ * Delete an option from a product.
+ * Used together with deleteVariant when collapsing a multi-variant product
+ * back to a single default variant.
+ */
+export async function deleteProductOption(
+  productId: string,
+  optionId: string
+): Promise<void> {
+  await api.delete(`/admin/products/${productId}/options/${optionId}`)
+}
+
+/**
  * Role-based price payload sent to / returned from the role-prices endpoint.
  * - number → set this amount in cents
  * - null   → clear the role's price entry

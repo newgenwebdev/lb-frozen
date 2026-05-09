@@ -15,7 +15,7 @@ import {
   WholesaleTierFormData,
   generateVariantSku,
 } from "@/lib/validators/product";
-import { getProduct, updateProduct, updateOptionMetadata, UpdateProductRequest, getDefaultSalesChannel, getDefaultShippingProfile, getVariantRolePrices, upsertVariantRolePrices } from "@/lib/api/products";
+import { getProduct, updateProduct, updateOptionMetadata, UpdateProductRequest, getDefaultSalesChannel, getDefaultShippingProfile, getVariantRolePrices, upsertVariantRolePrices, deleteVariant, deleteProductOption } from "@/lib/api/products";
 import { uploadFile, uploadFiles } from "@/lib/api/uploads";
 import { getCategories } from "@/lib/api/categories";
 import { getBrands } from "@/lib/api/brands";
@@ -795,22 +795,50 @@ export default function EditProductPage(): React.JSX.Element {
         });
         productPayload.variants = variantsWithIds;
         productPayload.options = options;
-      } else if (!hasVariants && productData?.variants?.length === 1) {
-        // Update single variant (default variant) for non-variant products
-        // Note: Wholesale tier pricing requires variants - non-variant products only have base price
-        const defaultVariant = productData.variants[0];
-        const basePrice = parseFloat(data.basePrice || "0") * 100; // Convert to cents
+      } else if (!hasVariants && productData?.variants && productData.variants.length > 0) {
+        // No variants: collapse to a single default variant. If product
+        // currently has multiple variants (i.e. user just toggled the switch
+        // off), delete the extras and any non-default options first.
+        const existingVariants = productData.variants;
+        const [keepVariant, ...extraVariants] = existingVariants;
+        const basePrice = parseFloat(data.basePrice || "0") * 100;
 
-        // Build prices array with base price only (no wholesale for non-variant products)
+        if (extraVariants.length > 0) {
+          await Promise.all(
+            extraVariants.map((v) =>
+              deleteVariant(productId, v.id).catch((err) => {
+                console.error(`Failed to delete variant ${v.id}:`, err);
+              })
+            )
+          );
+        }
+
+        // Best-effort cleanup of leftover variant options. We delete every
+        // existing option; if the product has no "Default" option yet, we'll
+        // recreate it via the product payload below.
+        const existingOptions = productData.options || [];
+        const hasDefaultOption = existingOptions.some((o) => o.title === "Default");
+        if (existingOptions.length > 0) {
+          await Promise.all(
+            existingOptions
+              .filter((o) => o.title !== "Default")
+              .map((o) =>
+                deleteProductOption(productId, o.id).catch((err) => {
+                  console.error(`Failed to delete option ${o.id}:`, err);
+                })
+              )
+          );
+        }
+
         const prices: Array<{ currency_code: string; amount: number }> = [
           { currency_code: "myr", amount: Math.round(basePrice) },
         ];
 
         productPayload.variants = [
           {
-            id: defaultVariant.id,
-            title: defaultVariant.title,
-            sku: defaultVariant.sku || data.handle,
+            id: keepVariant.id,
+            title: "Default Variant",
+            sku: keepVariant.sku || data.handle,
             prices,
             manage_inventory: true,
             metadata: {
@@ -820,6 +848,10 @@ export default function EditProductPage(): React.JSX.Element {
             },
           },
         ];
+        // Recreate a Default option only if the product didn't already have one.
+        if (!hasDefaultOption) {
+          productPayload.options = [{ title: "Default", values: ["Standard"] }];
+        }
       }
 
       let product = await updateProduct(productId, productPayload as UpdateProductRequest);
