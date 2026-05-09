@@ -136,8 +136,15 @@ export const GET = withAdminAuth(async (req, res) => {
         .filter(Boolean)
 
       if (priceSetIds.length > 0) {
+        // Exclude price-list-bound prices (VIP/Supplier role prices) so the
+        // admin product table always shows the retail/default price. Without
+        // this filter, the lowest-price logic below would surface the cheapest
+        // role price (e.g. VIP RM80) instead of the base price (RM100).
         const prices = await pricingModule.listPrices(
-          { price_set_id: priceSetIds },
+          {
+            price_set_id: priceSetIds,
+            price_list_id: null as any,
+          },
           { select: ["amount", "currency_code", "price_set_id"] }
         )
 
