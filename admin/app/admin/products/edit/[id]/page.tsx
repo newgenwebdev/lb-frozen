@@ -837,7 +837,9 @@ export default function EditProductPage(): React.JSX.Element {
         productPayload.variants = [
           {
             id: keepVariant.id,
-            title: "Default Variant",
+            // Title must literally be "Default" — the load handler uses this
+            // to detect a single-variant (no-variants) product.
+            title: "Default",
             sku: keepVariant.sku || data.handle,
             prices,
             manage_inventory: true,
