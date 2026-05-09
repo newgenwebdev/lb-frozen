@@ -48,17 +48,23 @@ function extractPrice(product: MedusaProduct): number {
     return 0
   }
 
-  // Find base price (no min_quantity or min_quantity <= 1)
+  // Base price = no quantity tier AND not from a price list (role-based prices
+  // live in price lists like VIP/Supplier — they shouldn't surface in the
+  // admin product table because admin sees the retail/default price).
+  const isQuantityTier = (p: any) => p.min_quantity && p.min_quantity > 1
+  const isRolePrice = (p: any) => Boolean(p.price_list_id)
+
   const basePrice = prices.find(
-    (p) => !p.min_quantity || p.min_quantity <= 1
+    (p) => !isQuantityTier(p) && !isRolePrice(p)
   )
 
   if (basePrice) {
     return basePrice.amount
   }
 
-  // Fallback to first price if no base price found
-  return prices[0]?.amount ?? 0
+  // Fallback: any non-role price, then any price at all
+  const nonRolePrice = prices.find((p) => !isRolePrice(p))
+  return nonRolePrice?.amount ?? prices[0]?.amount ?? 0
 }
 
 /**
