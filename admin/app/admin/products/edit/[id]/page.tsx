@@ -10,6 +10,7 @@ import {
   ProductSchema,
   ProductFormData,
   ProductVariantFormData,
+  VariantRolePricesFormData,
   WholesalePriceFormData,
   WholesaleTierFormData,
   generateVariantSku,
@@ -24,6 +25,7 @@ import {
   VariantOptionsInput,
   SelectDropdown,
 } from "@/components/admin/products";
+import { VariantRolePricing } from "@/components/admin/products/VariantRolePricing";
 import type { OptionImage, SelectOption } from "@/components/admin/products";
 
 // Gallery image type for tracking file and preview
@@ -52,6 +54,10 @@ export default function EditProductPage(): React.JSX.Element {
 
   // Variant management state
   const [hasVariants, setHasVariants] = useState<boolean>(false);
+  // Role-based prices for the single (no-variant) product flow
+  const [singleVariantRolePrices, setSingleVariantRolePrices] = useState<VariantRolePricesFormData>({});
+  const [singleVariantBaseCents, setSingleVariantBaseCents] = useState<number | undefined>(undefined);
+  const [singleVariantId, setSingleVariantId] = useState<string | null>(null);
   const [variantTypes, setVariantTypes] = useState<
     Array<{ type: string; values: string[]; addPictures: boolean }>
   >([]);
@@ -443,7 +449,9 @@ export default function EditProductPage(): React.JSX.Element {
         const price = defaultVariant.prices?.[0];
         if (price) {
           setValue("basePrice", (price.amount / 100).toString());
+          setSingleVariantBaseCents(price.amount);
         }
+        setSingleVariantId(defaultVariant.id);
 
         // Fetch inventory details for the single variant (including reserved quantity)
         const fetchSingleVariantInventory = async () => {
@@ -461,6 +469,20 @@ export default function EditProductPage(): React.JSX.Element {
           }
         };
         fetchSingleVariantInventory();
+
+        // Fetch role-based prices for the single variant
+        const fetchSingleVariantRolePrices = async () => {
+          try {
+            const result = await getVariantRolePrices(productId, defaultVariant.id);
+            const next: VariantRolePricesFormData = {};
+            if (typeof result.prices.vip === "number") next.vip = result.prices.vip;
+            if (typeof result.prices.supplier === "number") next.supplier = result.prices.supplier;
+            setSingleVariantRolePrices(next);
+          } catch (error) {
+            console.error("Error fetching single variant role prices:", error);
+          }
+        };
+        fetchSingleVariantRolePrices();
       }
 
       setIsInitialized(true);
@@ -877,6 +899,19 @@ export default function EditProductPage(): React.JSX.Element {
             }
           })
         );
+      } else if (!hasVariants) {
+        // Single-variant product: sync role prices for the lone variant.
+        const targetVariantId = singleVariantId ?? product.variants?.[0]?.id;
+        if (targetVariantId) {
+          try {
+            await upsertVariantRolePrices(productId, targetVariantId, {
+              vip: singleVariantRolePrices.vip ?? null,
+              supplier: singleVariantRolePrices.supplier ?? null,
+            });
+          } catch (error) {
+            console.error("Failed to update role prices for single variant:", error);
+          }
+        }
       }
 
       return { product, inventoryResults };
@@ -1605,6 +1640,15 @@ export default function EditProductPage(): React.JSX.Element {
                   placeholder="e.g $150"
                   {...register("basePrice")}
                   className="w-full rounded-lg border border-[#E3E3E3] bg-white py-3 px-4 font-geist text-[16px] font-normal tracking-[-0.16px] text-[#030712] outline-none transition-colors placeholder:text-[#6A7282] focus:border-black"
+                />
+              </div>
+
+              {/* Role-Based Pricing for non-variant product */}
+              <div className="md:col-span-2">
+                <VariantRolePricing
+                  prices={singleVariantRolePrices}
+                  onChange={setSingleVariantRolePrices}
+                  basePriceCents={singleVariantBaseCents}
                 />
               </div>
 

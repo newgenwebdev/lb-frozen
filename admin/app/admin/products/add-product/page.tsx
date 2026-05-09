@@ -11,6 +11,7 @@ import {
   ProductFormData,
   ProductVariantFormData,
   ProductOptionFormData,
+  VariantRolePricesFormData,
   WholesalePriceFormData,
   WholesaleTierFormData,
   generateHandle,
@@ -26,6 +27,7 @@ import {
   VariantOptionsInput,
   VariantTable,
 } from "@/components/admin/products";
+import { VariantRolePricing } from "@/components/admin/products/VariantRolePricing";
 import type { OptionImage } from "@/components/admin/products";
 
 // Gallery image type for tracking file and preview
@@ -53,6 +55,8 @@ export default function AddProductPage(): React.JSX.Element {
     Array<{ type: string; values: string[]; addPictures: boolean }>
   >([]);
   const [variants, setVariants] = useState<ProductVariantFormData[]>([]);
+  // Role-based prices for the single (no-variant) product flow
+  const [singleVariantRolePrices, setSingleVariantRolePrices] = useState<VariantRolePricesFormData>({});
   // Option images: Map of variantType -> { optionValue -> OptionImage }
   const [optionImages, setOptionImages] = useState<Record<string, Record<string, OptionImage>>>({});
 
@@ -549,6 +553,21 @@ export default function AddProductPage(): React.JSX.Element {
             }
           })
         );
+      } else if (!hasVariants && product.variants?.[0]?.id) {
+        // Single-variant product: set role prices for the lone variant.
+        const hasAnyRolePrice =
+          singleVariantRolePrices.vip !== undefined ||
+          singleVariantRolePrices.supplier !== undefined;
+        if (hasAnyRolePrice) {
+          try {
+            await upsertVariantRolePrices(product.id, product.variants[0].id, {
+              vip: singleVariantRolePrices.vip ?? null,
+              supplier: singleVariantRolePrices.supplier ?? null,
+            });
+          } catch (error) {
+            console.error("Failed to set role prices for single variant:", error);
+          }
+        }
       }
 
       return { product, inventoryResults };
@@ -1542,6 +1561,18 @@ export default function AddProductPage(): React.JSX.Element {
                   {errors.basePrice.message}
                 </p>
               )}
+            </div>
+
+            {/* Role-Based Pricing for non-variant product */}
+            <div className="md:col-span-2">
+              <VariantRolePricing
+                prices={singleVariantRolePrices}
+                onChange={setSingleVariantRolePrices}
+                basePriceCents={(() => {
+                  const parsed = parseFloat(watch("basePrice") || "0");
+                  return isNaN(parsed) || parsed <= 0 ? undefined : Math.round(parsed * 100);
+                })()}
+              />
             </div>
 
             {/* Set Discount Toggle */}
