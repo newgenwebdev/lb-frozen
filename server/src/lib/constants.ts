@@ -151,6 +151,19 @@ export const CUSTOMER_GROUP_IDS = {
 } as const
 
 /**
+ * Price List IDs per customer role
+ * Each price list has a customer_group_id rule so Medusa applies the right price
+ * automatically when a customer in that group fetches a product.
+ *
+ * Retail role uses the default product price (no price list required).
+ */
+export const PRICE_LIST_IDS = {
+  BULK: process.env.PRICE_LIST_BULK_ID || 'plist_bulk_pricing',
+  VIP: process.env.PRICE_LIST_VIP_ID || 'plist_vip_pricing',
+  SUPPLIER: process.env.PRICE_LIST_SUPPLIER_ID || 'plist_supplier_pricing',
+} as const
+
+/**
  * Default customer role for guests/public visitors
  */
 export const DEFAULT_CUSTOMER_ROLE = CUSTOMER_ROLES.RETAIL

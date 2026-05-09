@@ -14,7 +14,7 @@ import {
   WholesaleTierFormData,
   generateVariantSku,
 } from "@/lib/validators/product";
-import { getProduct, updateProduct, updateOptionMetadata, UpdateProductRequest, getDefaultSalesChannel, getDefaultShippingProfile } from "@/lib/api/products";
+import { getProduct, updateProduct, updateOptionMetadata, UpdateProductRequest, getDefaultSalesChannel, getDefaultShippingProfile, getVariantRolePrices, upsertVariantRolePrices } from "@/lib/api/products";
 import { uploadFile, uploadFiles } from "@/lib/api/uploads";
 import { getCategories } from "@/lib/api/categories";
 import { getBrands } from "@/lib/api/brands";
@@ -372,6 +372,8 @@ export default function EditProductPage(): React.JSX.Element {
             // Variant-level wholesale pricing
             wholesaleEnabled: wholesaleTiers.length > 0,
             wholesaleTiers: wholesaleTiers,
+            // Role-based pricing — populated separately from /admin/products/:id/role-prices
+            rolePrices: {},
           };
         });
         setVariants(formVariants);
@@ -410,6 +412,31 @@ export default function EditProductPage(): React.JSX.Element {
           }
         };
         fetchInventoryQuantities();
+
+        // Fetch role-based prices for each variant (async, doesn't block UI)
+        const fetchRolePrices = async () => {
+          try {
+            const withRolePrices = await Promise.all(
+              formVariants.map(async (variant) => {
+                const rawVariant = productVariants.find((v) => v.title === variant.title);
+                if (!rawVariant?.id) return variant;
+                try {
+                  const result = await getVariantRolePrices(productId, rawVariant.id);
+                  const next: { vip?: number; supplier?: number } = {};
+                  if (typeof result.prices.vip === "number") next.vip = result.prices.vip;
+                  if (typeof result.prices.supplier === "number") next.supplier = result.prices.supplier;
+                  return { ...variant, rolePrices: next };
+                } catch {
+                  return variant;
+                }
+              })
+            );
+            setVariants(withRolePrices);
+          } catch (error) {
+            console.error("Error fetching role prices:", error);
+          }
+        };
+        fetchRolePrices();
       } else if (productVariants.length === 1) {
         // Single variant (default) - no variants UI
         const defaultVariant = productVariants[0];
@@ -506,6 +533,7 @@ export default function EditProductPage(): React.JSX.Element {
           discount: 0,
           wholesaleEnabled: false,
           wholesaleTiers: [],
+          rolePrices: {},
         }
       );
     });
@@ -827,6 +855,28 @@ export default function EditProductPage(): React.JSX.Element {
         });
 
         await Promise.all(inventoryPromises);
+      }
+
+      // Step 9: Sync role-based prices for variants
+      if (hasVariants && product.variants && product.variants.length > 0) {
+        await Promise.all(
+          product.variants.map(async (apiVariant) => {
+            const formVariant = variants.find((v) => v.title === apiVariant.title);
+            if (!formVariant) return;
+            const payload = {
+              vip: formVariant.rolePrices?.vip ?? null,
+              supplier: formVariant.rolePrices?.supplier ?? null,
+            };
+            try {
+              await upsertVariantRolePrices(productId, apiVariant.id, payload);
+            } catch (error) {
+              console.error(
+                `Failed to update role prices for variant "${apiVariant.title}":`,
+                error
+              );
+            }
+          })
+        );
       }
 
       return { product, inventoryResults };

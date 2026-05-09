@@ -384,3 +384,49 @@ export async function duplicateProduct(id: string): Promise<MedusaProduct> {
   // Create the duplicate
   return createProduct(duplicateData)
 }
+
+/**
+ * Role-based price payload sent to / returned from the role-prices endpoint.
+ * - number → set this amount in cents
+ * - null   → clear the role's price entry
+ * - undefined / missing → leave unchanged
+ */
+export type RolePricesPayload = {
+  vip?: number | null
+  supplier?: number | null
+  bulk?: number | null
+}
+
+export type RolePricesResponse = {
+  variant_id: string
+  prices: { vip: number | null; supplier: number | null; bulk: number | null }
+}
+
+/**
+ * Fetch role-based prices for a single variant.
+ */
+export async function getVariantRolePrices(
+  productId: string,
+  variantId: string
+): Promise<RolePricesResponse> {
+  const response = await api.get<RolePricesResponse>(
+    `/admin/products/${productId}/role-prices`,
+    { params: { variant_id: variantId } }
+  )
+  return response.data
+}
+
+/**
+ * Upsert role-based prices for a single variant.
+ */
+export async function upsertVariantRolePrices(
+  productId: string,
+  variantId: string,
+  prices: RolePricesPayload
+): Promise<RolePricesResponse> {
+  const response = await api.post<RolePricesResponse>(
+    `/admin/products/${productId}/role-prices`,
+    { variant_id: variantId, prices }
+  )
+  return response.data
+}

@@ -18,7 +18,9 @@ import type { FeaturedReview } from "@/lib/api/reviews";
 
 export default function LandingPage() {
   const router = useRouter();
-  const { role, isVIP } = useAuthContext();
+  const { role, isVIP, isSupplier } = useAuthContext();
+  const showRolePrice = isVIP || isSupplier;
+  const rolePriceLabel = isVIP ? "VIP Price" : isSupplier ? "Supplier Price" : "";
   const { data: featuredProductsData, isLoading: productsLoading } = useProductsQuery({ limit: 12 });
   const featuredProducts = featuredProductsData?.products || [];
   const { data: categoriesData, isLoading: categoriesLoading } = useCategoriesQuery();
@@ -542,15 +544,17 @@ export default function LandingPage() {
                             RM{(originalPrice / 100).toFixed(2)}
                           </div>
                         )}
-                        {/* Current price with VIP/Retail labels */}
+                        {/* Current price with role/Retail labels */}
                         <div className="flex items-end gap-4">
                           <div>
-                            {isVIP && <span className="text-xs text-gray-500 block">VIP Price</span>}
+                            {showRolePrice && (
+                              <span className="text-xs text-gray-500 block">{rolePriceLabel}</span>
+                            )}
                             <span className="text-2xl font-bold text-gray-900">
                               RM{((salePrice || originalPrice || 0) / 100).toFixed(2)}
                             </span>
                           </div>
-                          {isVIP && originalPrice && salePrice && originalPrice !== salePrice && (
+                          {showRolePrice && originalPrice && salePrice && originalPrice !== salePrice && (
                             <div className="border-l border-gray-300 pl-4">
                               <span className="text-xs text-gray-500 block">Retail Price</span>
                               <span className="text-sm text-gray-600">

@@ -1,11 +1,46 @@
 import { Modules } from "@medusajs/framework/utils"
 import type { Logger } from "@medusajs/framework/types"
-import { 
-  CUSTOMER_ROLES, 
-  CUSTOMER_GROUP_IDS, 
+import {
+  CUSTOMER_ROLES,
+  CUSTOMER_GROUP_IDS,
+  PRICE_LIST_IDS,
   CustomerRole,
-  DEFAULT_CUSTOMER_ROLE 
+  DEFAULT_CUSTOMER_ROLE
 } from "../../../lib/constants"
+
+/**
+ * Roles that map to a Medusa Price List.
+ * Retail uses the variant's default price, so it does not need a price list.
+ */
+type PricedRole = Exclude<CustomerRole, typeof CUSTOMER_ROLES.RETAIL>
+
+interface PriceListInfo {
+  id: string
+  title: string
+  description: string
+  customerGroupId: string
+}
+
+const PRICE_LISTS: Record<PricedRole, PriceListInfo> = {
+  [CUSTOMER_ROLES.BULK]: {
+    id: PRICE_LIST_IDS.BULK,
+    title: "Bulk Pricing",
+    description: "Price overrides for bulk customers",
+    customerGroupId: CUSTOMER_GROUP_IDS.BULK,
+  },
+  [CUSTOMER_ROLES.VIP]: {
+    id: PRICE_LIST_IDS.VIP,
+    title: "VIP Pricing",
+    description: "Price overrides for VIP customers",
+    customerGroupId: CUSTOMER_GROUP_IDS.VIP,
+  },
+  [CUSTOMER_ROLES.SUPPLIER]: {
+    id: PRICE_LIST_IDS.SUPPLIER,
+    title: "Supplier Pricing",
+    description: "Price overrides for supplier accounts",
+    customerGroupId: CUSTOMER_GROUP_IDS.SUPPLIER,
+  },
+}
 
 type InjectedDependencies = {
   logger: Logger
@@ -238,6 +273,82 @@ class CustomerRolesService {
   getGroupIdForRole(role: CustomerRole): string {
     const groupInfo = CUSTOMER_GROUPS[role]
     return groupInfo?.id || CUSTOMER_GROUP_IDS.RETAIL
+  }
+
+  /**
+   * Get the Medusa price list ID for a role.
+   * Returns null for RETAIL since retail uses the variant default price.
+   */
+  getPriceListIdForRole(role: CustomerRole): string | null {
+    if (role === CUSTOMER_ROLES.RETAIL) return null
+    const info = PRICE_LISTS[role as PricedRole]
+    return info?.id ?? null
+  }
+
+  /**
+   * Initialize all role-based price lists (BULK / VIP / SUPPLIER).
+   * Idempotent: skips lists that already exist. Safe to call on every startup.
+   */
+  async initializePriceLists(container: any): Promise<void> {
+    const pricingModuleService = container.resolve(Modules.PRICING)
+
+    for (const info of Object.values(PRICE_LISTS)) {
+      try {
+        await this.ensurePriceListExists(pricingModuleService, info)
+        this.logger.info(
+          `[CUSTOMER-ROLES] Price list "${info.title}" initialized`
+        )
+      } catch (error) {
+        this.logger.error(
+          `[CUSTOMER-ROLES] Failed to initialize price list "${info.title}":`,
+          error as Error
+        )
+      }
+    }
+  }
+
+  /**
+   * Ensure a single price list exists, create it if missing.
+   * Lazy-creation friendly — call from anywhere before writing prices.
+   */
+  async ensurePriceListExists(
+    pricingModuleService: any,
+    info: PriceListInfo
+  ): Promise<void> {
+    try {
+      await pricingModuleService.retrievePriceList(info.id)
+    } catch {
+      this.logger.info(`[CUSTOMER-ROLES] Creating price list: ${info.id}`)
+      await pricingModuleService.createPriceLists([
+        {
+          id: info.id,
+          title: info.title,
+          description: info.description,
+          type: "override",
+          status: "active",
+          rules: {
+            customer_group_id: [info.customerGroupId],
+          },
+        },
+      ])
+    }
+  }
+
+  /**
+   * Ensure the price list for a given role exists. Returns the price list ID,
+   * or null for roles that use the default product price (retail).
+   */
+  async ensurePriceListForRole(
+    role: CustomerRole,
+    container: any
+  ): Promise<string | null> {
+    if (role === CUSTOMER_ROLES.RETAIL) return null
+    const info = PRICE_LISTS[role as PricedRole]
+    if (!info) return null
+
+    const pricingModuleService = container.resolve(Modules.PRICING)
+    await this.ensurePriceListExists(pricingModuleService, info)
+    return info.id
   }
 }
 

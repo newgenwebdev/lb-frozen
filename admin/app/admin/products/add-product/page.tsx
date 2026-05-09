@@ -17,7 +17,7 @@ import {
   convertPriceToCents,
   generateVariantSku,
 } from "@/lib/validators/product";
-import { createProduct, getProduct, updateOptionMetadata, getDefaultSalesChannel, getDefaultShippingProfile } from "@/lib/api/products";
+import { createProduct, getProduct, updateOptionMetadata, getDefaultSalesChannel, getDefaultShippingProfile, upsertVariantRolePrices } from "@/lib/api/products";
 import { uploadFile, uploadFiles } from "@/lib/api/uploads";
 import { getCategories } from "@/lib/api/categories";
 import { getBrands } from "@/lib/api/brands";
@@ -248,6 +248,7 @@ export default function AddProductPage(): React.JSX.Element {
           discount: 0,
           wholesaleEnabled: false,
           wholesaleTiers: [],
+          rolePrices: {},
         }
       );
     });
@@ -523,6 +524,31 @@ export default function AddProductPage(): React.JSX.Element {
         });
 
         await Promise.all(inventoryPromises);
+      }
+
+      // Sync role-based prices for variants (only meaningful when hasVariants).
+      if (hasVariants && product.variants && product.variants.length > 0) {
+        await Promise.all(
+          product.variants.map(async (apiVariant) => {
+            const formVariant = variants.find((v) => v.title === apiVariant.title);
+            const roleAmounts = formVariant?.rolePrices ?? {};
+            // Skip the call entirely if no role prices were set on this variant
+            if (roleAmounts.vip === undefined && roleAmounts.supplier === undefined) {
+              return;
+            }
+            try {
+              await upsertVariantRolePrices(product.id, apiVariant.id, {
+                vip: roleAmounts.vip ?? null,
+                supplier: roleAmounts.supplier ?? null,
+              });
+            } catch (error) {
+              console.error(
+                `Failed to set role prices for variant "${apiVariant.title}":`,
+                error
+              );
+            }
+          })
+        );
       }
 
       return { product, inventoryResults };

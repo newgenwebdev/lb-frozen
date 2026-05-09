@@ -2,6 +2,7 @@ import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { REVIEW_MODULE } from "../../../../../modules/review"
 import type ReviewModuleService from "../../../../../modules/review/services/review"
+import { resolveCustomerGroupId } from "../../../../../utils/store-auth"
 
 /**
  * GET /store/products/:id/with-inventory
@@ -109,6 +110,10 @@ export const GET = async (
     }
   }
 
+  // Resolve the customer's pricing group (VIP/Bulk/Supplier) so calculatePrices
+  // applies the right price list. null = guest → uses default product price.
+  const customerGroupId = await resolveCustomerGroupId(req)
+
   if (variantIds.length > 0) {
     try {
       // Get variant price sets via link
@@ -124,24 +129,30 @@ export const GET = async (
       const priceSetIds = variantPriceSets.map((vps: any) => vps.price_set_id).filter(Boolean)
 
       if (priceSetIds.length > 0) {
-        const prices = await pricingModule.listPrices(
-          { price_set_id: priceSetIds },
-          { select: ["amount", "currency_code", "price_set_id"] }
+        const calculated = await pricingModule.calculatePrices(
+          { id: priceSetIds },
+          {
+            context: {
+              currency_code: "myr",
+              ...(resolvedRegionId ? { region_id: resolvedRegionId } : {}),
+              ...(customerGroupId ? { customer_group_id: customerGroupId } : {}),
+            },
+          }
         )
 
-        // Create map of price_set_id to prices
-        const priceSetToPrices = new Map<string, Array<{ amount: number; currency_code: string }>>()
-        for (const price of prices) {
-          const existing = priceSetToPrices.get(price.price_set_id) || []
-          existing.push({ amount: Number(price.amount), currency_code: price.currency_code })
-          priceSetToPrices.set(price.price_set_id, existing)
+        const priceSetToPrice = new Map<string, { amount: number; currency_code: string }>()
+        for (const price of calculated as Array<any>) {
+          if (price.calculated_amount == null) continue
+          priceSetToPrice.set(price.id, {
+            amount: Number(price.calculated_amount),
+            currency_code: price.currency_code ?? "myr",
+          })
         }
 
-        // Map variant_id to prices
         for (const vps of variantPriceSets) {
-          const pricesForVariant = priceSetToPrices.get(vps.price_set_id) || []
-          if (pricesForVariant.length > 0) {
-            priceMap.set(vps.variant_id, pricesForVariant)
+          const priceForVariant = priceSetToPrice.get(vps.price_set_id)
+          if (priceForVariant) {
+            priceMap.set(vps.variant_id, [priceForVariant])
           }
         }
       }

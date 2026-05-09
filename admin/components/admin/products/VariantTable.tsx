@@ -1,8 +1,18 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import type { ProductVariantFormData, WholesaleTierFormData } from "@/lib/validators/product";
+import type {
+  ProductVariantFormData,
+  VariantRolePricesFormData,
+  WholesaleTierFormData,
+} from "@/lib/validators/product";
 import { VariantWholesalePricing } from "./VariantWholesalePricing";
+import { VariantRolePricing } from "./VariantRolePricing";
+
+// Feature flag — wholesale (quantity-based tier) pricing is hidden for now
+// while role-based pricing is the primary product feature. Flip to true to
+// re-enable the column and modal without restoring any code.
+const SHOW_WHOLESALE_PRICING = false;
 
 type VariantTableProps = {
   variants: ProductVariantFormData[];
@@ -108,6 +118,24 @@ export function VariantTable({
       wholesaleTiers: tiers,
     };
     onChange(updated);
+  };
+
+  // Handle role-based price changes for a variant
+  const handleRolePricesChange = (
+    index: number,
+    rolePrices: VariantRolePricesFormData
+  ): void => {
+    const updated = [...variants];
+    updated[index] = { ...updated[index], rolePrices };
+    onChange(updated);
+  };
+
+  // Build a human label like "Size: M, Color: Red" — falls back to variant.title
+  const getVariantLabel = (variant: ProductVariantFormData): string => {
+    const parts = Object.entries(variant.options ?? {})
+      .filter(([, value]) => value)
+      .map(([type, value]) => `${type}: ${value}`);
+    return parts.length > 0 ? parts.join(", ") : variant.title || "Variant";
   };
 
   // Open wholesale modal for a variant
@@ -285,11 +313,13 @@ export function VariantTable({
                     Inventory
                   </span>
                 </th>
-                <th className="border-b border-r border-[#E5E7EB] px-4 py-3 text-left">
-                  <span className="font-geist text-[14px] font-medium leading-[150%] tracking-[-0.14px] text-[#6A7282]">
-                    Wholesale
-                  </span>
-                </th>
+                {SHOW_WHOLESALE_PRICING && (
+                  <th className="border-b border-r border-[#E5E7EB] px-4 py-3 text-left">
+                    <span className="font-geist text-[14px] font-medium leading-[150%] tracking-[-0.14px] text-[#6A7282]">
+                      Wholesale
+                    </span>
+                  </th>
+                )}
                 <th className="border-b border-r border-[#E5E7EB] px-4 py-3 text-left">
                   <span className="font-geist text-[14px] font-medium leading-[150%] tracking-[-0.14px] text-[#6A7282]">
                     Quantity
@@ -367,31 +397,33 @@ export function VariantTable({
                   </td>
 
                   {/* Wholesale */}
-                  <td className="border-b border-r border-[#E5E7EB] px-2 py-4">
-                    <button
-                      type="button"
-                      onClick={() => openWholesaleModal(index)}
-                      className="inline-flex cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-[#E5E7EB] bg-white px-2.5 py-1.5 transition-colors hover:bg-[#F9FAFB]"
-                    >
-                      {getWholesaleDisplay(variant)}
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="12"
-                        height="12"
-                        viewBox="0 0 14 14"
-                        fill="none"
-                        className="shrink-0"
+                  {SHOW_WHOLESALE_PRICING && (
+                    <td className="border-b border-r border-[#E5E7EB] px-2 py-4">
+                      <button
+                        type="button"
+                        onClick={() => openWholesaleModal(index)}
+                        className="inline-flex cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-[#E5E7EB] bg-white px-2.5 py-1.5 transition-colors hover:bg-[#F9FAFB]"
                       >
-                        <path
-                          d="M2.91667 7.58333H6.41667V11.0833M11.0833 6.41667H7.58333V2.91667M6.41667 7.58333L2.33333 11.6667M7.58333 6.41667L11.6667 2.33333"
-                          stroke="#6A7282"
-                          strokeWidth="1.25"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </button>
-                  </td>
+                        {getWholesaleDisplay(variant)}
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="12"
+                          height="12"
+                          viewBox="0 0 14 14"
+                          fill="none"
+                          className="shrink-0"
+                        >
+                          <path
+                            d="M2.91667 7.58333H6.41667V11.0833M11.0833 6.41667H7.58333V2.91667M6.41667 7.58333L2.33333 11.6667M7.58333 6.41667L11.6667 2.33333"
+                            stroke="#6A7282"
+                            strokeWidth="1.25"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </button>
+                    </td>
+                  )}
 
                   {/* Quantity */}
                   <td className="border-b border-r border-[#E5E7EB] px-4 py-4">
@@ -547,8 +579,35 @@ export function VariantTable({
         </div>
       </div>
 
+      {/* Role-Based Pricing per Variant */}
+      <div className="rounded-lg border border-[#E5E7EB] bg-white p-6">
+        <div className="mb-4">
+          <h2 className="font-geist text-[16px] font-medium leading-[150%] tracking-[-0.16px] text-[#020817]">
+            Role-Based Pricing
+          </h2>
+          <p className="mt-1 font-geist text-[13px] text-[#6A7282]">
+            Set custom prices for VIP and Supplier customers. Leave blank to use the default price.
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          {variants.map((variant, index) => (
+            <div key={index} className="space-y-2">
+              <p className="font-geist text-[13px] font-medium text-[#030712]">
+                {getVariantLabel(variant)}
+              </p>
+              <VariantRolePricing
+                prices={variant.rolePrices ?? {}}
+                onChange={(next) => handleRolePricesChange(index, next)}
+                basePriceCents={getVariantBasePrice(variant)}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Wholesale Pricing Modal */}
-      {selectedVariant && (
+      {SHOW_WHOLESALE_PRICING && selectedVariant && (
         <VariantWholesalePricing
           isOpen={wholesaleModalOpen}
           onClose={() => {

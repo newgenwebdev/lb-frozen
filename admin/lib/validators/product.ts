@@ -29,6 +29,17 @@ export const WholesaleTierSchema = z.object({
 });
 
 /**
+ * Role-based pricing per variant.
+ * Amounts are in cents. Undefined = use default product price for that role.
+ */
+export const VariantRolePricesSchema = z
+  .object({
+    vip: z.number().int().nonnegative().optional(),
+    supplier: z.number().int().nonnegative().optional(),
+  })
+  .default({});
+
+/**
  * Product Variant Schema
  */
 export const ProductVariantSchema = z.object({
@@ -50,6 +61,8 @@ export const ProductVariantSchema = z.object({
   // Variant-level wholesale pricing
   wholesaleEnabled: z.boolean().default(false),
   wholesaleTiers: z.array(WholesaleTierSchema).default([]),
+  // Role-based pricing (VIP / Supplier). Empty object = no overrides.
+  rolePrices: VariantRolePricesSchema,
 });
 
 /**
@@ -139,6 +152,7 @@ export type ProductOptionFormData = z.infer<typeof ProductOptionSchema>;
 export type VariantPriceFormData = z.infer<typeof VariantPriceSchema>;
 export type WholesalePriceFormData = z.infer<typeof WholesalePriceSchema>;
 export type WholesaleTierFormData = z.infer<typeof WholesaleTierSchema>;
+export type VariantRolePricesFormData = z.infer<typeof VariantRolePricesSchema>;
 
 /**
  * Combined price type that can be either a base price or wholesale price

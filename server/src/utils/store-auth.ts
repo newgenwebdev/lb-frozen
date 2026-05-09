@@ -1,5 +1,7 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+import { Modules } from "@medusajs/framework/utils"
 import jwt from "jsonwebtoken"
+import { CUSTOMER_GROUP_IDS } from "../lib/constants"
 
 /**
  * JWT payload structure for customer tokens
@@ -173,4 +175,35 @@ export function withStoreAuth<T = unknown>(
  */
 export function checkStoreAuth(req: MedusaRequest): boolean {
   return getVerifiedCustomerId(req) !== null
+}
+
+const PRICED_GROUP_IDS = new Set<string>([
+  CUSTOMER_GROUP_IDS.BULK,
+  CUSTOMER_GROUP_IDS.VIP,
+  CUSTOMER_GROUP_IDS.SUPPLIER,
+])
+
+/**
+ * Resolve the customer group id to use as pricing context for the current request.
+ *
+ * Returns the first group that maps to a role-based price list (BULK/VIP/SUPPLIER).
+ * Returns null for guests or for customers whose only groups are non-pricing groups
+ * (e.g. retail), in which case the variant default price is used.
+ */
+export async function resolveCustomerGroupId(
+  req: MedusaRequest
+): Promise<string | null> {
+  const customerId = getVerifiedCustomerId(req)
+  if (!customerId) return null
+
+  try {
+    const customerModuleService = req.scope.resolve(Modules.CUSTOMER)
+    const customer = await customerModuleService.retrieveCustomer(customerId, {
+      relations: ["groups"],
+    })
+    const group = customer.groups?.find((g: any) => PRICED_GROUP_IDS.has(g.id))
+    return group?.id ?? null
+  } catch {
+    return null
+  }
 }

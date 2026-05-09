@@ -2,6 +2,7 @@ import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { z } from "zod"
 import { REVIEW_MODULE } from "../../../../modules/review"
+import { resolveCustomerGroupId } from "../../../../utils/store-auth"
 
 /**
  * Search Query Schema
@@ -216,22 +217,31 @@ export const GET = async (
       const priceSetIds = variantPriceSets.map((vps: any) => vps.price_set_id).filter(Boolean)
 
       if (priceSetIds.length > 0) {
-        const prices = await pricingModule.listPrices(
-          { price_set_id: priceSetIds },
-          { select: ["amount", "currency_code", "price_set_id"] }
+        const customerGroupId = await resolveCustomerGroupId(req)
+        const calculated = await pricingModule.calculatePrices(
+          { id: priceSetIds },
+          {
+            context: {
+              currency_code: "myr",
+              ...(resolvedRegionId ? { region_id: resolvedRegionId } : {}),
+              ...(customerGroupId ? { customer_group_id: customerGroupId } : {}),
+            },
+          }
         )
 
-        const priceSetToPrices = new Map<string, Array<{ amount: number; currency_code: string }>>()
-        for (const price of prices) {
-          const existing = priceSetToPrices.get(price.price_set_id) || []
-          existing.push({ amount: Number(price.amount), currency_code: price.currency_code })
-          priceSetToPrices.set(price.price_set_id, existing)
+        const priceSetToPrice = new Map<string, { amount: number; currency_code: string }>()
+        for (const price of calculated as Array<any>) {
+          if (price.calculated_amount == null) continue
+          priceSetToPrice.set(price.id, {
+            amount: Number(price.calculated_amount),
+            currency_code: price.currency_code ?? "myr",
+          })
         }
 
         for (const vps of variantPriceSets) {
-          const pricesForVariant = priceSetToPrices.get(vps.price_set_id) || []
-          if (pricesForVariant.length > 0) {
-            priceMap.set(vps.variant_id, pricesForVariant)
+          const priceForVariant = priceSetToPrice.get(vps.price_set_id)
+          if (priceForVariant) {
+            priceMap.set(vps.variant_id, [priceForVariant])
           }
         }
       }
