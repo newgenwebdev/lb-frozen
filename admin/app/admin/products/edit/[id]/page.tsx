@@ -398,46 +398,58 @@ export default function EditProductPage(): React.JSX.Element {
           }
         }
 
-        // Fetch inventory quantities for each variant (async)
-        // Use productVariants (raw API data) to get variant IDs
+        // Fetch inventory + role prices in parallel, but merge into existing
+        // state via functional updater so neither overwrites the other.
         const fetchInventoryQuantities = async () => {
           try {
-            const updatedVariants = await Promise.all(
+            const inventoryByTitle = new Map<string, number>();
+            await Promise.all(
               formVariants.map(async (variant) => {
-                // Match API variant by title instead of index for reliability
                 const rawVariant = productVariants.find(v => v.title === variant.title);
                 const variantId = rawVariant?.id || "";
                 const sku = variant.sku || rawVariant?.sku || undefined;
                 const quantity = await getVariantInventoryQuantity(variantId, sku);
-                return { ...variant, inventory_quantity: quantity };
+                inventoryByTitle.set(variant.title, quantity);
               })
             );
-            setVariants(updatedVariants);
+            setVariants((prev) =>
+              prev.map((v) =>
+                inventoryByTitle.has(v.title)
+                  ? { ...v, inventory_quantity: inventoryByTitle.get(v.title)! }
+                  : v
+              )
+            );
           } catch (error) {
             console.error("Error fetching inventory quantities:", error);
           }
         };
         fetchInventoryQuantities();
 
-        // Fetch role-based prices for each variant (async, doesn't block UI)
         const fetchRolePrices = async () => {
           try {
-            const withRolePrices = await Promise.all(
+            const rolePricesByTitle = new Map<string, VariantRolePricesFormData>();
+            await Promise.all(
               formVariants.map(async (variant) => {
                 const rawVariant = productVariants.find((v) => v.title === variant.title);
-                if (!rawVariant?.id) return variant;
+                if (!rawVariant?.id) return;
                 try {
                   const result = await getVariantRolePrices(productId, rawVariant.id);
-                  const next: { vip?: number; supplier?: number } = {};
+                  const next: VariantRolePricesFormData = {};
                   if (typeof result.prices.vip === "number") next.vip = result.prices.vip;
                   if (typeof result.prices.supplier === "number") next.supplier = result.prices.supplier;
-                  return { ...variant, rolePrices: next };
+                  rolePricesByTitle.set(variant.title, next);
                 } catch {
-                  return variant;
+                  /* ignore per-variant fetch errors */
                 }
               })
             );
-            setVariants(withRolePrices);
+            setVariants((prev) =>
+              prev.map((v) =>
+                rolePricesByTitle.has(v.title)
+                  ? { ...v, rolePrices: rolePricesByTitle.get(v.title)! }
+                  : v
+              )
+            );
           } catch (error) {
             console.error("Error fetching role prices:", error);
           }

@@ -26,7 +26,15 @@ const ROLE_FIELDS: Array<{
   },
 ];
 
+// Display value while editing — no forced 2-decimal so users can freely
+// type "10", "100", "0.5" etc. without the input snapping to ".00".
 function centsToInput(cents: number | undefined): string {
+  if (cents === undefined || cents === null) return "";
+  return String(cents / 100);
+}
+
+// Display with 2 decimals — used for hint text & "Currently:" label.
+function centsToDisplay(cents: number | undefined): string {
   if (cents === undefined || cents === null) return "";
   return (cents / 100).toFixed(2);
 }
@@ -70,7 +78,7 @@ export function VariantRolePricing({
             {basePriceCents !== undefined && (
               <>
                 {" "}
-                Default: <span className="font-medium text-[#030712]">RM{centsToInput(basePriceCents)}</span>
+                Default: <span className="font-medium text-[#030712]">RM{centsToDisplay(basePriceCents)}</span>
               </>
             )}
           </p>
@@ -82,12 +90,23 @@ export function VariantRolePricing({
           const value = prices?.[field.key];
           return (
             <div key={field.key}>
-              <label
-                className="mb-1 block font-geist text-[13px] font-medium text-[#030712]"
-                htmlFor={`role-price-${field.key}`}
-              >
-                {field.label}
-              </label>
+              <div className="mb-1 flex items-center justify-between">
+                <label
+                  className="block font-geist text-[13px] font-medium text-[#030712]"
+                  htmlFor={`role-price-${field.key}`}
+                >
+                  {field.label}
+                </label>
+                {value !== undefined && (
+                  <button
+                    type="button"
+                    onClick={() => updateRolePrice(field.key, "")}
+                    className="font-geist text-[11px] text-[#6A7282] underline hover:text-[#030712]"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
               <div className="relative">
                 <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-geist text-[14px] text-[#6A7282]">
                   RM
@@ -99,16 +118,14 @@ export function VariantRolePricing({
                   min="0"
                   value={centsToInput(value)}
                   onChange={(e) => updateRolePrice(field.key, e.target.value)}
-                  placeholder={
-                    basePriceCents !== undefined
-                      ? centsToInput(basePriceCents)
-                      : "0.00"
-                  }
+                  placeholder="Use default price"
                   className="w-full rounded-lg border border-[#E5E7EB] bg-white py-2 pl-10 pr-3 font-geist text-[14px] text-[#030712] outline-none transition-colors placeholder:text-[#9CA3AF] focus:border-black"
                 />
               </div>
               <p className="mt-1 font-geist text-[11px] text-[#9CA3AF]">
-                {field.hint}
+                {value !== undefined
+                  ? `Currently: RM${centsToDisplay(value)}`
+                  : field.hint}
               </p>
             </div>
           );
