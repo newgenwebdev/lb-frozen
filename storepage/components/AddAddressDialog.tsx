@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -57,7 +57,18 @@ export function AddAddressDialog({
   children 
 }: AddAddressDialogProps) {
   const { showToast } = useToast();
-  
+
+  // Unified open/close handling so the dialog reliably closes after submit in
+  // both controlled (open/onOpenChange from parent) and uncontrolled
+  // (<AddAddressDialog />) usage.
+  const isControlled = open !== undefined;
+  const [internalOpen, setInternalOpen] = useState(false);
+  const dialogOpen = isControlled ? open : internalOpen;
+  const setDialogOpen = (next: boolean) => {
+    if (!isControlled) setInternalOpen(next);
+    onOpenChange?.(next);
+  };
+
   // React Hook Form
   const {
     register,
@@ -108,7 +119,7 @@ export function AddAddressDialog({
         is_default_shipping: false,
       });
     }
-  }, [editAddress, open, reset]);
+  }, [editAddress, dialogOpen, reset]);
 
   const onSubmit = async (data: any) => {
     try {
@@ -140,14 +151,12 @@ export function AddAddressDialog({
       }
 
       onSuccess?.();
-      onOpenChange?.(false);
+      setDialogOpen(false);
     } catch (error) {
       console.error("Failed to save address:", error);
       showToast("Failed to save address. Please try again.", "error");
     }
   };
-
-  const isControlled = open !== undefined;
 
   const dialogContent = (
     <DialogContent className="max-w-[95vw] lg:max-w-225 w-full max-h-[90vh] overflow-y-auto">
@@ -388,25 +397,17 @@ export function AddAddressDialog({
     </DialogContent>
   );
 
-  // Controlled mode (from parent)
-  if (isControlled) {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        {dialogContent}
-      </Dialog>
-    );
-  }
-
-  // Uncontrolled mode (with trigger)
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        {children || (
-          <button className="text-blue-600 font-medium hover:text-blue-700 flex items-center gap-1 text-sm lg:text-base">
-            <span className="text-xl">+</span> New address
-          </button>
-        )}
-      </DialogTrigger>
+    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          {children || (
+            <button className="text-blue-600 font-medium hover:text-blue-700 flex items-center gap-1 text-sm lg:text-base">
+              <span className="text-xl">+</span> New address
+            </button>
+          )}
+        </DialogTrigger>
+      )}
       {dialogContent}
     </Dialog>
   );
