@@ -136,6 +136,21 @@ export default function ProductDetailPage() {
     // Use calculated sold_count from completed orders (not from metadata)
     const soldCount = (product as any)?.sold_count || 0;
     const recentSoldCount = (product as any)?.recent_sold_count || 0;
+    const priorWeekSoldCount =
+      (product as any)?.prior_week_sold_count || 0;
+
+    // A product is "trending" only if it has recent sales AND is selling
+    // faster than the prior week (or has no prior data, i.e. just started selling).
+    // Stagnant or declining sales should not surface a "Trending" card.
+    const isTrending =
+      recentSoldCount > 0 &&
+      (priorWeekSoldCount === 0 || recentSoldCount > priorWeekSoldCount);
+    const trendingGrowthPercent =
+      isTrending && priorWeekSoldCount > 0
+        ? Math.round(
+            ((recentSoldCount - priorWeekSoldCount) / priorWeekSoldCount) * 100
+          )
+        : null;
 
     // Format sold count for display (e.g., 150 -> "100+", 1500 -> "1.5K+")
     const formatCount = (count: number): string => {
@@ -168,11 +183,10 @@ export default function ProductDetailPage() {
       popularChoiceDescription: String(
         m.popular_choice_description || "Shoppers love this product"
       ),
-      // Use recentSoldCount for trending (from completed orders in last 7 days); null hides the card
-      trendingCount: recentSoldCount > 0 ? String(recentSoldCount) : null,
-      trendingDescription: String(
-        m.trending_description || "Units added this week"
-      ),
+      // Trending = product is gaining momentum (week-over-week growth or new
+      // sales with no prior data). null hides the card entirely.
+      trendingCount: isTrending ? String(recentSoldCount) : null,
+      trendingGrowthPercent,
       shippingConfirmation: String(
         m.shipping_confirmation_text ||
           "Ships within 24 hours after payment confirmation."
@@ -589,14 +603,20 @@ export default function ProductDetailPage() {
                   </svg>
                   <div>
                     <div className="text-sm font-semibold text-gray-900">
-                      Trending item
+                      Trending
                     </div>
                     <div className="text-2xl font-bold text-gray-900">
                       {metadata.trendingCount}
                     </div>
-                    <div className="text-xs text-gray-600">
-                      {metadata.trendingDescription}
-                    </div>
+                    {metadata.trendingGrowthPercent !== null ? (
+                      <div className="text-xs text-emerald-600 font-semibold">
+                        ↑ {metadata.trendingGrowthPercent}% from last week
+                      </div>
+                    ) : (
+                      <div className="text-xs text-gray-600">
+                        sold this week
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

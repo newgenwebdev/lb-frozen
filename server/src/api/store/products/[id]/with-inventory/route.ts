@@ -197,34 +197,37 @@ export const GET = async (
   // ========================================
   let soldCount = 0
   let recentSoldCount = 0 // Sold in last 7 days
+  let priorWeekSoldCount = 0 // Sold 8-14 days ago (for trending comparison)
   try {
     const orderModule = req.scope.resolve(Modules.ORDER)
-    
+
     // Get all variant IDs for this product
     const variantIds = product.variants?.map((v: any) => v.id) || []
-    
+
     if (variantIds.length > 0) {
       // Get all orders with items (similar approach to analytics endpoint)
       const allOrders = await orderModule.listOrders(
         {},
         { relations: ["items"], take: 1000 }
       )
-      
-      // Calculate date 7 days ago
+
+      // Calculate date windows
       const sevenDaysAgo = new Date()
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-      
+      const fourteenDaysAgo = new Date()
+      fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14)
+
       // Process orders - skip cancelled orders
       for (const order of allOrders) {
         // Skip cancelled orders - they don't count towards sales
         if (order.status === "canceled") {
           continue
         }
-        
-        // Check if order is within last 7 days
+
         const orderDate = new Date(order.created_at)
         const isRecent = orderDate >= sevenDaysAgo
-        
+        const isPriorWeek = !isRecent && orderDate >= fourteenDaysAgo
+
         // Process items in this order
         if (order.items) {
           for (const item of order.items as any[]) {
@@ -232,9 +235,11 @@ export const GET = async (
             if (item.variant_id && variantIds.includes(item.variant_id)) {
               const qty = Number(item.quantity) || 0
               soldCount += qty
-              
+
               if (isRecent) {
                 recentSoldCount += qty
+              } else if (isPriorWeek) {
+                priorWeekSoldCount += qty
               }
             }
           }
@@ -294,6 +299,8 @@ export const GET = async (
     sold_count: soldCount,
     // Recent sold count (last 7 days) for trending
     recent_sold_count: recentSoldCount,
+    // Prior week sold count (8-14 days ago) for week-over-week comparison
+    prior_week_sold_count: priorWeekSoldCount,
   }
 
   res.json({
