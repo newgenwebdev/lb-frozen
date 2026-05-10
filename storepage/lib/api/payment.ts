@@ -113,7 +113,6 @@ export async function initializePaymentSession(
     return { payment_session: response.payment_collection.payment_sessions[0] };
   }
   
-  console.log('Payment session response:', JSON.stringify(response, null, 2));
   throw new Error('Failed to initialize payment session');
 }
 
@@ -173,53 +172,36 @@ export async function initializeStripePayment(cartId?: string): Promise<{
   // First, get the cart to check for membership promo discount
   // Use getCart which already fetches with +metadata
   const cart = await getCart(id);
-  
-  console.log('[STRIPE-INIT] Cart fetched:', { 
-    id: cart.id, 
-    total: cart.total, 
-    metadata: (cart as any)?.metadata 
-  });
-  
+
   // Calculate adjusted amount (subtract membership promo discount from total)
   const membershipPromoDiscount = (cart as any)?.metadata?.applied_membership_promo_discount
     ? Number((cart as any).metadata.applied_membership_promo_discount)
     : 0;
   
-  console.log('[STRIPE-INIT] Membership promo discount:', membershipPromoDiscount);
   
   // Step 1: Create payment collection
   const { payment_collection } = await createPaymentCollection(id);
-  console.log('Payment collection created:', payment_collection?.id);
 
   // Step 2: Initialize Stripe payment session
   const { payment_session } = await initializePaymentSession(
     payment_collection.id,
     'pp_stripe_stripe'
   );
-  console.log('Payment session:', payment_session);
 
   // Step 3: If there's a membership promo discount, update the payment amount
-  console.log(`[STRIPE-INIT] Checking discount: membershipPromoDiscount=${membershipPromoDiscount}, cart.total=${cart.total}`);
-  console.log(`[STRIPE-INIT] Full cart metadata:`, JSON.stringify((cart as any)?.metadata, null, 2));
   
   if (membershipPromoDiscount > 0) {
     const originalTotal = cart.total || 0;
     const adjustedTotal = Math.max(0, originalTotal - membershipPromoDiscount);
     
-    console.log(`[STRIPE-INIT] *** APPLYING DISCOUNT ***`);
-    console.log(`[STRIPE-INIT] Original: ${originalTotal} (RM ${(originalTotal/100).toFixed(2)})`);
-    console.log(`[STRIPE-INIT] Discount: ${membershipPromoDiscount} (RM ${(membershipPromoDiscount/100).toFixed(2)})`);
-    console.log(`[STRIPE-INIT] Adjusted: ${adjustedTotal} (RM ${(adjustedTotal/100).toFixed(2)})`);
     
     try {
       const updateResult = await updatePaymentAmount(payment_collection.id, id, adjustedTotal);
-      console.log('[STRIPE-INIT] Payment amount update SUCCESS:', updateResult);
     } catch (error: any) {
       console.error('[STRIPE-INIT] Payment amount update FAILED:', error?.message || error);
       // Continue anyway - better to charge full price than fail completely
     }
   } else {
-    console.log('[STRIPE-INIT] No membership promo discount found, skipping amount update');
   }
 
   // Step 4: Get client secret - check various locations
@@ -257,9 +239,6 @@ export async function payWithSavedCard(
   const id = cartId || getStoredCartId();
   if (!id) throw new Error('No cart found');
 
-  console.log('[PAY-SAVED-CARD] Starting saved card payment');
-  console.log('[PAY-SAVED-CARD] Cart ID:', id);
-  console.log('[PAY-SAVED-CARD] Payment Method ID:', paymentMethodId);
 
   // Fetch cart with metadata to get membership promo discount
   const cart = await getCart(id);
@@ -267,8 +246,6 @@ export async function payWithSavedCard(
     ? Number((cart as any).metadata.applied_membership_promo_discount)
     : 0;
   
-  console.log('[PAY-SAVED-CARD] Cart metadata:', (cart as any)?.metadata);
-  console.log('[PAY-SAVED-CARD] Membership promo discount:', membershipPromoDiscount);
 
   const payload = {
     payment_method_id: paymentMethodId,
@@ -277,8 +254,6 @@ export async function payWithSavedCard(
     membership_promo_discount: membershipPromoDiscount,
   };
 
-  console.log('Sending request to /store/customer/pay-with-saved-card');
-  console.log('Payload:', payload);
 
   try {
     const response = await apiClient.post<{
@@ -290,7 +265,6 @@ export async function payWithSavedCard(
       error?: string;
     }>('/store/customer/pay-with-saved-card', payload);
 
-    console.log('Server response:', response);
 
     if (response.error === 'You cannot confirm this PaymentIntent because it has already succeeded after being previously confirmed.') {
       console.warn('PaymentIntent has already succeeded. Skipping confirmation.');

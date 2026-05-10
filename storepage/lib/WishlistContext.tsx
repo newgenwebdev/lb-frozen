@@ -66,9 +66,6 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
 
   // Debug logging
   useEffect(() => {
-    console.log("[WishlistContext] Auth state:", { isAuthenticated: !!customer, customerId: customer?.id });
-    console.log("[WishlistContext] Server wishlist:", serverWishlist);
-    console.log("[WishlistContext] Store items:", storeItems);
   }, [customer, serverWishlist, storeItems]);
 
   // Handle hydration

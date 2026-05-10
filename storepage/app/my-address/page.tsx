@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import ProfileSidebar from "@/components/layout/ProfileSidebar";
+import Breadcrumb from "@/components/shared/Breadcrumb";
 import { useAuthContext } from "@/lib/AuthContext";
 import { AddAddressDialog } from "@/components/AddAddressDialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -139,14 +139,12 @@ export default function MyAddressPage() {
 
   return (
     <div className="mx-auto px-4 sm:px-6 py-4 sm:py-8">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 mb-4 sm:mb-8">
-        <Link href="/" className="hover:text-gray-900">
-          Home
-        </Link>
-        <span>›</span>
-        <span className="text-gray-900 font-medium">Profile & settings</span>
-      </div>
+      <Breadcrumb
+        items={[
+          { label: "Home", href: "/" },
+          { label: "Profile & settings" },
+        ]}
+      />
 
       {/* Main Layout */}
       <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">

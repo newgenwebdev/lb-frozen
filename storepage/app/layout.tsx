@@ -13,7 +13,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "LB Frozen - Premium Seafood",
+  title: "LB Frozen - Premium Frozen Food",
   description: "Buy premium frozen seafood products online",
   icons: {
     icon: "/lb-logo.png",

@@ -462,7 +462,6 @@ export default function PaymentPage() {
   // Handle promo code apply
   const handleApplyPromo = async () => {
     // TODO: Implement promo code application
-    console.log("Applying promo code:", promoCode);
   };
 
   if (paymentLoading) {

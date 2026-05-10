@@ -94,7 +94,6 @@ export async function getOrCreateCart(): Promise<Cart> {
       // Check if cart has completed_at (order already created) or has succeeded payment sessions
       // This prevents the "Could not delete all payment sessions" error
       if ((cart as any).completed_at) {
-        console.log('Cart already completed, creating new cart');
         clearStoredCartId();
         return createCart();
       }
@@ -112,7 +111,6 @@ export async function getOrCreateCart(): Promise<Cart> {
         );
         
         if (hasSucceededPayment) {
-          console.log('Cart has succeeded payment session, creating new cart');
           clearStoredCartId();
           return createCart();
         }
@@ -120,7 +118,6 @@ export async function getOrCreateCart(): Promise<Cart> {
       
       return cart;
     } catch (error) {
-      console.log('Cart not found, creating new cart');
       clearStoredCartId();
     }
   }
@@ -296,8 +293,6 @@ export async function completeCart(): Promise<{ order: any }> {
   if (!cartId) throw new Error('No cart found');
 
   const headers = getAuthHeaders();
-  console.log('Completing cart with ID:', cartId);
-  console.log('Request headers:', headers);
 
   const response = await apiClient.post<{ order: any }>(
     `/store/carts/${cartId}/complete`

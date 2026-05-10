@@ -5,6 +5,7 @@ import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import ProfileSidebar from "@/components/layout/ProfileSidebar";
+import Breadcrumb from "@/components/shared/Breadcrumb";
 import { useOrderQuery } from "@/lib/queries";
 import { CheckCircle, Package, Truck, MapPin, Clock, AlertCircle } from "lucide-react";
 
@@ -96,14 +97,13 @@ export default function OrderDetailPage() {
         </div>
       )}
 
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 mb-4 sm:mb-8">
-        <a href="/" className="hover:text-gray-900">Home</a>
-        <span>›</span>
-        <a href="/orders" className="hover:text-gray-900">Orders</a>
-        <span>›</span>
-        <span className="text-gray-900 font-medium">Order #{order.display_id || orderId.slice(-8)}</span>
-      </div>
+      <Breadcrumb
+        items={[
+          { label: "Home", href: "/" },
+          { label: "Orders", href: "/orders" },
+          { label: `Order #${order.display_id || orderId.slice(-8)}` },
+        ]}
+      />
 
       {/* Main Layout */}
       <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">

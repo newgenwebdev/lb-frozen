@@ -97,8 +97,6 @@ export async function getCurrentCustomer(): Promise<Customer | null> {
     const response = await apiClient.get<{ customer: Customer }>(
       '/store/customer/me?fields=*shipping_addresses'
     );
-    console.log('[AUTH] getCurrentCustomer response:', response.customer);
-    console.log('[AUTH] shipping_addresses:', response.customer?.shipping_addresses);
     return response.customer;
   } catch (error) {
     console.error('Failed to fetch current customer:', error);

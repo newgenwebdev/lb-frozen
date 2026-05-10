@@ -30,24 +30,6 @@ function formatPrice(amountInCents: number): string {
   return (amountInCents / 100).toFixed(2);
 }
 
-// Helper to get the arrival date range (e.g., "Nov 5 - Nov 12")
-function getArrivalDateRange(shippingDays: string = "3-7"): string {
-  const today = new Date();
-  const [minDays, maxDays] = shippingDays.split("-").map(Number);
-
-  const minDate = new Date(today);
-  minDate.setDate(today.getDate() + (minDays || 3));
-
-  const maxDate = new Date(today);
-  maxDate.setDate(today.getDate() + (maxDays || 7));
-
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  };
-
-  return `Arrives between ${formatDate(minDate)} - ${formatDate(maxDate)}`;
-}
-
 // Helper to get variant price
 function getVariantPrice(variant: ProductVariant): number {
   // First check calculated_price (from region)
@@ -181,13 +163,13 @@ export default function ProductDetailPage() {
       freeShipping: m.free_shipping !== false, // default true
       shippingDays: String(m.shipping_days || "3-7"),
       shippingMethod: String(m.shipping_method || "Standard"),
-      // Use soldCount for popular choice (from completed orders), fallback to default if no data
-      popularChoiceCount: soldCount > 0 ? formatCount(soldCount) : "100+",
+      // Use soldCount for popular choice (from completed orders); null hides the card
+      popularChoiceCount: soldCount > 0 ? formatCount(soldCount) : null,
       popularChoiceDescription: String(
         m.popular_choice_description || "Shoppers love this product"
       ),
-      // Use recentSoldCount for trending (from completed orders in last 7 days), fallback to default
-      trendingCount: recentSoldCount > 0 ? String(recentSoldCount) : "20",
+      // Use recentSoldCount for trending (from completed orders in last 7 days); null hides the card
+      trendingCount: recentSoldCount > 0 ? String(recentSoldCount) : null,
       trendingDescription: String(
         m.trending_description || "Units added this week"
       ),
@@ -571,81 +553,58 @@ export default function ProductDetailPage() {
           </div>
 
           {/* Product Insights */}
-          <div className="grid grid-cols-2 gap-3 lg:gap-4 pt-3 lg:pt-4 border-t">
-            <div className="flex items-start gap-2 lg:gap-3">
-              <svg
-                className="w-4 h-4 lg:w-5 lg:h-5 text-gray-600 mt-1"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-              </svg>
-              <div>
-                <div className="text-xs lg:text-sm font-semibold text-gray-900">
-                  Popular choice
-                </div>
-                <div className="text-xl lg:text-2xl font-bold text-gray-900">
-                  {metadata.popularChoiceCount}
-                </div>
-                <div className="text-[10px] lg:text-xs text-gray-600">
-                  {metadata.popularChoiceDescription}
-                </div>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <svg
-                className="w-5 h-5 text-gray-600 mt-1"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
-              </svg>
-              <div>
-                <div className="text-sm font-semibold text-gray-900">
-                  Trending item
-                </div>
-                <div className="text-2xl font-bold text-gray-900">
-                  {metadata.trendingCount}
-                </div>
-                <div className="text-xs text-gray-600">
-                  {metadata.trendingDescription}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Shipping Info */}
-          <div className="space-y-3 pt-3 lg:pt-4 border-t">
-            <div className="flex items-start gap-2 lg:gap-3">
-              <svg
-                className="w-4 h-4 lg:w-5 lg:h-5 text-gray-600 mt-0.5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
-                />
-              </svg>
-              <div className="flex-1">
-                <div className="font-semibold text-xs lg:text-sm text-gray-900 mb-1">
-                  Shipping & Delivery
-                </div>
-                <div className="text-xs lg:text-sm text-gray-600 space-y-1">
+          {(metadata.popularChoiceCount !== null ||
+            metadata.trendingCount !== null) && (
+            <div className="grid grid-cols-2 gap-3 lg:gap-4 pt-3 lg:pt-4 border-t">
+              {metadata.popularChoiceCount !== null && (
+                <div className="flex items-start gap-2 lg:gap-3">
+                  <svg
+                    className="w-4 h-4 lg:w-5 lg:h-5 text-gray-600 mt-1"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                  </svg>
                   <div>
-                    {metadata.freeShipping
-                      ? "Free worldwide delivery"
-                      : `${metadata.shippingMethod} shipping`}
+                    <div className="text-xs lg:text-sm font-semibold text-gray-900">
+                      Popular choice
+                    </div>
+                    <div className="text-xl lg:text-2xl font-bold text-gray-900">
+                      {metadata.popularChoiceCount}
+                    </div>
+                    <div className="text-[10px] lg:text-xs text-gray-600">
+                      {metadata.popularChoiceDescription}
+                    </div>
                   </div>
-                  <div>{getArrivalDateRange(metadata.shippingDays)}</div>
-                  <div>{metadata.shippingConfirmation}</div>
                 </div>
-              </div>
+              )}
+              {metadata.trendingCount !== null && (
+                <div className="flex items-start gap-3">
+                  <svg
+                    className="w-5 h-5 text-gray-600 mt-1"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
+                  </svg>
+                  <div>
+                    <div className="text-sm font-semibold text-gray-900">
+                      Trending item
+                    </div>
+                    <div className="text-2xl font-bold text-gray-900">
+                      {metadata.trendingCount}
+                    </div>
+                    <div className="text-xs text-gray-600">
+                      {metadata.trendingDescription}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
+          )}
 
+          {/* Payment Info */}
+          <div className="space-y-3 pt-3 lg:pt-4 border-t">
             <div className="flex items-start gap-2 lg:gap-3">
               <svg
                 className="w-4 h-4 lg:w-5 lg:h-5 text-gray-600 mt-0.5"

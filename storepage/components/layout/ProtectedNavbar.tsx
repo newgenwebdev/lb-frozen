@@ -62,11 +62,11 @@ export default function ProtectedNavbar() {
   const categories = categoriesData || [];
 
   const seafoodTrends = [
-    { name: "Salmon Fillets", image: "/salmon-fillets.png" },
-    { name: "Tuna Fillets", image: "/tuna-fillets.png" },
-    { name: "Barramundi Fillets", image: "/barramundi-fillets.png" },
-    { name: "Cod Fillets", image: "/cod-fillets.png" },
-    { name: "Snapper Fillets", image: "/snapper-fillets.png" },
+    { name: "Salmon Fillets", image: "/salmon&fish.png" },
+    { name: "Tuna Fillets", image: "/fish-fillets.png" },
+    { name: "Barramundi Fillets", image: "/whole-fish.png" },
+    { name: "Cod Fillets", image: "/fish.png" },
+    { name: "Snapper Fillets", image: "/shellfish-scallops.png" },
   ];
 
   const handleSearchFocus = () => {
@@ -702,9 +702,13 @@ export default function ProtectedNavbar() {
                   {seafoodTrends.map((item, index) => (
                     <div key={index} className="text-center">
                       <div className="bg-gray-50 rounded-xl lg:rounded-2xl mb-3 aspect-square flex items-center justify-center p-4">
-                        <div className="w-full h-full relative">
-                          {/* Placeholder untuk gambar seafood */}
-                          <div className="absolute inset-0 bg-linear-to-br from-orange-200 to-red-300 rounded-lg lg:rounded-xl transform -rotate-12"></div>
+                        <div className="relative w-full h-full">
+                          <Image
+                            src={item.image}
+                            alt={item.name}
+                            fill
+                            className="object-contain"
+                          />
                         </div>
                       </div>
                       <p className="text-sm lg:text-sm font-medium text-gray-700">

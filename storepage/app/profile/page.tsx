@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
@@ -15,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import ProfileSidebar from "@/components/layout/ProfileSidebar";
+import Breadcrumb from "@/components/shared/Breadcrumb";
 import { useAuthContext } from "@/lib/AuthContext";
 import { useOrdersQuery } from "@/lib/queries";
 import * as api from "@/lib/api";
@@ -52,9 +52,6 @@ export default function ProfilePage() {
   // Update form when customer data loads
   useEffect(() => {
     if (customer) {
-      console.log("[PROFILE] Customer loaded:", customer);
-      console.log("[PROFILE] Metadata:", customer.metadata);
-      console.log("[PROFILE] Profile image:", customer.metadata?.profile_image);
 
       const fullName = [customer.first_name, customer.last_name]
         .filter(Boolean)
@@ -268,7 +265,6 @@ export default function ProfilePage() {
     try {
       // Upload file directly using FormData
       const imageUrl = await api.uploadProfileImage(file);
-      console.log("[PROFILE] Image uploaded:", imageUrl);
 
       // Update form value
       setValue("profileImage", imageUrl, { shouldDirty: true });
@@ -303,14 +299,12 @@ export default function ProfilePage() {
 
   return (
     <div className="mx-auto px-4 sm:px-6 py-4 sm:py-8">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 mb-4 sm:mb-8">
-        <Link href="/" className="hover:text-gray-900">
-          Home
-        </Link>
-        <span>›</span>
-        <span className="text-gray-900 font-medium">Profile & settings</span>
-      </div>
+      <Breadcrumb
+        items={[
+          { label: "Home", href: "/" },
+          { label: "Profile & settings" },
+        ]}
+      />
 
       {/* Main Layout */}
       <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
@@ -598,11 +592,6 @@ export default function ProfilePage() {
                                 (e.target as HTMLImageElement).style.display =
                                   "none";
                               }}
-                              onLoad={() =>
-                                console.log(
-                                  "[PROFILE] Image loaded successfully"
-                                )
-                              }
                             />
                           </div>
                         ) : (

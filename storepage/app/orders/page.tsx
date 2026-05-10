@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import ProfileSidebar from "@/components/layout/ProfileSidebar";
+import Breadcrumb from "@/components/shared/Breadcrumb";
 import { useOrdersQuery } from "@/lib/queries";
 import Image from "next/image";
 import Link from "next/link";
@@ -119,12 +120,12 @@ export default function OrdersPage() {
 
   return (
     <div className="mx-auto px-4 sm:px-6 py-4 sm:py-8">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 mb-4 sm:mb-8">
-        <a href="/" className="hover:text-gray-900">Home</a>
-        <span>›</span>
-        <span className="text-gray-900 font-medium">My Orders</span>
-      </div>
+      <Breadcrumb
+        items={[
+          { label: "Home", href: "/" },
+          { label: "My Orders" },
+        ]}
+      />
 
       {/* Main Layout */}
       <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">

@@ -53,9 +53,24 @@ export default function LandingPage() {
 
   // Banner Carousel
   const bannerImages = [
-    { src: "/Banner2-1.png", href: "/products" },
-    { src: "/Banner2-2.png", href: "/products" },
-    { src: "/Banner2-3.png", href: "/products" },
+    {
+      srcMobile: "/banner1-mb.svg",
+      srcTablet: "/banner1-tablet.svg",
+      srcDesktop: "/Banner2-1.png",
+      href: "/products",
+    },
+    {
+      srcMobile: "/banner2-mb.svg",
+      srcTablet: "/banner2-tablet.svg",
+      srcDesktop: "/Banner2-2.png",
+      href: "/products",
+    },
+    {
+      srcMobile: "/banner3-mb.svg",
+      srcTablet: "/banner3-tablet.svg",
+      srcDesktop: "/Banner2-3.png",
+      href: "/products",
+    },
   ];
   const [currentBanner, setCurrentBanner] = useState(0);
 
@@ -233,12 +248,29 @@ export default function LandingPage() {
           >
             {bannerImages.map((banner, index) => (
               <Link key={index} href={banner.href} className="min-w-full h-full relative block">
+                {/* Mobile */}
                 <Image
-                  src={banner.src}
+                  src={banner.srcMobile}
                   alt={`Banner ${index + 1}`}
                   fill
                   priority={index === 0}
-                  className="object-cover"
+                  className="object-cover md:hidden"
+                />
+                {/* Tablet */}
+                <Image
+                  src={banner.srcTablet}
+                  alt={`Banner ${index + 1}`}
+                  fill
+                  priority={index === 0}
+                  className="hidden md:block lg:hidden object-cover"
+                />
+                {/* Desktop */}
+                <Image
+                  src={banner.srcDesktop}
+                  alt={`Banner ${index + 1}`}
+                  fill
+                  priority={index === 0}
+                  className="hidden lg:block object-cover"
                 />
               </Link>
             ))}
@@ -247,7 +279,7 @@ export default function LandingPage() {
           {/* Previous/Next Arrows */}
           <button
             onClick={() => setCurrentBanner((prev) => (prev - 1 + bannerImages.length) % bannerImages.length)}
-            className="absolute left-4 top-1/2 -translate-y-1/2 z-20 bg-black/30 hover:bg-black/50 text-white w-10 h-10 rounded-full flex items-center justify-center transition-colors"
+            className="hidden md:flex absolute left-4 top-1/2 -translate-y-1/2 z-20 bg-black/30 hover:bg-black/50 text-white w-10 h-10 rounded-full items-center justify-center transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -255,7 +287,7 @@ export default function LandingPage() {
           </button>
           <button
             onClick={() => setCurrentBanner((prev) => (prev + 1) % bannerImages.length)}
-            className="absolute right-4 top-1/2 -translate-y-1/2 z-20 bg-black/30 hover:bg-black/50 text-white w-10 h-10 rounded-full flex items-center justify-center transition-colors"
+            className="hidden md:flex absolute right-4 top-1/2 -translate-y-1/2 z-20 bg-black/30 hover:bg-black/50 text-white w-10 h-10 rounded-full items-center justify-center transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

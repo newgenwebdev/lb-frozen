@@ -37,11 +37,9 @@ function OTPContent() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("OTP:", otp.join(""));
   };
 
   const handleResendCode = () => {
-    console.log("Resending code...");
   };
 
   return (

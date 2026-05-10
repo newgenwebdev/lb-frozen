@@ -822,14 +822,11 @@ export function useWishlistQuery(
 ) {
   const { customer } = useAuthStore();
 
-  console.log("[useWishlistQuery] Customer:", customer?.id, "Enabled:", !!customer);
 
   return useQuery({
     queryKey: queryKeys.wishlist,
     queryFn: async () => {
-      console.log("[useWishlistQuery] Fetching wishlist...");
       const result = await wishlistApi.fetchWishlist();
-      console.log("[useWishlistQuery] Fetched:", result);
       return result;
     },
     enabled: !!customer, // Only fetch when logged in
@@ -846,14 +843,11 @@ export function useAddToWishlistMutation() {
 
   return useMutation({
     mutationFn: async (data: Parameters<typeof wishlistApi.addToWishlist>[0]) => {
-      console.log("[Wishlist] Adding item:", data.product_id);
       const result = await wishlistApi.addToWishlist(data);
-      console.log("[Wishlist] Added successfully:", result);
       return result;
     },
     onSuccess: () => {
       // Invalidate wishlist query to refetch
-      console.log("[Wishlist] Invalidating queries");
       queryClient.invalidateQueries({ queryKey: queryKeys.wishlist });
     },
     onError: (error) => {
@@ -870,13 +864,10 @@ export function useRemoveFromWishlistMutation() {
 
   return useMutation({
     mutationFn: async (product_id: string) => {
-      console.log("[Wishlist] Removing item:", product_id);
       await wishlistApi.removeFromWishlist(product_id);
-      console.log("[Wishlist] Removed successfully");
     },
     onSuccess: () => {
       // Invalidate wishlist query to refetch
-      console.log("[Wishlist] Invalidating queries after remove");
       queryClient.invalidateQueries({ queryKey: queryKeys.wishlist });
     },
     onError: (error) => {
