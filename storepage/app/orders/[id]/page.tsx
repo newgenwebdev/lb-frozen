@@ -41,6 +41,11 @@ function formatDate(dateString: string): string {
 }
 
 export default function OrderDetailPage() {
+  // HIDDEN_SHIPPING: feature flag — flip to `true` to restore the shipping
+  // line on the order detail summary. Declared as `boolean` so TS keeps
+  // narrowing inside the wrapped section.
+  const SHOW_SHIPPING_UI: boolean = false;
+
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -279,12 +284,17 @@ export default function OrderDetailPage() {
                         <span className="text-gray-900">RM{((order.subtotal || 0) / 100).toFixed(2)}</span>
                       </div>
 
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Shipping</span>
-                        <span className="text-green-600">
-                          {order.shipping_total ? `RM${(order.shipping_total / 100).toFixed(2)}` : "Free"}
-                        </span>
-                      </div>
+                      {/* HIDDEN_SHIPPING: client handles delivery manually
+                          offline, so the shipping line is hidden on order
+                          detail. */}
+                      {SHOW_SHIPPING_UI && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Shipping</span>
+                          <span className="text-green-600">
+                            {order.shipping_total ? `RM${(order.shipping_total / 100).toFixed(2)}` : "Free"}
+                          </span>
+                        </div>
+                      )}
 
                       {otherDiscount > 0 && (
                         <div className="flex justify-between text-sm">

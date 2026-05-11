@@ -182,9 +182,11 @@ export default function ProductsPage(): React.JSX.Element {
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [categoriesResponse]);
 
-  // Parse price to number for filtering
+  // Parse price to number for filtering. Strips any leading currency prefix
+  // (e.g. "RM 50" or "$50") so the filter keeps working even if upstream
+  // formatting changes.
   const parsePrice = (price: string): number => {
-    return parseFloat(price.replace("$", "").trim());
+    return parseFloat(price.replace(/^[^\d.]+/, "").trim());
   };
 
   // Client-side filtering only (sorting is now handled server-side)
@@ -196,15 +198,15 @@ export default function ProductsPage(): React.JSX.Element {
       filtered = filtered.filter((product) => {
         const price = parsePrice(product.price);
         switch (selectedPriceRange) {
-          case "$0-$50":
+          case "RM0-RM50":
             return price >= 0 && price <= 50;
-          case "$51-$100":
+          case "RM51-RM100":
             return price >= 51 && price <= 100;
-          case "$101-$250":
+          case "RM101-RM250":
             return price >= 101 && price <= 250;
-          case "$251-$500":
+          case "RM251-RM500":
             return price >= 251 && price <= 500;
-          case "$500+":
+          case "RM500+":
             return price > 500;
           default:
             return true;
@@ -753,7 +755,7 @@ export default function ProductsPage(): React.JSX.Element {
                   <path fillRule="evenodd" clipRule="evenodd" d="M13.3336 12.6666H2.66693C1.93026 12.6666 1.33359 12.0698 1.33359 11.3332V4.66659C1.33359 3.92992 1.93026 3.33325 2.66693 3.33325H13.3336C14.0703 3.33325 14.667 3.92992 14.667 4.66659V11.3332C14.667 12.0698 14.0703 12.6666 13.3336 12.6666Z" stroke="#030712" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                   <path d="M9.17879 6.82136C10.0297 7.67223 10.0297 9.0475 9.17879 9.89837C8.32791 10.7492 6.95264 10.7492 6.10177 9.89837C5.2509 9.0475 5.2509 7.67223 6.10177 6.82136C6.95264 5.97048 8.32791 5.97048 9.17879 6.82136" stroke="#030712" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-                <span>{selectedPriceRange || "$0-$250"}</span>
+                <span>{selectedPriceRange || "RM0-RM250"}</span>
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" className={`transition-transform ${openFilterDropdown === "price" ? "rotate-180" : ""}`}>
                   <path d="M4 6L8 10L12 6" stroke="#030712" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
@@ -775,7 +777,7 @@ export default function ProductsPage(): React.JSX.Element {
                     >
                       None
                     </button>
-                    {["$0-$50", "$51-$100", "$101-$250", "$251-$500", "$500+"].map((range) => (
+                    {["RM0-RM50", "RM51-RM100", "RM101-RM250", "RM251-RM500", "RM500+"].map((range) => (
                       <button
                         key={range}
                         onClick={() => {

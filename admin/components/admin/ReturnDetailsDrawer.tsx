@@ -131,8 +131,8 @@ export function ReturnDetailsDrawer({
     }
   }, [isOpen, returnItem]);
 
-  const formatCurrency = (amount: number, currency: string = "sgd"): string => {
-    const currencySymbol = "$";
+  const formatCurrency = (amount: number, currency: string = "myr"): string => {
+    const currencySymbol = "RM";
     return `${currencySymbol} ${(amount / 100).toFixed(2)}`;
   };
 

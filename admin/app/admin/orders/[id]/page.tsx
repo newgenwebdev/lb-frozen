@@ -75,6 +75,11 @@ type OrderDetailPageProps = {
 };
 
 export default function OrderDetailPage({ params }: OrderDetailPageProps): React.JSX.Element {
+  // HIDDEN_SHIPPING: feature flag — flip to `true` to restore the shipping
+  // UI (free-shipping badge, shipping line in totals, full shipping section).
+  // Declared as `boolean` so TS keeps narrowing inside the wrapped sections.
+  const SHOW_SHIPPING_UI: boolean = false;
+
   const router = useRouter();
   const { showToast, showUndoToast, confirm } = useToast();
   const resolvedParams = React.use(params);
@@ -320,7 +325,9 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps): React
                   </span>
                 </div>
               )}
-              {order.metadata?.free_shipping_applied === true && (
+              {/* HIDDEN_SHIPPING: free-shipping badge hidden along with the rest
+                  of the shipping UI. */}
+              {SHOW_SHIPPING_UI &&order?.metadata?.free_shipping_applied === true && (
                 <div className="flex items-center gap-2">
                   <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-3 py-1 font-public text-[12px] font-medium text-green-800">
                     <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -485,17 +492,21 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps): React
                       <span className="text-green-600">-{formatCurrency(wholesaleDiscountAmount, order.currency)}</span>
                     </div>
                   )}
-                  <div className="flex justify-between font-public text-[14px]">
-                    <span className="text-[#6A7282]">Shipping</span>
-                    {freeShippingApplied ? (
-                      <span className="flex items-center gap-2">
-                        <span className="text-[12px] text-[#9CA3AF] line-through">{formatCurrency(originalShippingCost, order.currency)}</span>
-                        <span className="font-medium text-green-600">FREE</span>
-                      </span>
-                    ) : (
-                      <span className="text-[#030712]">{formatCurrency(order.shipping_total, order.currency)}</span>
-                    )}
-                  </div>
+                  {/* HIDDEN_SHIPPING: client handles delivery manually offline,
+                      so the shipping line in the order totals is hidden. */}
+                  {SHOW_SHIPPING_UI &&(
+                    <div className="flex justify-between font-public text-[14px]">
+                      <span className="text-[#6A7282]">Shipping</span>
+                      {freeShippingApplied ? (
+                        <span className="flex items-center gap-2">
+                          <span className="text-[12px] text-[#9CA3AF] line-through">{formatCurrency(originalShippingCost, order.currency)}</span>
+                          <span className="font-medium text-green-600">FREE</span>
+                        </span>
+                      ) : (
+                        <span className="text-[#030712]">{formatCurrency(order.shipping_total, order.currency)}</span>
+                      )}
+                    </div>
+                  )}
                   {order.tax_total > 0 && (
                     <div className="flex justify-between font-public text-[14px]">
                       <span className="text-[#6A7282]">Tax</span>
@@ -571,40 +582,46 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps): React
             </div>
           </div>
 
-          {/* Shipping Information */}
-          <div className="rounded-xl border border-[#E8E8E9] bg-white p-6">
-            <h2 className="mb-4 font-geist text-[18px] font-medium text-[#030712]">Shipping</h2>
-            <div className="space-y-3">
-              <div>
-                <p className="mb-1 font-public text-[12px] text-[#6A7282]">Shipping Method</p>
-                <p className="font-public text-[14px] text-[#030712]">{order.shipping_method}</p>
-                {order.metadata?.free_shipping_applied === true && (
-                  <p className="mt-1 font-public text-[13px] font-medium text-green-600">Free shipping applied</p>
+          {/* HIDDEN_SHIPPING: shipping info section hidden because client
+              handles delivery manually offline (no method/channel/tracking
+              managed in-app). Flip the wrapping flag to restore. The `!`
+              assertions are safe — `order` is non-null by this point, but
+              TS narrowing does not propagate into `{SHOW_SHIPPING_UI &&(...)}` arms. */}
+          {SHOW_SHIPPING_UI &&(
+            <div className="rounded-xl border border-[#E8E8E9] bg-white p-6">
+              <h2 className="mb-4 font-geist text-[18px] font-medium text-[#030712]">Shipping</h2>
+              <div className="space-y-3">
+                <div>
+                  <p className="mb-1 font-public text-[12px] text-[#6A7282]">Shipping Method</p>
+                  <p className="font-public text-[14px] text-[#030712]">{order.shipping_method}</p>
+                  {order.metadata?.free_shipping_applied === true && (
+                    <p className="mt-1 font-public text-[13px] font-medium text-green-600">Free shipping applied</p>
+                  )}
+                </div>
+                {order.shipping_channel && (
+                  <div>
+                    <p className="mb-1 font-public text-[12px] text-[#6A7282]">Shipping Channel</p>
+                    <p className="font-public text-[14px] text-[#030712]">{order.shipping_channel}</p>
+                  </div>
+                )}
+                {order.tracking_number && (
+                  <div>
+                    <p className="mb-1 font-public text-[12px] text-[#6A7282]">Tracking Number</p>
+                    <p className="font-mono text-[14px] text-[#030712]">{order.tracking_number}</p>
+                  </div>
+                )}
+                {order.fulfillment_status && (
+                  <div>
+                    <p className="mb-1 font-public text-[12px] text-[#6A7282]">Fulfillment Status</p>
+                    <span className="inline-block rounded-full bg-[#F3F4F6] px-3 py-1 font-public text-[12px] font-medium text-[#374151]">
+                      {order.fulfillment_status.replace(/_/g, " ").charAt(0).toUpperCase() +
+                        order.fulfillment_status.replace(/_/g, " ").slice(1)}
+                    </span>
+                  </div>
                 )}
               </div>
-              {order.shipping_channel && (
-                <div>
-                  <p className="mb-1 font-public text-[12px] text-[#6A7282]">Shipping Channel</p>
-                  <p className="font-public text-[14px] text-[#030712]">{order.shipping_channel}</p>
-                </div>
-              )}
-              {order.tracking_number && (
-                <div>
-                  <p className="mb-1 font-public text-[12px] text-[#6A7282]">Tracking Number</p>
-                  <p className="font-mono text-[14px] text-[#030712]">{order.tracking_number}</p>
-                </div>
-              )}
-              {order.fulfillment_status && (
-                <div>
-                  <p className="mb-1 font-public text-[12px] text-[#6A7282]">Fulfillment Status</p>
-                  <span className="inline-block rounded-full bg-[#F3F4F6] px-3 py-1 font-public text-[12px] font-medium text-[#374151]">
-                    {order.fulfillment_status.replace(/_/g, " ").charAt(0).toUpperCase() +
-                      order.fulfillment_status.replace(/_/g, " ").slice(1)}
-                  </span>
-                </div>
-              )}
             </div>
-          </div>
+          )}
 
           {/* Order Timeline */}
           <div className="rounded-xl border border-[#E8E8E9] bg-white p-6">

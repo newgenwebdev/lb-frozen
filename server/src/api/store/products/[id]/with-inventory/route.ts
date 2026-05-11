@@ -98,6 +98,11 @@ export const GET = async (
   // 2. Get prices for variants
   // ========================================
   const priceMap = new Map<string, Array<{ amount: number; currency_code: string }>>()
+  // Default (un-role-priced) amount per variant. Used by the storefront to
+  // compute the absolute discount amount: default_amount × discount% / 100,
+  // applied uniformly across all roles so a 10% discount on RM 100 default
+  // gives RM 10 off to retail, VIP, and supplier alike.
+  const defaultPriceMap = new Map<string, number>()
 
   // Get region for pricing
   let resolvedRegionId = region_id
@@ -141,18 +146,27 @@ export const GET = async (
         )
 
         const priceSetToPrice = new Map<string, { amount: number; currency_code: string }>()
+        const priceSetToDefault = new Map<string, number>()
         for (const price of calculated as Array<any>) {
           if (price.calculated_amount == null) continue
           priceSetToPrice.set(price.id, {
             amount: Number(price.calculated_amount),
             currency_code: price.currency_code ?? "myr",
           })
+          // original_amount = default price (before price-list overrides apply).
+          // Falls back to calculated_amount if no price list is involved.
+          const defaultAmt = price.original_amount ?? price.calculated_amount
+          priceSetToDefault.set(price.id, Number(defaultAmt))
         }
 
         for (const vps of variantPriceSets) {
           const priceForVariant = priceSetToPrice.get(vps.price_set_id)
           if (priceForVariant) {
             priceMap.set(vps.variant_id, [priceForVariant])
+          }
+          const defaultForVariant = priceSetToDefault.get(vps.price_set_id)
+          if (defaultForVariant != null) {
+            defaultPriceMap.set(vps.variant_id, defaultForVariant)
           }
         }
       }
@@ -270,6 +284,9 @@ export const GET = async (
       sku: variant.sku,
       barcode: variant.barcode,
       prices: priceMap.get(variant.id) || [],
+      // Default (retail) amount in cents — needed by storefront so a flat
+      // discount can be derived once and applied across all roles equally.
+      default_amount: defaultPriceMap.get(variant.id) ?? null,
       options: variant.options,
       inventory_quantity: inventoryMap[variant.id] ?? 0,
       manage_inventory: variant.manage_inventory ?? true,

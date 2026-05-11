@@ -147,6 +147,12 @@ export function OrderDetailsDrawer({
   onShipWithEasyParcel,
   onUpdateOrderShipping,
 }: OrderDetailsDrawerProps): React.JSX.Element | null {
+  // HIDDEN_SHIPPING: feature flag — flip to `true` to restore the shipping UI
+  // (courier/tracking, EasyParcel section, shipping line in totals, mark-as-
+  // shipped buttons). Declared as `boolean` (not literal `false`) so TS keeps
+  // narrowing inside the wrapped sections.
+  const SHOW_SHIPPING_UI: boolean = false;
+
   // Explicitly type returns to avoid unknown type inference issues
   const typedReturns: Return[] = returns;
   const [mounted, setMounted] = useState(false);
@@ -341,7 +347,7 @@ export function OrderDetailsDrawer({
   }, [isOpen, order]);
 
   const formatCurrency = (amount: number, currency: string): string => {
-    const currencySymbol = "$";
+    const currencySymbol = "RM";
     return `${currencySymbol} ${(amount / 100).toFixed(2)}`;
   };
 
@@ -530,7 +536,9 @@ export function OrderDetailsDrawer({
             <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${fulfillmentConfig.className}`}>
               {fulfillmentConfig.label}
             </span>
-            {freeShippingApplied && (
+            {/* HIDDEN_SHIPPING: free-shipping badge hidden along with the rest
+                of the shipping UI. */}
+            {SHOW_SHIPPING_UI &&freeShippingApplied && (
               <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-800">
                 <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -675,8 +683,9 @@ export function OrderDetailsDrawer({
               <span className="font-geist text-[14px] font-medium text-[#030712]">{formatDate(order.created_at)}</span>
             </div>
 
-            {/* Shipping Info */}
-            {(order.courier || order.tracking_number) && (
+            {/* HIDDEN_SHIPPING: courier + tracking number hidden; client
+                manages courier and tracking offline. */}
+            {SHOW_SHIPPING_UI && (order.courier || order.tracking_number) && (
               <>
                 <div className="flex items-center justify-between">
                   <span className="font-geist text-[14px] font-medium text-[#858585]">Courier</span>
@@ -731,8 +740,9 @@ export function OrderDetailsDrawer({
             </>
           )}
 
-          {/* EasyParcel Shipping Method Section */}
-          {easyParcelShipping && (
+          {/* HIDDEN_SHIPPING: EasyParcel integration section hidden because
+              client handles delivery manually offline. */}
+          {SHOW_SHIPPING_UI &&easyParcelShipping && (
             <>
               <div className="mb-6 border-t border-[#E5E7EB]"></div>
               <div className="mb-6 space-y-4">
@@ -801,8 +811,10 @@ export function OrderDetailsDrawer({
             </>
           )}
 
-          {/* Shipping Method Selection Section - For free shipping orders without selected method */}
-          {needsShippingSelection && canShip && (
+          {/* HIDDEN_SHIPPING: shipping method selection (for free-shipping
+              orders without a courier picked) hidden — admin handles delivery
+              manually. */}
+          {SHOW_SHIPPING_UI &&needsShippingSelection && canShip && (
             <>
               <div className="mb-6 border-t border-[#E5E7EB]"></div>
               <div className="mb-6 space-y-4">
@@ -1094,22 +1106,26 @@ export function OrderDetailsDrawer({
                 </div>
               )}
 
-              {/* Shipping */}
-              <div className="flex items-center justify-between">
-                <span className="font-geist text-[14px] text-[#858585]">Shipping</span>
-                {freeShippingApplied ? (
-                  <div className="flex items-center gap-2">
-                    <span className="font-geist text-[12px] text-[#9CA3AF] line-through">
-                      {formatCurrency(originalShippingCost, order.currency)}
+              {/* HIDDEN_SHIPPING: shipping line hidden in the totals
+                  breakdown. effectiveShippingCost (computed above) still feeds
+                  into calculatedTotal so backend totals stay consistent. */}
+              {SHOW_SHIPPING_UI &&(
+                <div className="flex items-center justify-between">
+                  <span className="font-geist text-[14px] text-[#858585]">Shipping</span>
+                  {freeShippingApplied ? (
+                    <div className="flex items-center gap-2">
+                      <span className="font-geist text-[12px] text-[#9CA3AF] line-through">
+                        {formatCurrency(originalShippingCost, order.currency)}
+                      </span>
+                      <span className="font-geist text-[14px] font-medium text-green-600">FREE</span>
+                    </div>
+                  ) : (
+                    <span className="font-geist text-[14px] text-[#030712]">
+                      {formatCurrency(order.shipping_total || 0, order.currency)}
                     </span>
-                    <span className="font-geist text-[14px] font-medium text-green-600">FREE</span>
-                  </div>
-                ) : (
-                  <span className="font-geist text-[14px] text-[#030712]">
-                    {formatCurrency(order.shipping_total || 0, order.currency)}
-                  </span>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
 
               {/* PPN/Tax */}
               <div className="flex items-center justify-between">
@@ -1142,8 +1158,9 @@ export function OrderDetailsDrawer({
               Print Receipt
             </button>
 
-            {/* Ship with EasyParcel - For orders with EasyParcel shipping info */}
-            {canShip && easyParcelShipping && onShipWithEasyParcel && (
+            {/* HIDDEN_SHIPPING: Ship with EasyParcel button hidden; admin
+                handles delivery offline. */}
+            {SHOW_SHIPPING_UI &&canShip && easyParcelShipping && onShipWithEasyParcel && (
               <button
                 onClick={handleShipWithEasyParcel}
                 disabled={isShippingWithEasyParcel}
@@ -1168,8 +1185,12 @@ export function OrderDetailsDrawer({
               </button>
             )}
 
-            {/* Mark as Shipped - Fallback for orders without EasyParcel shipping info */}
-            {canShip && !easyParcelShipping && onMarkAsShipped && (
+            {/* Ship Manually — admin marks the order as shipped after
+                handling delivery offline. Kept visible while the rest of the
+                shipping UI is hidden (HIDDEN_SHIPPING) because this is
+                exactly what the client needs to progress an order's
+                fulfillment state. */}
+            {canShip && onMarkAsShipped && (
               <button
                 onClick={handleMarkAsShipped}
                 disabled={isShipping}
@@ -1181,10 +1202,10 @@ export function OrderDetailsDrawer({
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
-                    Shipping...
+                    Processing...
                   </span>
                 ) : (
-                  "Mark as Shipped"
+                  "Ship Manually"
                 )}
               </button>
             )}

@@ -1422,59 +1422,67 @@ export default function EditProductPage(): React.JSX.Element {
             </div>
 
             {/* Shipping Info */}
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-3 mt-6">
-              {/* Shipping Days */}
-              <div>
-                <label className="mb-2 block font-geist text-[14px] font-medium leading-[150%] tracking-[-0.14px] text-[#020817]">
-                  Shipping Time
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g 24-48"
-                  value={shippingDays}
-                  onChange={(e) => setShippingDays(e.target.value)}
-                  className="w-full rounded-lg border border-[#E3E3E3] bg-white py-3 px-4 font-geist text-[16px] font-normal tracking-[-0.16px] text-[#030712] outline-none transition-colors placeholder:text-[#6A7282] focus:border-black"
-                />
-                <p className="mt-1 font-geist text-[12px] text-[#6A7282]">
-                  Estimated hours for delivery (e.g., 24-48)
-                </p>
-              </div>
-
-              {/* Free Shipping Toggle */}
-              <div>
-                <label className="mb-2 block font-geist text-[14px] font-medium leading-[150%] tracking-[-0.14px] text-[#020817]">
-                  Free Shipping
-                </label>
-                <div className="flex items-center gap-3 mt-3">
-                  <label className="relative inline-flex cursor-pointer items-center">
-                    <input
-                      type="checkbox"
-                      checked={freeShipping}
-                      onChange={(e) => setFreeShipping(e.target.checked)}
-                      className="peer sr-only"
-                    />
-                    <div className="h-6 w-11 rounded-full bg-[#E5E7EB] transition-colors after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:bg-[#030712] peer-checked:after:translate-x-5"></div>
+            {/* HIDDEN_SHIPPING: per-product shipping fields (Shipping Time,
+                Free Shipping, Shipping Method) hidden because client handles
+                delivery manually offline. The state + setters above are kept
+                so the metadata still round-trips through save without
+                clobbering anything an admin entered previously. Flip the flag
+                to restore the inputs when a real pricing model lands. */}
+            {false && (
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-3 mt-6">
+                {/* Shipping Days */}
+                <div>
+                  <label className="mb-2 block font-geist text-[14px] font-medium leading-[150%] tracking-[-0.14px] text-[#020817]">
+                    Shipping Time
                   </label>
-                  <span className="font-geist text-[14px] text-[#6A7282]">
-                    This product has free shipping
-                  </span>
+                  <input
+                    type="text"
+                    placeholder="e.g 24-48"
+                    value={shippingDays}
+                    onChange={(e) => setShippingDays(e.target.value)}
+                    className="w-full rounded-lg border border-[#E3E3E3] bg-white py-3 px-4 font-geist text-[16px] font-normal tracking-[-0.16px] text-[#030712] outline-none transition-colors placeholder:text-[#6A7282] focus:border-black"
+                  />
+                  <p className="mt-1 font-geist text-[12px] text-[#6A7282]">
+                    Estimated hours for delivery (e.g., 24-48)
+                  </p>
+                </div>
+
+                {/* Free Shipping Toggle */}
+                <div>
+                  <label className="mb-2 block font-geist text-[14px] font-medium leading-[150%] tracking-[-0.14px] text-[#020817]">
+                    Free Shipping
+                  </label>
+                  <div className="flex items-center gap-3 mt-3">
+                    <label className="relative inline-flex cursor-pointer items-center">
+                      <input
+                        type="checkbox"
+                        checked={freeShipping}
+                        onChange={(e) => setFreeShipping(e.target.checked)}
+                        className="peer sr-only"
+                      />
+                      <div className="h-6 w-11 rounded-full bg-[#E5E7EB] transition-colors after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:bg-[#030712] peer-checked:after:translate-x-5"></div>
+                    </label>
+                    <span className="font-geist text-[14px] text-[#6A7282]">
+                      This product has free shipping
+                    </span>
+                  </div>
+                </div>
+
+                {/* Shipping Method */}
+                <div>
+                  <label className="mb-2 block font-geist text-[14px] font-medium leading-[150%] tracking-[-0.14px] text-[#020817]">
+                    Shipping Method
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g Standard"
+                    value={shippingMethod}
+                    onChange={(e) => setShippingMethod(e.target.value)}
+                    className="w-full rounded-lg border border-[#E3E3E3] bg-white py-3 px-4 font-geist text-[16px] font-normal tracking-[-0.16px] text-[#030712] outline-none transition-colors placeholder:text-[#6A7282] focus:border-black"
+                  />
                 </div>
               </div>
-
-              {/* Shipping Method */}
-              <div>
-                <label className="mb-2 block font-geist text-[14px] font-medium leading-[150%] tracking-[-0.14px] text-[#020817]">
-                  Shipping Method
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g Standard"
-                  value={shippingMethod}
-                  onChange={(e) => setShippingMethod(e.target.value)}
-                  className="w-full rounded-lg border border-[#E3E3E3] bg-white py-3 px-4 font-geist text-[16px] font-normal tracking-[-0.16px] text-[#030712] outline-none transition-colors placeholder:text-[#6A7282] focus:border-black"
-                />
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Gallery Images */}

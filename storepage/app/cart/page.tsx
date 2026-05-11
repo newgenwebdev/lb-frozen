@@ -318,10 +318,13 @@ export default function CartPage() {
                       </span>
                       <span className="font-medium text-green-600">-RM0.00</span>
                     </div>
-                    <div className="flex justify-between border-t border-gray-200 pt-3">
-                      <span className="text-gray-500">Shipping</span>
-                      <span className="font-medium text-green-600">RM0</span>
-                    </div>
+                    {/* HIDDEN_SHIPPING: see other HIDDEN_SHIPPING blocks in this file. */}
+                    {false && (
+                      <div className="flex justify-between border-t border-gray-200 pt-3">
+                        <span className="text-gray-500">Shipping</span>
+                        <span className="font-medium text-green-600">RM0</span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-200">
@@ -373,7 +376,19 @@ export default function CartPage() {
                   const variant = item.variant;
                   const product = variant?.product;
                   const unitPrice = item.unit_price || 0;
-                  const originalPrice = variant?.calculated_price?.original_amount || unitPrice;
+                  // When the server subscriber applied a metadata discount, the
+                  // role-base price is unit_price + applied discount. Falling
+                  // back to Medusa's original_amount would show the retail
+                  // price line-through (e.g. RM 100) for VIP/Supplier instead
+                  // of their role base (e.g. RM 90), which contradicts what
+                  // the product detail page shows.
+                  const appliedDiscount = Number(
+                    item.metadata?.applied_metadata_discount_amount || 0
+                  );
+                  const originalPrice =
+                    appliedDiscount > 0
+                      ? unitPrice + appliedDiscount
+                      : variant?.calculated_price?.original_amount || unitPrice;
                   
                   return (
                     <div
@@ -623,12 +638,16 @@ export default function CartPage() {
 
                   <div className="border-t border-dotted border-gray-300 my-4"></div>
 
-                  <div className="flex justify-between text-gray-700">
-                    <span>Shipping</span>
-                    <span className="font-medium text-green-600">
-                      Free
-                    </span>
-                  </div>
+                  {/* HIDDEN_SHIPPING: client handles delivery manually offline,
+                      so no shipping cost is shown. Restore by flipping the flag. */}
+                  {false && (
+                    <div className="flex justify-between text-gray-700">
+                      <span>Shipping</span>
+                      <span className="font-medium text-green-600">
+                        Free
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="border-t border-dotted border-gray-300 pt-4 mb-6">

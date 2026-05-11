@@ -66,8 +66,8 @@ const returnReasonLabels: Record<ReturnReason, string> = {
 };
 
 export function ReturnCard({ returnItem, index, onViewDetails }: ReturnCardProps): React.JSX.Element {
-  const formatCurrency = (amount: number, currency: string = "sgd"): string => {
-    const currencySymbol = "$";
+  const formatCurrency = (amount: number, currency: string = "myr"): string => {
+    const currencySymbol = "RM";
     return `${currencySymbol} ${(amount / 100).toFixed(2)}`;
   };
 

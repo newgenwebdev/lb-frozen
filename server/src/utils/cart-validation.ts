@@ -31,6 +31,8 @@ export interface CartItem {
     is_variant_discount?: boolean
     variant_discount_amount?: number
     variant_discount_type?: string
+    applied_metadata_discount_percent?: number
+    applied_metadata_discount_amount?: number
   } | null
   adjustments?: Array<{
     id: string

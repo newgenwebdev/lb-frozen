@@ -184,6 +184,27 @@ const PRICED_GROUP_IDS = new Set<string>([
 ])
 
 /**
+ * Look up the role-pricing group for a given customer id. Used by callers that
+ * don't have a MedusaRequest (e.g. cart subscribers operating off event data).
+ */
+export async function getCustomerPricingGroupId(
+  container: { resolve: (key: string) => any },
+  customerId: string | null | undefined
+): Promise<string | null> {
+  if (!customerId) return null
+  try {
+    const customerModuleService = container.resolve(Modules.CUSTOMER)
+    const customer = await customerModuleService.retrieveCustomer(customerId, {
+      relations: ["groups"],
+    })
+    const group = customer.groups?.find((g: any) => PRICED_GROUP_IDS.has(g.id))
+    return group?.id ?? null
+  } catch {
+    return null
+  }
+}
+
+/**
  * Resolve the customer group id to use as pricing context for the current request.
  *
  * Returns the first group that maps to a role-based price list (BULK/VIP/SUPPLIER).
@@ -193,17 +214,5 @@ const PRICED_GROUP_IDS = new Set<string>([
 export async function resolveCustomerGroupId(
   req: MedusaRequest
 ): Promise<string | null> {
-  const customerId = getVerifiedCustomerId(req)
-  if (!customerId) return null
-
-  try {
-    const customerModuleService = req.scope.resolve(Modules.CUSTOMER)
-    const customer = await customerModuleService.retrieveCustomer(customerId, {
-      relations: ["groups"],
-    })
-    const group = customer.groups?.find((g: any) => PRICED_GROUP_IDS.has(g.id))
-    return group?.id ?? null
-  } catch {
-    return null
-  }
+  return getCustomerPricingGroupId(req.scope, getVerifiedCustomerId(req))
 }

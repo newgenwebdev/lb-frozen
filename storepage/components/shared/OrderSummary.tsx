@@ -56,14 +56,19 @@ export function OrderSummary({
 
         <div className="border-t border-dotted border-gray-300 my-4"></div>
 
-        <div className="flex justify-between text-gray-700">
-          <span>Shipping</span>
-          <span className="font-medium text-green-600">
-            {shippingCost === 0
-              ? "RM0 (Free)"
-              : `RM${shippingCost.toFixed(2)}`}
-          </span>
-        </div>
+        {/* HIDDEN_SHIPPING: shipping line hidden because the client handles
+            delivery manually offline (no in-app cost). To restore, flip the
+            wrapping `{false && ...}` and ensure callers still pass shippingCost. */}
+        {false && (
+          <div className="flex justify-between text-gray-700">
+            <span>Shipping</span>
+            <span className="font-medium text-green-600">
+              {shippingCost === 0
+                ? "RM0 (Free)"
+                : `RM${shippingCost.toFixed(2)}`}
+            </span>
+          </div>
+        )}
 
         <div className="flex justify-between text-gray-700">
           <span>Taxes</span>

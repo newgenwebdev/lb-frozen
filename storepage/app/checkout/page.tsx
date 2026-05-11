@@ -80,6 +80,31 @@ export default function CheckoutPage() {
     }
   }, [addresses, selectedAddressId, updateShippingAddress]);
 
+  // HIDDEN_SHIPPING: shipping option selection UI is hidden, but Medusa
+  // still needs a shipping_option_id attached to the cart before checkout.
+  // Auto-pick the first available option behind the scenes. To restore the
+  // user-facing picker, remove this effect and unhide the JSX section below.
+  useEffect(() => {
+    if (
+      shippingOptions.length > 0 &&
+      !selectedShippingOptionId &&
+      cart?.items.length
+    ) {
+      const firstOption = shippingOptions[0];
+      selectShippingMethod(firstOption.id)
+        .then(() => setSelectedShippingOptionId(firstOption.id))
+        .catch((err) =>
+          console.error("Failed to auto-select shipping method:", err)
+        );
+    }
+  }, [
+    shippingOptions,
+    selectedShippingOptionId,
+    cart?.items.length,
+    selectShippingMethod,
+    setSelectedShippingOptionId,
+  ]);
+
   // Calculate totals from cart
   const cartItems = cart?.items || [];
   const subtotal = cart?.subtotal ? cart.subtotal / 100 : 0;
@@ -90,11 +115,18 @@ export default function CheckoutPage() {
     : 0;
   const discountTotal = (cart?.discount_total ? cart.discount_total / 100 : 0) + membershipPromoDiscount;
   
-  const shippingCost = cart?.shipping_total ? cart.shipping_total / 100 : 0;
-  
-  // Recalculate total with membership promo discount
-  const total = cart?.total 
-    ? (cart.total / 100) - membershipPromoDiscount 
+  // HIDDEN_SHIPPING: client handles delivery manually offline, so the
+  // storefront treats shipping cost as 0 across all views. To re-enable,
+  // read cart.shipping_total again here and add it back to the total.
+  const shippingCost = 0;
+
+  // Recalculate total with membership promo discount. Excludes shipping
+  // (zero by policy above). cart.total from Medusa may still include a
+  // shipping_total if a non-zero shipping option was auto-selected; we
+  // subtract it here so the displayed total stays consistent.
+  const cartShippingTotal = cart?.shipping_total ? cart.shipping_total / 100 : 0;
+  const total = cart?.total
+    ? (cart.total / 100) - membershipPromoDiscount - cartShippingTotal
     : subtotal - discountTotal + shippingCost;
 
   // Handle shipping option selection
@@ -119,11 +151,9 @@ export default function CheckoutPage() {
   };
 
   const handleProceedToPayment = async () => {
-    // Validate shipping type is selected
-    if (!selectedShippingOptionId) {
-      setShippingTypeError("Please select a shipping type");
-      return;
-    }
+    // HIDDEN_SHIPPING: shipping selector UI is hidden, so no user-facing
+    // validation is needed here. The auto-pick effect above ensures Medusa
+    // has a shipping_option_id by the time we proceed.
     setShippingTypeError("");
 
     if (!customer) {
@@ -193,6 +223,12 @@ export default function CheckoutPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 lg:pr-6">
           {/* Left Column - Checkout Details */}
           <div className="lg:col-span-2 lg:border-r border-gray-200 pt-4 lg:pt-8 lg:px-10">
+            {/* HIDDEN_SHIPPING: shipping/pickup toggle + shipping options
+                selector hidden because client handles delivery manually
+                offline. Flip the wrapping `{false && (...)}` to `{true && ...}`
+                (or remove the wrapper entirely) once a real pricing model
+                is in place. */}
+            {false && (<>
             {/* Shipping/Pickup Toggle */}
             <div className="flex gap-3 lg:gap-4 mb-6 lg:mb-8">
               <button
@@ -356,6 +392,8 @@ export default function CheckoutPage() {
                 <p className="text-red-600 text-sm mt-2">{shippingTypeError}</p>
               )}
             </div>
+            </>)}
+            {/* /HIDDEN_SHIPPING end */}
 
             {/* Shipping Address */}
             <div className="mb-6 lg:mb-8">

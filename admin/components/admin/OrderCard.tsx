@@ -206,7 +206,7 @@ function calculateOrderTotal(order: Order): number {
 
 export function OrderCard({ order, index, isSelected = false, returns = [], onSelect, onCancel, onViewDetails }: OrderCardProps): React.JSX.Element {
   const formatCurrency = (amount: number, currency: string): string => {
-    const currencySymbol = "$";
+    const currencySymbol = "RM";
     return `${currencySymbol} ${(amount / 100).toFixed(2)}`;
   };
 
@@ -348,37 +348,40 @@ export function OrderCard({ order, index, isSelected = false, returns = [], onSe
               </p>
             </div>
 
-            {/* Shipping Info */}
-            <div className="w-[130px] shrink-0">
-              <p className="mb-1 font-geist text-[14px] font-medium leading-normal tracking-[-0.14px] text-[#858585]">Shipping</p>
-              {order.tracking_number ? (
-                <>
-                  <p className="truncate font-geist text-[16px] font-bold leading-normal tracking-[-0.16px] text-[#2F2F2F]" title={order.courier || "Courier"}>
-                    {order.courier || "Courier"}
-                  </p>
-                  <p className="truncate font-geist text-[14px] font-medium leading-normal tracking-[-0.14px] text-[#007AFF]" title={order.tracking_number}>
-                    {order.tracking_number}
-                  </p>
-                </>
-              ) : (
-                <>
-                  {/* Show customer's selected courier or fulfillment status */}
-                  <p className="truncate font-geist text-[16px] font-bold leading-normal tracking-[-0.16px] text-[#2F2F2F]" title={(order.metadata?.easyparcel_shipping as { courier_name?: string })?.courier_name || fulfillmentConfig.label}>
-                    {(order.metadata?.easyparcel_shipping as { courier_name?: string })?.courier_name || fulfillmentConfig.label}
-                  </p>
-                  {/* Show free shipping badge or "No tracking yet" */}
-                  {order.metadata?.free_shipping_applied ? (
-                    <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 font-geist text-[12px] font-medium text-green-700">
-                      FREE
-                    </span>
-                  ) : (
-                    <p className="truncate font-geist text-[14px] font-medium leading-normal tracking-[-0.14px] text-[#858585]">
-                      No tracking yet
+            {/* HIDDEN_SHIPPING: shipping/courier/tracking column hidden on
+                the order card; admin handles delivery offline. */}
+            {false && (
+              <div className="w-[130px] shrink-0">
+                <p className="mb-1 font-geist text-[14px] font-medium leading-normal tracking-[-0.14px] text-[#858585]">Shipping</p>
+                {order.tracking_number ? (
+                  <>
+                    <p className="truncate font-geist text-[16px] font-bold leading-normal tracking-[-0.16px] text-[#2F2F2F]" title={order.courier || "Courier"}>
+                      {order.courier || "Courier"}
                     </p>
-                  )}
-                </>
-              )}
-            </div>
+                    <p className="truncate font-geist text-[14px] font-medium leading-normal tracking-[-0.14px] text-[#007AFF]" title={order.tracking_number || undefined}>
+                      {order.tracking_number}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    {/* Show customer's selected courier or fulfillment status */}
+                    <p className="truncate font-geist text-[16px] font-bold leading-normal tracking-[-0.16px] text-[#2F2F2F]" title={(order.metadata?.easyparcel_shipping as { courier_name?: string })?.courier_name || fulfillmentConfig.label}>
+                      {(order.metadata?.easyparcel_shipping as { courier_name?: string })?.courier_name || fulfillmentConfig.label}
+                    </p>
+                    {/* Show free shipping badge or "No tracking yet" */}
+                    {order.metadata?.free_shipping_applied ? (
+                      <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 font-geist text-[12px] font-medium text-green-700">
+                        FREE
+                      </span>
+                    ) : (
+                      <p className="truncate font-geist text-[14px] font-medium leading-normal tracking-[-0.14px] text-[#858585]">
+                        No tracking yet
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
 
             {/* Order ID & Date */}
             <div className="w-[130px] shrink-0">

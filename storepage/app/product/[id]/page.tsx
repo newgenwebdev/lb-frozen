@@ -30,7 +30,7 @@ function formatPrice(amountInCents: number): string {
   return (amountInCents / 100).toFixed(2);
 }
 
-// Helper to get variant price
+// Helper to get variant base price (role-aware: VIP/Supplier/Default).
 function getVariantPrice(variant: ProductVariant): number {
   // First check calculated_price (from region)
   if (variant.calculated_price?.calculated_amount) {
@@ -41,17 +41,22 @@ function getVariantPrice(variant: ProductVariant): number {
   return price?.amount || 0;
 }
 
-// Helper to get original price (before discount)
-function getOriginalPrice(
+// The default (retail) amount in cents, used to derive a flat discount that
+// applies equally across roles. Falls back to the role-aware price when the
+// backend doesn't expose it (e.g. older endpoints).
+function getDefaultAmount(variant: ProductVariant): number {
+  const v = variant as ProductVariant & { default_amount?: number | null };
+  return v.default_amount ?? getVariantPrice(variant);
+}
+
+// Compute the absolute discount (in cents) from the default price.
+// e.g. default RM 100 + 10% → RM 10 off for every role.
+function getDiscountAmount(
   variant: ProductVariant,
   discountPercent: number
 ): number {
-  const currentPrice = getVariantPrice(variant);
-  if (discountPercent > 0) {
-    // Calculate original price from discount
-    return Math.round(currentPrice / (1 - discountPercent / 100));
-  }
-  return currentPrice;
+  if (discountPercent <= 0) return 0;
+  return Math.round((getDefaultAmount(variant) * discountPercent) / 100);
 }
 
 // Helper to get total stock across all variants
@@ -230,10 +235,15 @@ export default function ProductDetailPage() {
   }, [product]);
 
   // Current price and original price
-  const currentPrice = selectedVariant ? getVariantPrice(selectedVariant) : 0;
-  const originalPrice = selectedVariant
-    ? getOriginalPrice(selectedVariant, metadata.discount)
+  // Flat discount derived from default/retail price, applied uniformly across
+  // roles. e.g. default RM 100, VIP RM 90, supplier RM 80, discount 10% →
+  // discount amount = RM 10 → retail pays 90, VIP pays 80, supplier pays 70.
+  const basePrice = selectedVariant ? getVariantPrice(selectedVariant) : 0;
+  const discountAmount = selectedVariant
+    ? getDiscountAmount(selectedVariant, metadata.discount)
     : 0;
+  const currentPrice = Math.max(0, basePrice - discountAmount);
+  const originalPrice = basePrice;
   const totalStock = product ? getTotalStock(product.variants) : 0;
   const variantStock = selectedVariant?.inventory_quantity || 0;
 
