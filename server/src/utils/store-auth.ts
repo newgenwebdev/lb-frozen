@@ -1,7 +1,7 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { Modules } from "@medusajs/framework/utils"
 import jwt from "jsonwebtoken"
-import { CUSTOMER_GROUP_IDS } from "../lib/constants"
+import { CUSTOMER_GROUP_IDS, CUSTOMER_ROLES, type CustomerRole } from "../lib/constants"
 
 /**
  * JWT payload structure for customer tokens
@@ -177,15 +177,23 @@ export function checkStoreAuth(req: MedusaRequest): boolean {
   return getVerifiedCustomerId(req) !== null
 }
 
-const PRICED_GROUP_IDS = new Set<string>([
-  CUSTOMER_GROUP_IDS.BULK,
-  CUSTOMER_GROUP_IDS.VIP,
-  CUSTOMER_GROUP_IDS.SUPPLIER,
-])
+// Source of truth for a customer's pricing tier. assignRole() in
+// customer-roles.ts always sets `customer.metadata.pricing_role` whenever it
+// assigns a group, so we read that directly instead of guessing from
+// `customer.groups`. Groups can drift (multiple memberships, leftover
+// retail group, ordering differences across requests) — metadata cannot.
+const ROLE_TO_GROUP_ID: Record<CustomerRole, string> = {
+  [CUSTOMER_ROLES.RETAIL]: CUSTOMER_GROUP_IDS.RETAIL,
+  [CUSTOMER_ROLES.BULK]: CUSTOMER_GROUP_IDS.BULK,
+  [CUSTOMER_ROLES.VIP]: CUSTOMER_GROUP_IDS.VIP,
+  [CUSTOMER_ROLES.SUPPLIER]: CUSTOMER_GROUP_IDS.SUPPLIER,
+}
 
 /**
- * Look up the role-pricing group for a given customer id. Used by callers that
- * don't have a MedusaRequest (e.g. cart subscribers operating off event data).
+ * Look up the role-pricing group id for a given customer. Used by callers
+ * that don't have a MedusaRequest (e.g. cart subscribers operating off event
+ * data). Returns null for guests, retail customers, and any customer whose
+ * stored role doesn't map to a priced tier.
  */
 export async function getCustomerPricingGroupId(
   container: { resolve: (key: string) => any },
@@ -194,11 +202,10 @@ export async function getCustomerPricingGroupId(
   if (!customerId) return null
   try {
     const customerModuleService = container.resolve(Modules.CUSTOMER)
-    const customer = await customerModuleService.retrieveCustomer(customerId, {
-      relations: ["groups"],
-    })
-    const group = customer.groups?.find((g: any) => PRICED_GROUP_IDS.has(g.id))
-    return group?.id ?? null
+    const customer = await customerModuleService.retrieveCustomer(customerId)
+    const role = customer.metadata?.pricing_role as CustomerRole | undefined
+    if (!role || role === CUSTOMER_ROLES.RETAIL) return null
+    return ROLE_TO_GROUP_ID[role] ?? null
   } catch {
     return null
   }

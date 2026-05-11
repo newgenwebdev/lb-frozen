@@ -66,7 +66,7 @@ export function FormCurrencyInput({
       </label>
       <div className="relative">
         <span className="absolute left-4 top-1/2 -translate-y-1/2 font-public text-[14px] font-medium text-[#6A7282]">
-          $
+          RM
         </span>
         <input
           type="text"

@@ -424,7 +424,7 @@ export function RecentOrdersTable({ orders, isLoading }: RecentOrdersTableProps)
                         </div>
                       </td>
                       <td className="px-3 py-3 font-public text-[14px] font-normal text-[#030712]">
-                        $ {(calculateOrderTotal(order) / 100).toFixed(2)}
+                        RM {(calculateOrderTotal(order) / 100).toFixed(2)}
                       </td>
                       <td className="px-3 py-3">
                         <div className="flex items-center gap-2">

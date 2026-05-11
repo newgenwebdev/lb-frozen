@@ -244,7 +244,7 @@ export function TopSellingProductsTable({
                   </td>
                   <td className="px-3 py-3 font-public text-[14px] font-normal text-[#030712]">{product.quantity_sold}</td>
                   <td className="px-3 py-3 font-public text-[14px] font-normal text-[#030712]">
-                    $ {(product.revenue / 100).toFixed(2)}
+                    RM {(product.revenue / 100).toFixed(2)}
                   </td>
                   <td className="py-3 pl-3 pr-4 md:pr-6">
                     <div className="flex items-center gap-1">
