@@ -4,6 +4,7 @@
  */
 
 import { apiClient, getAuthHeaders } from './client';
+import { isAuthenticated } from './auth';
 import type { Cart, LineItem } from './types';
 
 const CART_ID_KEY =
@@ -50,17 +51,41 @@ async function getDefaultRegionId(): Promise<string> {
 }
 
 /**
+ * Transfer a cart to the authenticated customer. Medusa's POST /store/carts
+ * does NOT auto-attach the customer even with a Bearer token, so we explicitly
+ * call this Medusa-built-in route. Without this, line items get re-priced using
+ * the default price (retail) instead of the customer's role price.
+ */
+export async function transferCartToCustomer(cartId: string): Promise<Cart> {
+  const response = await apiClient.post<{ cart: Cart }>(
+    `/store/carts/${cartId}/customer`,
+    {}
+  );
+  return response.cart;
+}
+
+/**
  * Create a new cart
  */
 export async function createCart(): Promise<Cart> {
   const regionId = await getDefaultRegionId();
-  
+
   const response = await apiClient.post<{ cart: Cart }>('/store/carts', {
     region_id: regionId,
   });
 
-  setStoredCartId(response.cart.id);
-  return response.cart;
+  let cart = response.cart;
+  setStoredCartId(cart.id);
+
+  if (isAuthenticated()) {
+    try {
+      cart = await transferCartToCustomer(cart.id);
+    } catch (err) {
+      console.error('Failed to attach customer to new cart:', err);
+    }
+  }
+
+  return cart;
 }
 
 /**
@@ -75,14 +100,10 @@ export async function getCart(cartId: string): Promise<Cart> {
 
 /**
  * Get or create cart
- * 
- * IMPORTANT: This function includes validation to detect carts with completed
- * payment sessions (PaymentIntent succeeded). If a cart has a completed payment,
- * we clear it and create a new cart to prevent "Could not delete all payment sessions"
- * errors from Medusa when trying to refresh payment collections.
- * 
- * Note: In Medusa v2, the cart is automatically associated with the authenticated
- * customer through the auth session/token. No need to manually set customer_id.
+ *
+ * Detects carts with completed payment sessions (PaymentIntent succeeded) and
+ * creates a fresh cart so Medusa doesn't choke trying to refresh the payment
+ * collection with "Could not delete all payment sessions".
  */
 export async function getOrCreateCart(): Promise<Cart> {
   const cartId = getStoredCartId();
@@ -103,19 +124,30 @@ export async function getOrCreateCart(): Promise<Cart> {
       const paymentCollection = (cart as any).payment_collection;
       if (paymentCollection?.payment_sessions?.length > 0) {
         const hasSucceededPayment = paymentCollection.payment_sessions.some(
-          (session: any) => 
-            session.status === 'authorized' || 
+          (session: any) =>
+            session.status === 'authorized' ||
             session.status === 'captured' ||
             session.data?.status === 'succeeded' ||
             session.data?.status === 'requires_capture'
         );
-        
+
         if (hasSucceededPayment) {
           clearStoredCartId();
           return createCart();
         }
       }
-      
+
+      // Cart exists but isn't yet attached to the logged-in customer (e.g.
+      // created as guest, or association lost). Without transferring it,
+      // line items get re-priced as retail and role pricing is ignored.
+      if (isAuthenticated() && !(cart as any).customer_id) {
+        try {
+          return await transferCartToCustomer(cart.id);
+        } catch (err) {
+          console.error('Failed to attach customer to existing cart:', err);
+        }
+      }
+
       return cart;
     } catch (error) {
       clearStoredCartId();
