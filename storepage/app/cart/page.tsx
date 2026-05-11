@@ -210,7 +210,10 @@ export default function CartPage() {
     );
   }
 
-  const subtotal = cart?.subtotal || 0;
+  // cart.subtotal includes shipping; the HIDDEN_SHIPPING UI flag hides the
+  // line but leaves shipping baked into the cart total — use item_subtotal
+  // (items only) so what the user sees adds up.
+  const subtotal = cart?.item_subtotal || 0;
   const shipping = 0; // Free shipping
   
   // Calculate discount from promo (from cart metadata or local state)

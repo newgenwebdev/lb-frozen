@@ -159,11 +159,6 @@ export async function getOrCreateCart(): Promise<Cart> {
 
 /**
  * Add item to cart
- *
- * Medusa's POST /line-items records the variant's default price, so a VIP/
- * Supplier customer initially sees the retail amount. The async cart-updated
- * subscriber corrects it ~500ms later, but the response we return here would
- * still flash the wrong price. Force the role price inline via /sync-prices.
  */
 export async function addToCart(
   variantId: string,
@@ -171,24 +166,15 @@ export async function addToCart(
 ): Promise<Cart> {
   const cart = await getOrCreateCart();
 
-  await apiClient.post<{ cart: Cart }>(
-    `/store/carts/${cart.id}/line-items`,
+  const response = await apiClient.post<{ cart: Cart }>(
+    `/store/carts/${cart.id}/line-items?fields=*items,*items.variant,*items.variant.product,+metadata`,
     {
       variant_id: variantId,
       quantity,
     }
   );
 
-  try {
-    await apiClient.post<{ cart: Cart }>(
-      `/store/carts/${cart.id}/sync-prices`,
-      {}
-    );
-  } catch (err) {
-    console.error('sync-prices failed after addToCart:', err);
-  }
-
-  return getCart(cart.id);
+  return response.cart;
 }
 
 /**
@@ -201,21 +187,12 @@ export async function updateCartItem(
   const cartId = getStoredCartId();
   if (!cartId) throw new Error('No cart found');
 
-  await apiClient.post<{ cart: Cart }>(
-    `/store/carts/${cartId}/line-items/${lineItemId}`,
+  const response = await apiClient.post<{ cart: Cart }>(
+    `/store/carts/${cartId}/line-items/${lineItemId}?fields=*items,*items.variant,*items.variant.product,+metadata`,
     { quantity }
   );
 
-  try {
-    await apiClient.post<{ cart: Cart }>(
-      `/store/carts/${cartId}/sync-prices`,
-      {}
-    );
-  } catch (err) {
-    console.error('sync-prices failed after updateCartItem:', err);
-  }
-
-  return getCart(cartId);
+  return response.cart;
 }
 
 /**

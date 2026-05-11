@@ -97,6 +97,9 @@ export interface ProductTag {
 
 export interface Cart {
   id: string;
+  item_subtotal: number;
+  item_total: number;
+  shipping_subtotal: number;
   email?: string;
   customer_id?: string;
   region_id: string;
