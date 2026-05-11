@@ -353,7 +353,7 @@ export default function MembershipSettingsPage(): React.JSX.Element {
                   </div>
                   <input
                     type="text"
-                    placeholder="e.g $50.00"
+                    placeholder="e.g RM50.00"
                     value={price}
                     onChange={(e) => {
                       const value = e.target.value.replace(/[^0-9.]/g, '');

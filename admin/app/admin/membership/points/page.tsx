@@ -346,7 +346,7 @@ export default function PointsConfigPage(): React.JSX.Element {
                     </span>
                   </div>
                   <p className="font-public text-[12px] text-[#6A7282] ml-6">
-                    e.g., 1 point per $1 spent
+                    e.g., 1 point per RM1 spent
                   </p>
                 </button>
               </div>
@@ -367,13 +367,13 @@ export default function PointsConfigPage(): React.JSX.Element {
                   className="w-24 rounded-lg border border-[#E5E7EB] px-4 py-2.5 font-public text-[14px] outline-none transition-colors focus:border-[#030712]"
                 />
                 <span className="font-public text-[14px] text-[#6A7282]">
-                  {earningType === "percentage" ? "% of order total" : "point(s) per $1 spent"}
+                  {earningType === "percentage" ? "% of order total" : "point(s) per RM1 spent"}
                 </span>
               </div>
               <p className="mt-2 font-public text-[12px] text-[#6A7282]">
                 {earningType === "percentage"
-                  ? `Example: A $100 order earns ${Math.round(100 * earningRateNum / 100)} points`
-                  : `Example: A $100 order earns ${Math.round(100 * earningRateNum)} points`}
+                  ? `Example: A RM100 order earns ${Math.round(100 * earningRateNum / 100)} points`
+                  : `Example: A RM100 order earns ${Math.round(100 * earningRateNum)} points`}
               </p>
             </div>
 
@@ -424,7 +424,7 @@ export default function PointsConfigPage(): React.JSX.Element {
                   className="w-24 rounded-lg border border-[#E5E7EB] px-4 py-2.5 font-public text-[14px] outline-none transition-colors focus:border-[#030712]"
                 />
                 <span className="font-public text-[14px] text-[#6A7282]">
-                  points = $1.00
+                  points = RM1.00
                 </span>
               </div>
             </div>
@@ -512,7 +512,7 @@ export default function PointsConfigPage(): React.JSX.Element {
             </p>
             <p>
               <span className="font-medium">Redemption:</span>{" "}
-              {calculatedPointsPerDollar} points = $1.00 (min {minPointsToRedeem} points, max {maxRedemptionPercentage}% of order)
+              {calculatedPointsPerDollar} points = RM1.00 (min {minPointsToRedeem} points, max {maxRedemptionPercentage}% of order)
             </p>
             <p>
               <span className="font-medium">Expiration:</span>{" "}

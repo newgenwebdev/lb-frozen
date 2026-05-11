@@ -338,10 +338,10 @@ export default function EditTierPage(): React.JSX.Element {
             {/* Spend Threshold */}
             <div className="mb-4">
               <label className="mb-1 block text-[14px] font-medium text-neutral-700">
-                Minimum Spend ($)
+                Minimum Spend (RM)
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500">RM</span>
                 <input
                   type="number"
                   value={formData.spend_threshold}
@@ -393,10 +393,10 @@ export default function EditTierPage(): React.JSX.Element {
               {/* Birthday Voucher */}
               <div>
                 <label className="mb-1 block text-[14px] font-medium text-neutral-700">
-                  Birthday Voucher ($)
+                  Birthday Voucher (RM)
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500">$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500">RM</span>
                   <input
                     type="number"
                     value={formData.birthday_voucher_amount}

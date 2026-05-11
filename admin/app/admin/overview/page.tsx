@@ -119,7 +119,7 @@ export default function OverviewPage(): React.JSX.Element {
                 </div>
               ) : (
                 <p className="font-geist text-[36px] font-medium leading-[120%] tracking-[-0.72px] text-[#030712]">
-                  ${" "}
+                  RM{" "}
                   {(revenueData?.revenue.total ? revenueData.revenue.total / 100 : 0).toLocaleString("en-US", {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
@@ -274,8 +274,8 @@ export default function OverviewPage(): React.JSX.Element {
             isLoadingRevenue
               ? "..."
               : revenueData?.revenue.average_order_value
-              ? `$ ${(revenueData.revenue.average_order_value / 100).toFixed(2)}`
-              : "$ 0.00"
+              ? `RM ${(revenueData.revenue.average_order_value / 100).toFixed(2)}`
+              : "RM 0.00"
           }
           menuActions={[
             {
@@ -328,7 +328,7 @@ export default function OverviewPage(): React.JSX.Element {
                     <p className="font-geist text-[36px] font-medium leading-[120%] tracking-[-0.72px] text-[#6A7282]">...</p>
                   ) : revenueData ? (
                     <p className="font-geist text-[36px] font-medium leading-[120%] tracking-[-0.72px] text-[#030712]">
-                      ${" "}
+                      RM{" "}
                       {(revenueData.revenue.total / 100).toLocaleString("en-US", {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,

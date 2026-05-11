@@ -71,9 +71,9 @@ export async function deleteTier(id: string): Promise<{ id: string; deleted: boo
 /**
  * Format cents to currency string
  * @param cents - Amount in cents
- * @param currency - Currency symbol (default: $)
+ * @param currency - Currency symbol (default: RM)
  */
-export function formatCurrency(cents: number, currency = "$"): string {
+export function formatCurrency(cents: number, currency = "RM"): string {
   return `${currency}${(cents / 100).toFixed(2)}`
 }
 

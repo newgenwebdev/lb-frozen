@@ -227,20 +227,21 @@ export default async function cartUpdatedHandler({
     }
 
     // ========================================
-    // 3. Apply Product Metadata Discount
+    // 3. Apply Role Pricing + Metadata Discount
     // ========================================
-    // Discount stored on product/variant metadata is a percentage of the
-    // DEFAULT/retail price, applied as a flat amount across all customer
-    // roles. e.g. default RM 100 + 10% → RM 10 off → retail pays 90,
-    // VIP (base 90) pays 80, supplier (base 80) pays 70. This makes the cart
-    // charge match what the storefront product page displays.
+    // Recompute unit_price for every regular line item based on:
+    //   1. Customer's role (VIP/Supplier/Bulk via customer_group_id) — Medusa
+    //      doesn't always re-resolve role pricing when a guest cart is later
+    //      associated with a logged-in customer, so we always force it here.
+    //   2. Variant/product metadata discount — a percentage of the DEFAULT
+    //      price, applied as a flat amount across all roles. e.g. default
+    //      RM 100 + 10% → RM 10 off → retail pays 90, VIP (base 90) pays 80,
+    //      supplier (base 80) pays 70.
     //
-    // We always recompute `desired = rolePrice - discountAmount` and only
-    // update when it differs from current `item.unit_price`. That naturally
-    // handles: first apply, discount % change by admin, discount removal,
-    // and idempotent re-runs.
+    // Idempotent: `desired = rolePrice - discountAmount`, only updates when
+    // it differs from current `item.unit_price`.
 
-    const discountCandidates = items.filter(
+    const repriceCandidates = items.filter(
       (item) =>
         !item.metadata?.is_pwp_item &&
         !item.metadata?.is_bulk_price &&
@@ -249,16 +250,16 @@ export default async function cartUpdatedHandler({
         Boolean(item.variant_id)
     )
 
-    if (discountCandidates.length > 0) {
+    if (repriceCandidates.length > 0) {
       try {
-        const variantIdsForDiscount = discountCandidates.map(
+        const variantIdsForReprice = repriceCandidates.map(
           (i) => i.variant_id as string
         )
 
         // Fetch variants (with product) to read discount metadata
         const variants = await productModuleService.listProductVariants(
-          { id: variantIdsForDiscount },
-          { relations: ["product"], take: variantIdsForDiscount.length }
+          { id: variantIdsForReprice },
+          { relations: ["product"], take: variantIdsForReprice.length }
         )
 
         const discountByVariant = new Map<string, number>()
@@ -269,103 +270,86 @@ export default async function cartUpdatedHandler({
           if (pct > 0) discountByVariant.set(v.id, pct)
         }
 
-        // Items that have either a current discount OR a previously-applied
-        // one (so we can roll back if admin removed/zeroed the discount).
-        const itemsNeedingCheck = discountCandidates.filter((item) => {
-          const hasCurrentDiscount = discountByVariant.has(
-            item.variant_id as string
-          )
-          const hadPreviousDiscount = Boolean(
-            item.metadata?.applied_metadata_discount_amount
-          )
-          return hasCurrentDiscount || hadPreviousDiscount
+        const { data: variantPriceSets } = await query.graph({
+          entity: "product_variant_price_set",
+          fields: ["variant_id", "price_set_id"],
+          filters: { variant_id: variantIdsForReprice },
         })
 
-        if (itemsNeedingCheck.length > 0) {
-          const variantIdsToPrice = itemsNeedingCheck.map(
-            (i) => i.variant_id as string
-          )
-          const { data: variantPriceSets } = await query.graph({
-            entity: "product_variant_price_set",
-            fields: ["variant_id", "price_set_id"],
-            filters: { variant_id: variantIdsToPrice },
-          })
+        const variantToPriceSet = new Map<string, string>()
+        for (const vps of variantPriceSets as Array<any>) {
+          if (vps.variant_id && vps.price_set_id) {
+            variantToPriceSet.set(vps.variant_id, vps.price_set_id)
+          }
+        }
 
-          const variantToPriceSet = new Map<string, string>()
-          for (const vps of variantPriceSets as Array<any>) {
-            if (vps.variant_id && vps.price_set_id) {
-              variantToPriceSet.set(vps.variant_id, vps.price_set_id)
+        const priceSetIds = Array.from(new Set(variantToPriceSet.values()))
+        if (priceSetIds.length > 0) {
+          const customerGroupId = await getCustomerPricingGroupId(
+            container,
+            cart.customer_id
+          )
+
+          const calculated = await pricingModule.calculatePrices(
+            { id: priceSetIds },
+            {
+              context: {
+                currency_code: cart.currency_code || "myr",
+                ...(customerGroupId
+                  ? { customer_group_id: customerGroupId }
+                  : {}),
+              },
             }
+          )
+
+          const priceSetAmounts = new Map<
+            string,
+            { role: number; defaultAmt: number }
+          >()
+          for (const p of calculated as Array<any>) {
+            if (p.calculated_amount == null) continue
+            priceSetAmounts.set(p.id, {
+              role: Number(p.calculated_amount),
+              defaultAmt: Number(p.original_amount ?? p.calculated_amount),
+            })
           }
 
-          const priceSetIds = Array.from(new Set(variantToPriceSet.values()))
-          if (priceSetIds.length > 0) {
-            const customerGroupId = await getCustomerPricingGroupId(
-              container,
-              cart.customer_id
+          for (const item of repriceCandidates) {
+            const psId = variantToPriceSet.get(item.variant_id as string)
+            if (!psId) continue
+            const amts = priceSetAmounts.get(psId)
+            if (!amts) continue
+
+            const discountPct =
+              discountByVariant.get(item.variant_id as string) || 0
+            const discountAmount =
+              discountPct > 0
+                ? Math.round((amts.defaultAmt * discountPct) / 100)
+                : 0
+            const desiredUnitPrice = Math.max(0, amts.role - discountAmount)
+
+            if (item.unit_price === desiredUnitPrice) continue
+
+            itemsToUpdate.push({
+              id: item.id,
+              unit_price: desiredUnitPrice,
+              metadata: {
+                ...item.metadata,
+                applied_metadata_discount_percent: discountPct || undefined,
+                applied_metadata_discount_amount:
+                  discountAmount || undefined,
+              },
+            })
+            logger.info(
+              `[CART-UPDATED] Repricing item ${item.id}: ` +
+                `${item.unit_price} -> ${desiredUnitPrice} ` +
+                `(role: ${amts.role}, default: ${amts.defaultAmt}, ${discountPct}% off${customerGroupId ? `, group: ${customerGroupId}` : ", retail"})`
             )
-
-            const calculated = await pricingModule.calculatePrices(
-              { id: priceSetIds },
-              {
-                context: {
-                  currency_code: cart.currency_code || "myr",
-                  ...(customerGroupId
-                    ? { customer_group_id: customerGroupId }
-                    : {}),
-                },
-              }
-            )
-
-            const priceSetAmounts = new Map<
-              string,
-              { role: number; defaultAmt: number }
-            >()
-            for (const p of calculated as Array<any>) {
-              if (p.calculated_amount == null) continue
-              priceSetAmounts.set(p.id, {
-                role: Number(p.calculated_amount),
-                defaultAmt: Number(p.original_amount ?? p.calculated_amount),
-              })
-            }
-
-            for (const item of itemsNeedingCheck) {
-              const psId = variantToPriceSet.get(item.variant_id as string)
-              if (!psId) continue
-              const amts = priceSetAmounts.get(psId)
-              if (!amts) continue
-
-              const discountPct =
-                discountByVariant.get(item.variant_id as string) || 0
-              const discountAmount =
-                discountPct > 0
-                  ? Math.round((amts.defaultAmt * discountPct) / 100)
-                  : 0
-              const desiredUnitPrice = Math.max(0, amts.role - discountAmount)
-
-              if (item.unit_price === desiredUnitPrice) continue
-
-              itemsToUpdate.push({
-                id: item.id,
-                unit_price: desiredUnitPrice,
-                metadata: {
-                  ...item.metadata,
-                  applied_metadata_discount_percent: discountPct || undefined,
-                  applied_metadata_discount_amount:
-                    discountAmount || undefined,
-                },
-              })
-              logger.info(
-                `[CART-UPDATED] Adjusting metadata discount for item ${item.id}: ` +
-                  `${item.unit_price} -> ${desiredUnitPrice} ` +
-                  `(role: ${amts.role}, default: ${amts.defaultAmt}, ${discountPct}% off)`
-              )
-            }
           }
         }
       } catch (err) {
         logger.warn(
-          `[CART-UPDATED] Failed to apply metadata discount: ${err}`
+          `[CART-UPDATED] Failed to reprice line items: ${err}`
         )
       }
     }

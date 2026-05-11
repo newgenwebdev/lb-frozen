@@ -460,8 +460,8 @@ function EditPromoPageContent(): React.JSX.Element {
               />
 
               <PromoFormInput
-                label={couponForm.type === "percentage" ? "Discount %" : "Discount Amount ($)"}
-                placeholder={couponForm.type === "percentage" ? "e.g., 20" : "e.g., 15 for $15 off"}
+                label={couponForm.type === "percentage" ? "Discount %" : "Discount Amount (RM)"}
+                placeholder={couponForm.type === "percentage" ? "e.g., 20" : "e.g., 15 for RM15 off"}
                 value={couponForm.value}
                 onChange={(value) => handleCouponChange("value", value)}
                 icon={<GridIcon />}
@@ -532,8 +532,8 @@ function EditPromoPageContent(): React.JSX.Element {
                 />
               ) : (
                 <PromoFormInput
-                  label="Minimum Cart Value ($)"
-                  placeholder="e.g., 100 for $100"
+                  label="Minimum Cart Value (RM)"
+                  placeholder="e.g., 100 for RM100"
                   value={pwpForm.trigger_cart_value}
                   onChange={(value) => handlePWPChange("trigger_cart_value", value)}
                   icon={<CartIcon />}
@@ -564,8 +564,8 @@ function EditPromoPageContent(): React.JSX.Element {
 
               <div className="space-y-4">
                 <PromoFormInput
-                  label={pwpForm.reward_type === "percentage" ? "Reward Discount %" : "Reward Amount ($)"}
-                  placeholder={pwpForm.reward_type === "percentage" ? "e.g., 50" : "e.g., 15 for $15 off"}
+                  label={pwpForm.reward_type === "percentage" ? "Reward Discount %" : "Reward Amount (RM)"}
+                  placeholder={pwpForm.reward_type === "percentage" ? "e.g., 50" : "e.g., 15 for RM15 off"}
                   value={pwpForm.reward_value}
                   onChange={(value) => handlePWPChange("reward_value", value)}
                   icon={<GridIcon />}

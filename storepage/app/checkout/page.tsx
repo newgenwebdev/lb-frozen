@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { AddAddressDialog } from "@/components/AddAddressDialog";
@@ -82,25 +82,33 @@ export default function CheckoutPage() {
 
   // HIDDEN_SHIPPING: shipping option selection UI is hidden, but Medusa
   // still needs a shipping_option_id attached to the cart before checkout.
-  // Auto-pick the first available option behind the scenes. To restore the
-  // user-facing picker, remove this effect and unhide the JSX section below.
+  // Auto-pick the first available option behind the scenes — once per cart.
+  // The ref guards against effect re-runs from changing query references
+  // (mutateAsync, shippingOptions array identity) that would otherwise spam
+  // the shipping-methods endpoint.
+  const autoPickedCartIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (
-      shippingOptions.length > 0 &&
-      !selectedShippingOptionId &&
-      cart?.items.length
-    ) {
-      const firstOption = shippingOptions[0];
-      selectShippingMethod(firstOption.id)
-        .then(() => setSelectedShippingOptionId(firstOption.id))
-        .catch((err) =>
-          console.error("Failed to auto-select shipping method:", err)
-        );
-    }
+    if (!cart?.id) return;
+    if (!cart.items?.length) return;
+    if (shippingOptions.length === 0) return;
+    if (selectedShippingOptionId) return;
+    if (autoPickedCartIdRef.current === cart.id) return;
+
+    autoPickedCartIdRef.current = cart.id;
+    const firstOption = shippingOptions[0];
+    selectShippingMethod(firstOption.id)
+      .then(() => setSelectedShippingOptionId(firstOption.id))
+      .catch((err) => {
+        console.error("Failed to auto-select shipping method:", err);
+        // Don't reset the ref — one attempt per cart id is enough. The user
+        // can still proceed; backend will surface a clearer error at
+        // place-order time if the shipping option is genuinely missing.
+      });
   }, [
+    cart?.id,
+    cart?.items?.length,
     shippingOptions,
     selectedShippingOptionId,
-    cart?.items.length,
     selectShippingMethod,
     setSelectedShippingOptionId,
   ]);

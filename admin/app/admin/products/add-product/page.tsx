@@ -1558,7 +1558,7 @@ export default function AddProductPage(): React.JSX.Element {
                 </div>
                 <input
                   type="text"
-                  placeholder="e.g $150"
+                  placeholder="e.g RM150"
                   {...register("basePrice")}
                   className="w-full rounded-lg border border-[#E3E3E3] bg-white py-3 pl-12 pr-4 font-geist text-[16px] font-normal tracking-[-0.16px] text-[#030712] outline-none transition-colors placeholder:text-[#6A7282] focus:border-black"
                 />
