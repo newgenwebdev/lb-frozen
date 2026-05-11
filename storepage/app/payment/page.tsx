@@ -364,9 +364,10 @@ export default function PaymentPage() {
     })();
   }, [cart?.id, paymentLoading, customer?.email, addresses, selectedBillingAddress, queryClient, setSelectedBillingAddress]);
 
-  // Calculate totals from cart
+  // Calculate totals from cart. cart.subtotal includes shipping; use
+  // item_subtotal so the row stays items-only while HIDDEN_SHIPPING is on.
   const cartItems = cart?.items || [];
-  const subtotal = cart?.subtotal ? cart.subtotal / 100 : 0;
+  const subtotal = cart?.item_subtotal ? cart.item_subtotal / 100 : 0;
   
   // Get discount from cart.discount_total OR from membership promo in metadata
   const membershipPromoDiscount = cart?.metadata?.applied_membership_promo_discount 

@@ -143,6 +143,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Invalidate and refetch - cart query will create new cart with auth session
       queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEYS.customer });
       queryClient.invalidateQueries({ queryKey: ['cart'], exact: false });
+      // Product prices change with role; drop the guest-cached entries so the
+      // next read fetches fresh. invalidateQueries alone only refetches
+      // currently-mounted queries — landing/list pages may be unmounted while
+      // the user is on /login, leaving stale retail prices in cache.
+      queryClient.removeQueries({ queryKey: ['products'], exact: false });
+      queryClient.removeQueries({ queryKey: ['product'], exact: false });
     },
   });
 
