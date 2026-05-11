@@ -178,6 +178,21 @@ export function useLoginMutation() {
       // Invalidate queries
       queryClient.invalidateQueries({ queryKey: queryKeys.customer });
       queryClient.invalidateQueries({ queryKey: queryKeys.cart });
+      // Product prices change with role; wipe the guest-cached entries and
+      // force a refetch so VIP/Supplier see role pricing on landing/list
+      // pages without needing a manual refresh.
+      queryClient.removeQueries({ queryKey: ['products'], exact: false });
+      queryClient.removeQueries({ queryKey: ['product'], exact: false });
+      queryClient.refetchQueries({
+        queryKey: ['products'],
+        exact: false,
+        type: 'all',
+      });
+      queryClient.refetchQueries({
+        queryKey: ['product'],
+        exact: false,
+        type: 'all',
+      });
     },
   });
 }

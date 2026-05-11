@@ -1,5 +1,6 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys, MedusaError, Modules } from "@medusajs/framework/utils"
+import { refreshCartItemsWorkflow } from "@medusajs/medusa/core-flows"
 import { PROMO_MODULE } from "../../../../../modules/promo"
 import { MEMBERSHIP_MODULE } from "../../../../../modules/membership"
 import { TIER_CONFIG_MODULE } from "../../../../../modules/tier-config"
@@ -323,6 +324,17 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse): Promise<voi
     }
     if (itemsToUpdate.length > 0) {
       await cartModuleService.updateLineItems(itemsToUpdate)
+    }
+
+    // Recompute cart totals after line-item edits. updateLineItems mutates
+    // unit_price but does NOT refresh cart.raw_total — and that's the field
+    // createPaymentCollectionForCartWorkflow reads when handing the amount to
+    // Stripe. Without this, the storefront shows the role price while Stripe
+    // charges the stale retail total.
+    if (itemsToRemove.length > 0 || itemsToUpdate.length > 0) {
+      await refreshCartItemsWorkflow(req.scope).run({
+        input: { cart_id },
+      })
     }
 
     // Get updated cart
