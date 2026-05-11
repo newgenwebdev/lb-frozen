@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useState, useRef } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuthContext } from "@/lib/AuthContext";
 import { useCartQuery } from "@/lib/queries";
-import { completeCart, updateCart, clearStoredCartId } from "@/lib/api/cart";
+import { completeCart, updateCart, clearStoredCartId, syncCartPrices } from "@/lib/api/cart";
 import { initializeStripePayment, payWithSavedCard } from "@/lib/api/payment";
 import { getCardBrandName, type SavedPaymentMethod } from "@/lib/api/payment-methods";
 import type { Address } from "@/lib/api/types";
@@ -295,58 +295,74 @@ export default function PaymentPage() {
     }
   }, [paymentLoading, cart, router, completedOrder]);
 
-  // IMPORTANT: Set email on cart when customer is logged in
-  // This ensures order will be associated with the customer
-  useEffect(() => {
-    if (customer?.email && cart && !cart.email) {
-      updateCart({ email: customer.email }).catch((err) => {
-        console.error("Failed to set customer email on cart:", err);
-      });
-    }
-  }, [customer?.email, cart?.id]); // Only run when customer email or cart changes
-
   // Get customer name for display
-  const customerName = customer 
+  const customerName = customer
     ? [customer.first_name, customer.last_name].filter(Boolean).join(" ") || "User"
     : "Guest";
 
   // Get customer addresses for billing
   const addresses = customer?.addresses || customer?.shipping_addresses || [];
-  
-  // Set default billing address and update cart
+
+  // Gate the entire page on this. The /payment page auto-sets cart email +
+  // shipping/billing address, which triggers Medusa's internal price
+  // recompute. Medusa resolves the customer's role from `customer.groups`
+  // (can drift across multiple group memberships); our subscriber and
+  // sync-prices route both read the authoritative
+  // `customer.metadata.pricing_role` instead. We run the full sequence here
+  // before unblocking the UI so the user never sees a transient wrong price.
+  const [pricesSynced, setPricesSynced] = useState(false);
+  const syncedCartIdRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (addresses.length > 0 && !selectedBillingAddress) {
-      const defaultAddress = addresses[0];
-      setSelectedBillingAddress(defaultAddress.id || "address1");
-      // Update cart with both shipping and billing address - only send valid Medusa fields
-      updateCart({ 
-        shipping_address: {
-          first_name: defaultAddress.first_name || "",
-          last_name: defaultAddress.last_name || "",
-          address_1: defaultAddress.address_1 || "",
-          address_2: defaultAddress.address_2 || "",
-          city: defaultAddress.city || "",
-          province: defaultAddress.province || "",
-          postal_code: defaultAddress.postal_code || "",
-          country_code: defaultAddress.country_code || "my",
-          phone: defaultAddress.phone || "",
-        },
-        billing_address: {
-          first_name: defaultAddress.first_name || "",
-          last_name: defaultAddress.last_name || "",
-          address_1: defaultAddress.address_1 || "",
-          address_2: defaultAddress.address_2 || "",
-          city: defaultAddress.city || "",
-          province: defaultAddress.province || "",
-          postal_code: defaultAddress.postal_code || "",
-          country_code: defaultAddress.country_code || "my",
-          phone: defaultAddress.phone || "",
+    if (!cart?.id) return;
+    if (paymentLoading) return;
+    if (syncedCartIdRef.current === cart.id) return;
+
+    syncedCartIdRef.current = cart.id;
+
+    void (async () => {
+      try {
+        // 1. Set email on cart for logged-in customer (so order is associated).
+        if (customer?.email && !cart.email) {
+          await updateCart({ email: customer.email });
         }
-      }).catch(err => {
-        console.error("Failed to set default addresses:", err);
-      });
-    }
-  }, [addresses, selectedBillingAddress]);
+
+        // 2. Default the shipping + billing address to the customer's first
+        //    address. Skipped for guests (they fill the form manually) and
+        //    when a billing address is already selected.
+        if (addresses.length > 0 && !selectedBillingAddress) {
+          const defaultAddress = addresses[0];
+          setSelectedBillingAddress(defaultAddress.id || "address1");
+          const addressPayload = {
+            first_name: defaultAddress.first_name || "",
+            last_name: defaultAddress.last_name || "",
+            address_1: defaultAddress.address_1 || "",
+            address_2: defaultAddress.address_2 || "",
+            city: defaultAddress.city || "",
+            province: defaultAddress.province || "",
+            postal_code: defaultAddress.postal_code || "",
+            country_code: defaultAddress.country_code || "my",
+            phone: defaultAddress.phone || "",
+          };
+          await updateCart({
+            shipping_address: addressPayload,
+            billing_address: addressPayload,
+          });
+        }
+
+        // 3. Force re-price using the authoritative resolver (reads
+        //    customer.metadata.pricing_role). Repairs any drift from step 1/2.
+        await syncCartPrices();
+
+        // 4. Refetch cart so the order summary renders the corrected total.
+        await queryClient.invalidateQueries({ queryKey: ["cart"] });
+      } catch (err) {
+        console.error("Failed to prepare payment cart:", err);
+      } finally {
+        setPricesSynced(true);
+      }
+    })();
+  }, [cart?.id, paymentLoading, customer?.email, addresses, selectedBillingAddress, queryClient, setSelectedBillingAddress]);
 
   // Calculate totals from cart
   const cartItems = cart?.items || [];
@@ -469,12 +485,12 @@ export default function PaymentPage() {
     // TODO: Implement promo code application
   };
 
-  if (paymentLoading) {
+  if (paymentLoading || !pricesSynced) {
     return (
       <div className="flex items-center justify-center min-h-100">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#23429B] mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading payment...</p>
+          <p className="text-gray-600">Preparing your order…</p>
         </div>
       </div>
     );

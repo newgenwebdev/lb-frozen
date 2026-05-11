@@ -269,6 +269,24 @@ export async function removePoints(): Promise<Cart> {
 }
 
 /**
+ * Force backend to re-price cart line items using the authoritative
+ * role resolver (reads customer.metadata.pricing_role). Call this after
+ * any cart update that may have triggered Medusa's internal price
+ * recompute with the wrong customer group.
+ */
+export async function syncCartPrices(): Promise<Cart> {
+  const cartId = getStoredCartId();
+  if (!cartId) throw new Error('No cart found');
+
+  const response = await apiClient.post<{ cart: Cart }>(
+    `/store/carts/${cartId}/sync-prices`,
+    {}
+  );
+
+  return response.cart;
+}
+
+/**
  * Select shipping method
  */
 export async function selectShippingMethod(

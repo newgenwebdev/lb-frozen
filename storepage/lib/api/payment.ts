@@ -169,6 +169,19 @@ export async function initializeStripePayment(cartId?: string): Promise<{
   const id = cartId || getStoredCartId();
   if (!id) throw new Error('No cart found');
 
+  // Force re-pricing right before Stripe sees the cart. The /payment page
+  // auto-fires updateCart (shipping_address, billing_address, email) on
+  // load, which triggers Medusa's internal price recompute using
+  // customer.groups directly — that can pick the wrong role price if the
+  // customer is assigned to multiple groups. sync-prices runs the
+  // authoritative resolver (reads customer.metadata.pricing_role) so the
+  // cart total Stripe charges matches what the storefront shows.
+  try {
+    await apiClient.post(`/store/carts/${id}/sync-prices`, {});
+  } catch (err) {
+    console.warn("[STRIPE-INIT] sync-prices failed (continuing):", err);
+  }
+
   // First, get the cart to check for membership promo discount
   // Use getCart which already fetches with +metadata
   const cart = await getCart(id);

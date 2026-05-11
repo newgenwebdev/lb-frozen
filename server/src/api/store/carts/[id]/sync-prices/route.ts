@@ -3,41 +3,16 @@ import { ContainerRegistrationKeys, MedusaError, Modules } from "@medusajs/frame
 import { PROMO_MODULE } from "../../../../../modules/promo"
 import { MEMBERSHIP_MODULE } from "../../../../../modules/membership"
 import { TIER_CONFIG_MODULE } from "../../../../../modules/tier-config"
-import { getVerifiedCustomerId } from "../../../../../utils/store-auth"
-import { CUSTOMER_GROUP_IDS } from "../../../../../lib/constants"
+import {
+  getVerifiedCustomerId,
+  getCustomerPricingGroupId,
+} from "../../../../../utils/store-auth"
 import {
   calculateCartValueExcludingPWP,
   getApplicableBulkTier,
   getBasePrice,
   type CartItem,
 } from "../../../../../utils/cart-validation"
-
-const PRICED_GROUP_IDS = new Set<string>([
-  CUSTOMER_GROUP_IDS.BULK,
-  CUSTOMER_GROUP_IDS.VIP,
-  CUSTOMER_GROUP_IDS.SUPPLIER,
-])
-
-/**
- * Resolve the cart customer's pricing group (VIP / Supplier / Bulk),
- * or null for guests / retail customers.
- */
-async function resolveCartCustomerGroupId(
-  scope: any,
-  customerId: string | null | undefined
-): Promise<string | null> {
-  if (!customerId) return null
-  try {
-    const customerService = scope.resolve(Modules.CUSTOMER)
-    const customer = await customerService.retrieveCustomer(customerId, {
-      relations: ["groups"],
-    })
-    const group = customer.groups?.find((g: any) => PRICED_GROUP_IDS.has(g.id))
-    return group?.id ?? null
-  } catch {
-    return null
-  }
-}
 
 /**
  * POST /store/carts/:id/sync-prices
@@ -84,7 +59,9 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse): Promise<voi
 
     // Resolve the cart customer's pricing group so role-based prices
     // (VIP / Supplier / Bulk) take priority over the variant default price.
-    const customerGroupId = await resolveCartCustomerGroupId(req.scope, cart.customer_id)
+    // Reads `customer.metadata.pricing_role` (set authoritatively by
+    // assignRole), not `customer.groups`, which can drift.
+    const customerGroupId = await getCustomerPricingGroupId(req.scope, cart.customer_id)
 
     const itemsToRemove: string[] = []
     const itemsToUpdate: Array<{ id: string; unit_price: number; metadata: any }> = []
