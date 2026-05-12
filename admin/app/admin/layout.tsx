@@ -1224,6 +1224,8 @@ export default function AdminLayout({
                     </svg>
                     {!isSidebarCollapsed && "Promos"}
                   </a>
+                  {/* HIDDEN_NAV: see other HIDDEN_NAV blocks below. */}
+                  {false && (
                   <a
                     href="/admin/membership/tiers"
                     className={`font-public flex items-center gap-3 px-3 py-2 rounded-lg text-[14px] font-medium tracking-[-0.14px] transition-all max-lg:py-3 max-lg:text-base ${
@@ -1299,6 +1301,9 @@ export default function AdminLayout({
                     </svg>
                     {!isSidebarCollapsed && "Tiers"}
                   </a>
+                  )}
+                  {/* HIDDEN_NAV */}
+                  {false && (
                   <a
                     href="/admin/membership/points"
                     className={`font-public flex items-center gap-3 px-3 py-2 rounded-lg text-[14px] font-medium tracking-[-0.14px] transition-all max-lg:py-3 max-lg:text-base ${
@@ -1341,6 +1346,7 @@ export default function AdminLayout({
                     </svg>
                     {!isSidebarCollapsed && "Points"}
                   </a>
+                  )}
                   <a
                     href="/admin/membership/settings"
                     className={`font-public flex items-center gap-3 px-3 py-2 rounded-lg text-[14px] font-medium tracking-[-0.14px] transition-all max-lg:py-3 max-lg:text-base ${
@@ -1469,6 +1475,8 @@ export default function AdminLayout({
                   </p>
                 )}
                 <div className="flex flex-col gap-1">
+                  {/* HIDDEN_NAV */}
+                  {false && (
                   <a
                     href="/admin/shipment"
                     className={`font-public flex items-center gap-3 px-3 py-2 rounded-lg text-[14px] font-medium tracking-[-0.14px] transition-all max-lg:py-3 max-lg:text-base ${
@@ -1509,6 +1517,9 @@ export default function AdminLayout({
                     </svg>
                     {!isSidebarCollapsed && "Shipping Options"}
                   </a>
+                  )}
+                  {/* HIDDEN_NAV */}
+                  {false && (
                   <a
                     href="/admin/shipping/settings"
                     className={`font-public flex items-center gap-3 px-3 py-2 rounded-lg text-[14px] font-medium tracking-[-0.14px] transition-all max-lg:py-3 max-lg:text-base ${
@@ -1555,6 +1566,7 @@ export default function AdminLayout({
                     </svg>
                     {!isSidebarCollapsed && "Settings"}
                   </a>
+                  )}
                 </div>
               </div>
 
@@ -1591,6 +1603,8 @@ export default function AdminLayout({
                     </svg>
                     {!isSidebarCollapsed && "Banner"}
                   </a>
+                  {/* HIDDEN_NAV */}
+                  {false && (
                   <a
                     href="/admin/article"
                     className={`font-public flex items-center gap-3 px-3 py-2 rounded-lg text-[14px] font-medium tracking-[-0.14px] transition-all max-lg:py-3 max-lg:text-base ${
@@ -1646,6 +1660,7 @@ export default function AdminLayout({
                     </svg>
                     {!isSidebarCollapsed && "Article"}
                   </a>
+                  )}
                   <a
                     href="/admin/reviews"
                     className={`font-public flex items-center gap-3 px-3 py-2 rounded-lg text-[14px] font-medium tracking-[-0.14px] transition-all max-lg:py-3 max-lg:text-base ${
