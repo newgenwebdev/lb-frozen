@@ -375,16 +375,10 @@ export default function PaymentPage() {
     : 0;
   const discountTotal = (cart?.discount_total ? cart.discount_total / 100 : 0) + membershipPromoDiscount;
   
-  // HIDDEN_SHIPPING: client handles delivery manually offline, so shipping
-  // cost is forced to 0 across all displays. cart.shipping_total from Medusa
-  // is subtracted from cart.total below so the displayed total stays
-  // consistent even if a non-zero shipping option was auto-selected upstream.
-  const shippingCost = 0;
-  const cartShippingTotal = cart?.shipping_total ? cart.shipping_total / 100 : 0;
+  const shippingCost = cart?.shipping_total ? cart.shipping_total / 100 : 0;
 
-  // Recalculate total with membership promo discount
   const total = cart?.total
-    ? (cart.total / 100) - membershipPromoDiscount - cartShippingTotal
+    ? (cart.total / 100) - membershipPromoDiscount
     : subtotal - discountTotal + shippingCost;
 
   // Handle payment submission with saved card

@@ -11,10 +11,13 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DELIVERY_AREAS } from "@/lib/data/deliveryZones";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -39,6 +42,7 @@ interface AddressData {
   country_code?: string;
   phone?: string;
   is_default_shipping?: boolean;
+  metadata?: Record<string, unknown>;
 }
 
 interface AddAddressDialogProps {
@@ -95,6 +99,7 @@ export function AddAddressDialog({
         first_name: editAddress.first_name || "",
         last_name: editAddress.last_name || "",
         city: editAddress.city || "",
+        area: (editAddress.metadata?.area as string) || "",
         province: editAddress.province || "",
         company: editAddress.company || "",
         address_2: editAddress.address_2 || "",
@@ -109,6 +114,7 @@ export function AddAddressDialog({
         first_name: "",
         last_name: "",
         city: "",
+        area: "",
         province: "",
         company: "",
         address_2: "",
@@ -131,10 +137,11 @@ export function AddAddressDialog({
         city: data.city,
         province: data.province,
         postal_code: data.postal_code,
-        country_code: "my", // Malaysia
+        country_code: "my",
         phone: data.phone ? `+60${data.phone.replace(/^0/, "")}` : "",
         company: data.company,
         is_default_shipping: data.is_default_shipping,
+        metadata: { area: data.area },
       };
 
       if (editAddress?.id) {
@@ -269,6 +276,47 @@ export function AddAddressDialog({
               <p className="text-xs text-red-500">{errors.province.message}</p>
             )}
           </div>
+        </div>
+
+        {/* Delivery Area */}
+        <div className="space-y-2">
+          <Label htmlFor="area" className="text-xs lg:text-sm font-medium">
+            Delivery area
+          </Label>
+          <Controller
+            name="area"
+            control={control}
+            render={({ field }) => (
+              <Select value={field.value || ""} onValueChange={field.onChange}>
+                <SelectTrigger className="h-10! lg:h-12! w-full px-3! py-2! text-sm lg:text-base">
+                  <SelectValue placeholder="Select delivery area" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectLabel>Zone A — RM18.00</SelectLabel>
+                    {DELIVERY_AREAS.filter((a) => a.zone === "A").map((a) => (
+                      <SelectItem key={a.name} value={a.name}>{a.name}</SelectItem>
+                    ))}
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel>Zone B — RM20.00</SelectLabel>
+                    {DELIVERY_AREAS.filter((a) => a.zone === "B").map((a) => (
+                      <SelectItem key={a.name} value={a.name}>{a.name}</SelectItem>
+                    ))}
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel>Zone C — RM23.00</SelectLabel>
+                    {DELIVERY_AREAS.filter((a) => a.zone === "C").map((a) => (
+                      <SelectItem key={a.name} value={a.name}>{a.name}</SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            )}
+          />
+          {errors.area && (
+            <p className="text-xs text-red-500">{errors.area.message}</p>
+          )}
         </div>
 
         {/* Building Type and Building Number */}

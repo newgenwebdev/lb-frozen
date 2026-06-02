@@ -395,6 +395,11 @@ export default function OrderDetailPage() {
                     <p>
                       {order.shipping_address.city}, {order.shipping_address.postal_code}
                     </p>
+                    {(order.shipping_address.metadata as Record<string, string> | undefined)?.area && (
+                      <p className="text-xs text-neutral-500">
+                        Area: {(order.shipping_address.metadata as Record<string, string>).area}
+                      </p>
+                    )}
                     <p>{order.shipping_address.country_code?.toUpperCase()}</p>
                     {order.shipping_address.phone && (
                       <p className="mt-2">{order.shipping_address.phone}</p>

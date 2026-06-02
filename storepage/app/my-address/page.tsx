@@ -208,6 +208,11 @@ export default function MyAddressPage() {
                       <p className="text-xs sm:text-sm">
                         {formatAddress(addr) || "No address details"}
                       </p>
+                      {(addr.metadata as Record<string, string> | undefined)?.area && (
+                        <p className="text-xs text-neutral-500 mt-0.5">
+                          Delivery area: {(addr.metadata as Record<string, string>).area}
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex gap-3 text-gray-600">

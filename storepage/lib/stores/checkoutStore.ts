@@ -9,6 +9,7 @@ interface GuestAddress {
   address_1: string;
   address_2: string;
   city: string;
+  area: string;
   postal_code: string;
   province: string;
   country_code: string;
@@ -26,6 +27,7 @@ interface CheckoutState {
   selectedAddressId: string | null;
   guestAddress: GuestAddress;
   selectedShippingOptionId: string | null;
+  selectedArea: string | null;
   
   // Payment
   selectedPaymentMethod: "saved" | "new";
@@ -44,6 +46,7 @@ interface CheckoutActions {
   setSelectedAddressId: (id: string | null) => void;
   setGuestAddress: (address: Partial<GuestAddress>) => void;
   setSelectedShippingOptionId: (id: string | null) => void;
+  setSelectedArea: (area: string | null) => void;
   
   // Payment actions
   setSelectedPaymentMethod: (method: "saved" | "new") => void;
@@ -67,6 +70,7 @@ const initialGuestAddress: GuestAddress = {
   address_1: "",
   address_2: "",
   city: "",
+  area: "",
   postal_code: "",
   province: "",
   country_code: "my",
@@ -85,6 +89,7 @@ const initialState: CheckoutState = {
   selectedAddressId: null,
   guestAddress: initialGuestAddress,
   selectedShippingOptionId: null,
+  selectedArea: null,
   
   // Payment
   selectedPaymentMethod: "saved",
@@ -120,6 +125,7 @@ export const useCheckoutStore = create<CheckoutState & CheckoutActions>()(
           guestAddress: { ...state.guestAddress, ...address },
         })),
       setSelectedShippingOptionId: (id) => set({ selectedShippingOptionId: id }),
+      setSelectedArea: (area) => set({ selectedArea: area }),
       
       // Payment actions
       setSelectedPaymentMethod: (method) => set({ selectedPaymentMethod: method }),
@@ -154,6 +160,7 @@ export const useCheckoutStore = create<CheckoutState & CheckoutActions>()(
         guestAddress: state.guestAddress,
         guestEmail: state.guestEmail,
         selectedShippingOptionId: state.selectedShippingOptionId,
+        selectedArea: state.selectedArea,
       }),
     }
   )

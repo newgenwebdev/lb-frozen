@@ -14,6 +14,8 @@ import {
 } from "@/lib/queries";
 import { useCheckoutStore } from "@/lib/stores";
 import type { Address } from "@/lib/api/types";
+import { DELIVERY_AREAS, findDeliveryArea } from "@/lib/data/deliveryZones";
+import type { DeliveryArea } from "@/lib/data/deliveryZones";
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -26,14 +28,14 @@ export default function CheckoutPage() {
 
   // Zustand checkout store
   const {
-    shippingMethod,
-    setShippingMethod,
     selectedAddressId,
     setSelectedAddressId,
     guestAddress,
     setGuestAddress,
     selectedShippingOptionId,
     setSelectedShippingOptionId,
+    selectedArea,
+    setSelectedArea,
   } = useCheckoutStore();
   
   const addShippingMethodMutation = useAddShippingMethodMutation();
@@ -73,45 +75,32 @@ export default function CheckoutPage() {
     if (addresses.length > 0 && !selectedAddressId) {
       const defaultAddress = addresses[0];
       setSelectedAddressId(defaultAddress.id || null);
-      // Also update the cart with the shipping address
       updateShippingAddress(defaultAddress).catch(err => {
         console.error("Failed to set default shipping address:", err);
       });
     }
   }, [addresses, selectedAddressId, updateShippingAddress]);
 
-  // HIDDEN_SHIPPING: shipping option selection UI is hidden, but Medusa
-  // still needs a shipping_option_id attached to the cart before checkout.
-  // Auto-pick the first available option behind the scenes — once per cart.
-  // The ref guards against effect re-runs from changing query references
-  // (mutateAsync, shippingOptions array identity) that would otherwise spam
-  // the shipping-methods endpoint.
-  const autoPickedCartIdRef = useRef<string | null>(null);
+  // Auto-detect delivery zone from default address metadata on page load
+  const autoZoneRef = useRef(false);
   useEffect(() => {
-    if (!cart?.id) return;
-    if (!cart.items?.length) return;
-    if (shippingOptions.length === 0) return;
-    if (selectedShippingOptionId) return;
-    if (autoPickedCartIdRef.current === cart.id) return;
+    if (autoZoneRef.current) return;
+    if (!addresses.length || !shippingOptions.length) return;
+    if (selectedArea) { autoZoneRef.current = true; return; }
+    const defaultAddress = addresses.find((a: Address) => a.id === selectedAddressId) || addresses[0];
+    const area = defaultAddress?.metadata?.area as string | undefined;
+    if (!area) return;
+    const areaData = findDeliveryArea(area);
+    if (!areaData) return;
+    const matched = shippingOptions.find((o) => o.amount === areaData.amountCents);
+    if (!matched) return;
+    autoZoneRef.current = true;
+    setSelectedArea(area);
+    setSelectedShippingOptionId(matched.id);
+    selectShippingMethod(matched.id).catch(console.error);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addresses, shippingOptions]);
 
-    autoPickedCartIdRef.current = cart.id;
-    const firstOption = shippingOptions[0];
-    selectShippingMethod(firstOption.id)
-      .then(() => setSelectedShippingOptionId(firstOption.id))
-      .catch((err) => {
-        console.error("Failed to auto-select shipping method:", err);
-        // Don't reset the ref — one attempt per cart id is enough. The user
-        // can still proceed; backend will surface a clearer error at
-        // place-order time if the shipping option is genuinely missing.
-      });
-  }, [
-    cart?.id,
-    cart?.items?.length,
-    shippingOptions,
-    selectedShippingOptionId,
-    selectShippingMethod,
-    setSelectedShippingOptionId,
-  ]);
 
   // Calculate totals from cart. cart.subtotal includes shipping; use
   // item_subtotal so the row stays items-only while HIDDEN_SHIPPING is on.
@@ -124,45 +113,63 @@ export default function CheckoutPage() {
     : 0;
   const discountTotal = (cart?.discount_total ? cart.discount_total / 100 : 0) + membershipPromoDiscount;
   
-  // HIDDEN_SHIPPING: client handles delivery manually offline, so the
-  // storefront treats shipping cost as 0 across all views. To re-enable,
-  // read cart.shipping_total again here and add it back to the total.
-  const shippingCost = 0;
+  const selectedAreaData = selectedArea ? findDeliveryArea(selectedArea) : undefined;
+  const shippingCost = selectedAreaData ? selectedAreaData.amountCents / 100 : 0;
 
-  // Recalculate total with membership promo discount. Excludes shipping
-  // (zero by policy above). cart.total from Medusa may still include a
-  // shipping_total if a non-zero shipping option was auto-selected; we
-  // subtract it here so the displayed total stays consistent.
-  const cartShippingTotal = cart?.shipping_total ? cart.shipping_total / 100 : 0;
   const total = cart?.total
-    ? (cart.total / 100) - membershipPromoDiscount - cartShippingTotal
+    ? (cart.total / 100) - membershipPromoDiscount
     : subtotal - discountTotal + shippingCost;
 
-  // Handle shipping option selection
-  const handleShippingOptionSelect = async (optionId: string) => {
-    try {
+  const handleAreaChange = useCallback(
+    async (area: DeliveryArea, matchedOptionId: string | null) => {
+      setSelectedArea(area.name);
       setShippingTypeError("");
-      await selectShippingMethod(optionId);
-      setSelectedShippingOptionId(optionId);
-    } catch (error) {
-      console.error("Failed to select shipping method:", error);
-    }
-  };
+      if (!matchedOptionId) {
+        setShippingTypeError("Shipping option not available for this zone. Please contact support.");
+        return;
+      }
+      try {
+        await selectShippingMethod(matchedOptionId);
+        setSelectedShippingOptionId(matchedOptionId);
+      } catch {
+        setShippingTypeError("Failed to apply shipping. Please try again.");
+      }
+    },
+    [selectShippingMethod, setSelectedShippingOptionId, setSelectedArea]
+  );
 
-  // Handle address selection
+  // Handle address selection — auto-detect zone from metadata.area if present
   const handleAddressSelect = async (address: Address) => {
     try {
       setSelectedAddressId(address.id || null);
       await updateShippingAddress(address);
+      const area = address.metadata?.area as string | undefined;
+      if (area) {
+        const areaData = findDeliveryArea(area);
+        if (areaData) {
+          const matched = shippingOptions.find((o) => o.amount === areaData.amountCents);
+          if (matched) {
+            setSelectedArea(area);
+            setShippingTypeError("");
+            await selectShippingMethod(matched.id);
+            setSelectedShippingOptionId(matched.id);
+            return;
+          }
+        }
+      }
+      // No valid area in metadata — clear so fallback selector shows
+      setSelectedArea(null);
+      setSelectedShippingOptionId(null);
     } catch (error) {
       console.error("Failed to update shipping address:", error);
     }
   };
 
   const handleProceedToPayment = async () => {
-    // HIDDEN_SHIPPING: shipping selector UI is hidden, so no user-facing
-    // validation is needed here. The auto-pick effect above ensures Medusa
-    // has a shipping_option_id by the time we proceed.
+    if (!selectedArea || !selectedShippingOptionId) {
+      setShippingTypeError("Please add or update your delivery address with a Klang Valley delivery area.");
+      return;
+    }
     setShippingTypeError("");
 
     if (!customer) {
@@ -232,178 +239,6 @@ export default function CheckoutPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 lg:pr-6">
           {/* Left Column - Checkout Details */}
           <div className="lg:col-span-2 lg:border-r border-gray-200 pt-4 lg:pt-8 lg:px-10">
-            {/* HIDDEN_SHIPPING: shipping/pickup toggle + shipping options
-                selector hidden because client handles delivery manually
-                offline. Flip the wrapping `{false && (...)}` to `{true && ...}`
-                (or remove the wrapper entirely) once a real pricing model
-                is in place. */}
-            {false && (<>
-            {/* Shipping/Pickup Toggle */}
-            <div className="flex gap-3 lg:gap-4 mb-6 lg:mb-8">
-              <button
-                onClick={() => setShippingMethod("shipping")}
-                className={`flex-1 py-3 lg:py-4 px-4 lg:px-6 rounded-xl border transition-colors cursor-pointer ${
-                  shippingMethod === "shipping"
-                    ? "border-gray-900 bg-gray-50"
-                    : "border-gray-200 bg-white hover:border-gray-300"
-                }`}
-              >
-                <div className="flex items-center justify-center gap-2">
-                  <svg
-                    className="w-4 h-4 lg:w-5 lg:h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0"
-                    />
-                  </svg>
-                  <span className="font-medium text-sm lg:text-base">Shipping</span>
-                </div>
-              </button>
-              <button
-                onClick={() => setShippingMethod("pickup")}
-                className={`cursor-pointer flex-1 py-3 lg:py-4 px-4 lg:px-6 rounded-xl border transition-colors ${
-                  shippingMethod === "pickup"
-                    ? "border-gray-900 bg-gray-50"
-                    : "border-gray-200 bg-white hover:border-gray-300"
-                }`}
-              >
-                <div className="flex items-center justify-center gap-2">
-                  <svg
-                    className="w-4 h-4 lg:w-5 lg:h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
-                    />
-                  </svg>
-                  <span className="font-medium text-sm lg:text-base">Pickup</span>
-                </div>
-              </button>
-            </div>
-
-            {/* Shipping Options */}
-            <div className="mb-6 lg:mb-8">
-              <h2 className="text-lg lg:text-xl font-bold text-gray-900 mb-3 lg:mb-4">
-                Shipping type
-              </h2>
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 lg:gap-4">
-                {shippingOptions.length > 0 ? (
-                  shippingOptions.map((option) => (
-                    <button
-                      key={option.id}
-                      onClick={() => handleShippingOptionSelect(option.id)}
-                      className={`cursor-pointer p-4 rounded-xl border text-left transition-colors ${
-                        selectedShippingOptionId === option.id
-                          ? "border-blue-600 bg-blue-50"
-                          : "border-gray-200 hover:border-gray-300"
-                      }`}
-                    >
-                      <div className="flex items-start gap-3 mb-3">
-                        <svg
-                          className="w-5 h-5 mt-0.5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0"
-                          />
-                        </svg>
-                        <div className="flex-1">
-                          <div className="font-semibold text-gray-900 mb-1 text-sm lg:text-base">
-                            {option.name}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-base lg:text-lg font-bold text-gray-900">
-                        {option.amount === 0 ? "Free" : `RM${(option.amount / 100).toFixed(2)}`}
-                      </div>
-                    </button>
-                  ))
-                ) : (
-                  <>
-                    {/* Fallback shipping options */}
-                    <button
-                      onClick={() => handleShippingOptionSelect("standard")}
-                      className={`p-4 rounded-xl border text-left transition-colors ${
-                        selectedShippingOptionId === "standard"
-                          ? "border-blue-600 bg-blue-50"
-                          : "border-gray-200 hover:border-gray-300"
-                      }`}
-                    >
-                      <div className="flex items-start gap-3 mb-3">
-                        <svg className="w-5 h-5 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
-                        </svg>
-                        <div className="flex-1">
-                          <div className="font-semibold text-gray-900 mb-1 text-sm lg:text-base">Standard Shipping</div>
-                          <div className="text-xs lg:text-sm text-gray-600">5-7 business days</div>
-                        </div>
-                      </div>
-                      <div className="text-base lg:text-lg font-bold text-gray-900">RM0.00 (Free)</div>
-                    </button>
-                    <button
-                      onClick={() => handleShippingOptionSelect("express")}
-                      className={`p-4 rounded-xl border text-left transition-colors ${
-                        selectedShippingOptionId === "express"
-                          ? "border-blue-600 bg-blue-50"
-                          : "border-gray-200 hover:border-gray-300"
-                      }`}
-                    >
-                      <div className="flex items-start gap-3 mb-3">
-                        <svg className="w-5 h-5 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
-                        <div className="flex-1">
-                          <div className="font-semibold text-gray-900 mb-1 text-sm lg:text-base">Express Shipping</div>
-                          <div className="text-xs lg:text-sm text-gray-600">1-3 business days</div>
-                        </div>
-                      </div>
-                      <div className="text-base lg:text-lg font-bold text-gray-900">+RM5.99</div>
-                    </button>
-                    <button
-                      onClick={() => handleShippingOptionSelect("sameday")}
-                      className={`p-4 rounded-xl border text-left transition-colors ${
-                        selectedShippingOptionId === "sameday"
-                          ? "border-blue-600 bg-blue-50"
-                          : "border-gray-200 hover:border-gray-300"
-                      }`}
-                    >
-                      <div className="flex items-start gap-3 mb-3">
-                        <svg className="w-5 h-5 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
-                        <div className="flex-1">
-                          <div className="font-semibold text-gray-900 mb-1 text-sm lg:text-base">Same-Day Delivery</div>
-                          <div className="text-xs lg:text-sm text-gray-600">orders before 12:00 pm</div>
-                        </div>
-                      </div>
-                      <div className="text-base lg:text-lg font-bold text-gray-900">+RM12.99</div>
-                    </button>
-                  </>
-                )}
-              </div>
-              {shippingTypeError && (
-                <p className="text-red-600 text-sm mt-2">{shippingTypeError}</p>
-              )}
-            </div>
-            </>)}
-            {/* /HIDDEN_SHIPPING end */}
-
             {/* Shipping Address */}
             <div className="mb-6 lg:mb-8">
               <div className="flex items-center justify-between mb-3 lg:mb-4">
@@ -449,6 +284,9 @@ export default function CheckoutPage() {
                           <div>{address.address_1}</div>
                           {address.address_2 && <div>{address.address_2}</div>}
                           <div>{address.city}, {address.postal_code}</div>
+                          {address.metadata?.area && (
+                            <div className="text-xs text-neutral-500 mt-0.5">Area: {address.metadata.area as string}</div>
+                          )}
                           <div>{address.country_code?.toUpperCase()}</div>
                         </div>
                         {address.phone && (
@@ -497,6 +335,38 @@ export default function CheckoutPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-1">Province/State</label>
                       <input type="text" className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" value={guestAddress.province} onChange={e => setGuestAddress({ province: e.target.value })} />
                     </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Area *</label>
+                    <select
+                      className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-neutral-900 cursor-pointer"
+                      value={guestAddress.area || ""}
+                      onChange={(e) => {
+                        const areaData = findDeliveryArea(e.target.value);
+                        if (!areaData) return;
+                        setGuestAddress({ area: e.target.value });
+                        const matched = shippingOptions.find((o) => o.amount === areaData.amountCents);
+                        handleAreaChange(areaData, matched?.id ?? null);
+                      }}
+                    >
+                      <option value="" disabled>Select delivery area...</option>
+                      <optgroup label="Zone A — RM18.00">
+                        {DELIVERY_AREAS.filter((a) => a.zone === "A").map((a) => (
+                          <option key={a.name} value={a.name}>{a.name}</option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Zone B — RM20.00">
+                        {DELIVERY_AREAS.filter((a) => a.zone === "B").map((a) => (
+                          <option key={a.name} value={a.name}>{a.name}</option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Zone C — RM23.00">
+                        {DELIVERY_AREAS.filter((a) => a.zone === "C").map((a) => (
+                          <option key={a.name} value={a.name}>{a.name}</option>
+                        ))}
+                      </optgroup>
+                    </select>
+                    {shippingTypeError && <p className="text-red-600 text-xs mt-1">{shippingTypeError}</p>}
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>

@@ -729,6 +729,16 @@ export function OrderDetailsDrawer({
                   </span>
                 </div>
 
+                {/* Delivery Area */}
+                {(order.shipping_address as any)?.metadata?.area && (
+                  <div className="flex items-center justify-between">
+                    <span className="font-geist text-[14px] font-medium text-[#858585]">Delivery area</span>
+                    <span className="font-geist text-[14px] font-medium text-[#030712]">
+                      {String((order.shipping_address as any).metadata.area)}
+                    </span>
+                  </div>
+                )}
+
                 {/* Phone */}
                 {order.shipping_address.phone && (
                   <div className="flex items-center justify-between">

@@ -106,6 +106,7 @@ export const addressSchema = z.object({
   address_1: z.string().min(1, "Address is required"),
   address_2: z.string().optional(),
   city: z.string().min(1, "City is required"),
+  area: z.string().min(1, "Delivery area is required"),
   province: z.string().min(1, "State is required"),
   postal_code: z
     .string()
@@ -132,6 +133,7 @@ export const guestAddressSchema = z.object({
   address_1: z.string().min(1, "Address is required"),
   address_2: z.string().optional(),
   city: z.string().min(1, "City is required"),
+  area: z.string().min(1, "Delivery area is required"),
   province: z.string().min(1, "State is required"),
   postal_code: z
     .string()
