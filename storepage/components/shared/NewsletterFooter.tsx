@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 
 export default function NewsletterFooter() {
   return (
@@ -158,9 +159,9 @@ export default function NewsletterFooter() {
               <h3 className="font-semibold text-gray-900 mb-3 lg:mb-4 text-sm lg:text-base">Discover</h3>
               <ul className="space-y-2 text-xs lg:text-sm text-gray-600">
                 <li>
-                  <a href="#" className="hover:text-gray-900">
+                  <Link href="/faqs" className="hover:text-gray-900">
                     FAQ Section
-                  </a>
+                  </Link>
                 </li>
                 <li>
                   <a href="#" className="hover:text-gray-900">
