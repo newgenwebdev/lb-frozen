@@ -169,14 +169,14 @@ export default function NewsletterFooter() {
                   </a>
                 </li>
                 <li>
-                  <a href="#" className="hover:text-gray-900">
+                  <Link href="/refund-policy" className="hover:text-gray-900">
                     Refund Policy
-                  </a>
+                  </Link>
                 </li>
                 <li>
-                  <a href="#" className="hover:text-gray-900">
+                  <Link href="/delivery-details" className="hover:text-gray-900">
                     Delivery Details
-                  </a>
+                  </Link>
                 </li>
                 <li>
                   <a href="#" className="hover:text-gray-900">
