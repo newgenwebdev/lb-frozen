@@ -125,7 +125,7 @@ export default function ProtectedNavbar() {
       </div> */}
 
       <nav className="bg-white border-b border-gray-200 px-4 lg:px-6 py-3 relative z-50">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3 xl:gap-5">
           {/* Mobile Menu Button */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -146,8 +146,22 @@ export default function ProtectedNavbar() {
             </svg>
           </button>
 
-          {/* Left side - Search */}
-          <div className="hidden lg:block max-w-sm flex-1">
+          {/* Logo - far left on desktop, centered on mobile */}
+          <Link
+            href="/"
+            className="absolute left-1/2 -translate-x-1/2 lg:static lg:translate-x-0 shrink-0"
+          >
+            <Image
+              src="/lb-logo.png"
+              alt="LB Frozen Logo"
+              width={60}
+              height={60}
+              priority
+            />
+          </Link>
+
+          {/* Search */}
+          <div className="hidden lg:block flex-1 max-w-60 xl:max-w-xs">
             <div className="relative">
               <input
                 type="text"
@@ -175,19 +189,73 @@ export default function ProtectedNavbar() {
             </div>
           </div>
 
-          {/* Center - Logo */}
-          <Link href="/" className="absolute left-1/2 -translate-x-1/2">
-            <Image
-              src="/lb-logo.png"
-              alt="LB Frozen Logo"
-              width={60}
-              height={60}
-              priority
-            />
-          </Link>
+          {/* Desktop Navigation Links */}
+          <div className="hidden lg:flex items-center gap-4 xl:gap-6 shrink-0">
+            <button
+              onClick={() => setIsCategoriesOpen(!isCategoriesOpen)}
+              className="flex items-center gap-1.5 text-xs xl:text-sm font-medium text-gray-700 hover:text-gray-900 hover:cursor-pointer whitespace-nowrap"
+            >
+              CATEGORIES
+              <svg
+                className={`w-3.5 h-3.5 transition-transform ${
+                  isCategoriesOpen ? "rotate-180" : ""
+                }`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
+            <button
+              onClick={() => {
+                if (pathname === "/") {
+                  document
+                    .getElementById("flash-sale")
+                    ?.scrollIntoView({ behavior: "smooth" });
+                } else {
+                  router.push("/#flash-sale");
+                }
+              }}
+              className="text-xs xl:text-sm font-medium text-gray-700 hover:text-gray-900 cursor-pointer whitespace-nowrap"
+            >
+              FLASH SALE
+            </button>
+            <button
+              onClick={() => {
+                if (pathname === "/") {
+                  document
+                    .getElementById("trending")
+                    ?.scrollIntoView({ behavior: "smooth" });
+                } else {
+                  router.push("/#trending");
+                }
+              }}
+              className="text-xs xl:text-sm font-medium text-gray-700 hover:text-gray-900 cursor-pointer whitespace-nowrap"
+            >
+              TOP SALES
+            </button>
+            <Link
+              href="/about-us"
+              className="text-xs xl:text-sm font-medium text-gray-700 hover:text-gray-900 cursor-pointer whitespace-nowrap"
+            >
+              ABOUT US
+            </Link>
+            <Link
+              href="/contact-us"
+              className="text-xs xl:text-sm font-medium text-gray-700 hover:text-gray-900 cursor-pointer whitespace-nowrap"
+            >
+              CONTACT US
+            </Link>
+          </div>
 
           {/* Right side - Icons and User */}
-          <div className="flex items-center gap-2 lg:gap-4">
+          <div className="ml-auto flex items-center gap-3 lg:gap-8">
             {/* Search Icon - Mobile Only */}
             <button
               onClick={() => router.push("/search")}
@@ -455,10 +523,7 @@ export default function ProtectedNavbar() {
             ) : (
               <Link
                 href="/login"
-                className="flex items-center gap-1.5 lg:gap-2.5 text-white rounded-full px-3 lg:px-4 py-1.5 lg:py-2 transition-colors"
-                style={{
-                  background: "linear-gradient(to right, #23429B, #C52129)",
-                }}
+                className="flex items-center gap-1.5 lg:gap-2.5 text-white rounded-full px-3 lg:px-4 py-1.5 lg:py-2 transition-colors bg-[#C52129] hover:bg-[#A91826]"
               >
                 <svg
                   className="w-4 h-4 lg:w-5 lg:h-5"
@@ -479,73 +544,6 @@ export default function ProtectedNavbar() {
           </div>
         </div>
       </nav>
-
-      {/* Navigation Menu */}
-      <div className="hidden md:flex justify-center bg-white">
-        <div className="inline-flex items-center gap-4 lg:gap-8 px-4 lg:px-8 py-3 lg:py-4 bg-white rounded-b-2xl shadow-sm relative z-50">
-          <button
-            onClick={() => setIsCategoriesOpen(!isCategoriesOpen)}
-            className="flex items-center gap-2 text-xs lg:text-sm font-medium text-gray-700 hover:text-gray-900 hover:cursor-pointer"
-          >
-            CATEGORIES
-            <svg
-              className={`w-3 h-3 lg:w-4 lg:h-4 transition-transform ${
-                isCategoriesOpen ? "rotate-180" : ""
-              }`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 9l-7 7-7-7"
-              />
-            </svg>
-          </button>
-          <button
-            onClick={() => {
-              if (pathname === "/") {
-                document
-                  .getElementById("flash-sale")
-                  ?.scrollIntoView({ behavior: "smooth" });
-              } else {
-                router.push("/#flash-sale");
-              }
-            }}
-            className="text-xs lg:text-sm font-medium text-gray-700 hover:text-gray-900 cursor-pointer"
-          >
-            FLASH SALE
-          </button>
-          <button
-            onClick={() => {
-              if (pathname === "/") {
-                document
-                  .getElementById("trending")
-                  ?.scrollIntoView({ behavior: "smooth" });
-              } else {
-                router.push("/#trending");
-              }
-            }}
-            className="text-xs lg:text-sm font-medium text-gray-700 hover:text-gray-900 cursor-pointer"
-          >
-            TOP SALES
-          </button>
-          <Link
-            href="/about-us"
-            className="text-xs lg:text-sm font-medium text-gray-700 hover:text-gray-900 cursor-pointer"
-          >
-            ABOUT US
-          </Link>
-          <Link
-            href="/contact-us"
-            className="text-xs lg:text-sm font-medium text-gray-700 hover:text-gray-900 cursor-pointer"
-          >
-            CONTACT US
-          </Link>
-        </div>
-      </div>
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
@@ -659,7 +657,7 @@ export default function ProtectedNavbar() {
         <div
           className="fixed left-0 right-0 z-40
            flex justify-center px-4 lg:px-6"
-          style={{ top: "160px" }}
+          style={{ top: "96px" }}
         >
           <div
             className="bg-white rounded-2xl lg:rounded-3xl shadow-2xl overflow-hidden w-full max-w-6xl"
