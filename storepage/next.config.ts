@@ -5,6 +5,12 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
+        hostname: 'media.lbfrozenfood.com',
+        port: '',
+        pathname: '/lb-frozen/**',
+      },
+      {
+        protocol: 'https',
         hostname: 'bucket-production-e243.up.railway.app',
         port: '',
         pathname: '/lb-frozen/**',
