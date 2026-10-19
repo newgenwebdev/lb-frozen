@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
@@ -29,6 +30,7 @@ export function AddToCartSuccessDialog({
   onOpenChange,
   product,
 }: AddToCartSuccessDialogProps) {
+  const t = useTranslations("AddToCart");
   const router = useRouter();
 
   const handleGoToCart = () => {
@@ -50,7 +52,7 @@ export function AddToCartSuccessDialog({
           <div className="w-40 h-40 relative">
             <Image
               src="/illustration-shopping-bag.png"
-              alt="Shopping bag"
+              alt={t("illustrationAlt")}
               width={200}
               height={160}
               className="mx-auto"
@@ -60,11 +62,10 @@ export function AddToCartSuccessDialog({
           {/* Success Title */}
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              Success add to cart
+              {t("title")}
             </h2>
             <p className="text-gray-500 text-sm">
-              Check now and buy immediately, beware that the stock will run out
-              soon!
+              {t("description")}
             </p>
           </div>
 
@@ -118,14 +119,14 @@ export function AddToCartSuccessDialog({
               onClick={handleGoToCart}
               className="w-full bg-linear-to-r from-indigo-600 to-rose-600 hover:from-indigo-700 hover:to-rose-700 text-white font-medium py-6 rounded-xl text-base"
             >
-              Go to cart
+              {t("goToCart")}
             </Button>
             <Button
               onClick={handleContinueExplore}
               variant="outline"
               className="w-full border-gray-300 text-gray-700 font-medium py-6 rounded-xl hover:bg-gray-50 text-base"
             >
-              Continue explore
+              {t("continueExplore")}
             </Button>
           </div>
         </div>

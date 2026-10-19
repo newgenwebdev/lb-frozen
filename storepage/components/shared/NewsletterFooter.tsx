@@ -1,7 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 export default function NewsletterFooter() {
+  const t = useTranslations("Footer");
+
   return (
     <div className="relative bg-linear-to-b from-[#C52129] via-[#8B3A8F] to-[#4A5BAC] overflow-hidden">
       {/* Three Elliptical Rings - Desktop */}
@@ -87,7 +90,7 @@ export default function NewsletterFooter() {
       >
         <Image
           src="/octopus-bg-removed.png"
-          alt="Octopus"
+          alt={t("octopusAlt")}
           fill
           className="object-contain"
         />
@@ -106,7 +109,7 @@ export default function NewsletterFooter() {
       >
         <Image
           src="/octopus-bg-removed.png"
-          alt="Octopus"
+          alt={t("octopusAlt")}
           fill
           className="object-contain"
         />
@@ -119,7 +122,7 @@ export default function NewsletterFooter() {
             <div className="w-16 h-16 lg:w-20 lg:h-20 flex items-center">
               <Image
                 src="/lb-logo.png"
-                alt="LB Logo"
+                alt={t("logoAlt")}
                 width={200}
                 height={200}
                 className="object-contain"
@@ -129,22 +132,20 @@ export default function NewsletterFooter() {
           </div>
 
           <h2 className="text-3xl lg:text-4xl font-bold text-white mb-3 lg:mb-4">
-            Stay connected
+            {t("stayConnected")}
           </h2>
           <p className="text-white text-sm lg:text-base text-opacity-90 mb-6 lg:mb-8 leading-relaxed">
-            Sign up for our newsletter to receive the latest news, updates, and
-            insights on new products, flash sale, discount and moreg reat things
-            from us
+            {t("newsletterText")}
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 mb-5">
             <input
               type="email"
-              placeholder="Enter your mail"
+              placeholder={t("emailPlaceholder")}
               className="flex-1 px-4 lg:px-6 py-2.5 lg:py-3 rounded-full bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white text-sm lg:text-base"
             />
             <button className="bg-[#C52129] text-white px-6 lg:px-8 py-2.5 lg:py-3 rounded-full font-semibold hover:bg-[#A01C22] transition-colors text-sm lg:text-base">
-              Subscribe
+              {t("subscribe")}
             </button>
           </div>
         </div>
@@ -156,31 +157,31 @@ export default function NewsletterFooter() {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 lg:gap-8 mb-8">
             {/* Discover */}
             <div>
-              <h3 className="font-semibold text-gray-900 mb-3 lg:mb-4 text-sm lg:text-base">Discover</h3>
+              <h3 className="font-semibold text-gray-900 mb-3 lg:mb-4 text-sm lg:text-base">{t("discover.title")}</h3>
               <ul className="space-y-2 text-xs lg:text-sm text-gray-600">
                 <li>
                   <Link href="/faqs" className="hover:text-gray-900">
-                    FAQ Section
+                    {t("discover.faq")}
                   </Link>
                 </li>
                 <li>
                   <a href="#" className="hover:text-gray-900">
-                    Order Tracking
+                    {t("discover.orderTracking")}
                   </a>
                 </li>
                 <li>
                   <Link href="/refund-policy" className="hover:text-gray-900">
-                    Refund Policy
+                    {t("discover.refundPolicy")}
                   </Link>
                 </li>
                 <li>
                   <Link href="/delivery-details" className="hover:text-gray-900">
-                    Delivery Details
+                    {t("discover.deliveryDetails")}
                   </Link>
                 </li>
                 <li>
                   <a href="#" className="hover:text-gray-900">
-                    Customer Service
+                    {t("discover.customerService")}
                   </a>
                 </li>
               </ul>
@@ -189,32 +190,32 @@ export default function NewsletterFooter() {
             {/* Seafood Selection */}
             <div>
               <h3 className="font-semibold text-gray-900 mb-3 lg:mb-4 text-sm lg:text-base">
-                Seafood Selection
+                {t("seafoodSelection.title")}
               </h3>
               <ul className="space-y-2 text-xs lg:text-sm text-gray-600">
                 <li>
                   <a href="#" className="hover:text-gray-900">
-                    Product Categories
+                    {t("seafoodSelection.productCategories")}
                   </a>
                 </li>
                 <li>
                   <a href="#" className="hover:text-gray-900">
-                    Weekly Specials
+                    {t("seafoodSelection.weeklySpecials")}
                   </a>
                 </li>
                 <li>
                   <a href="#" className="hover:text-gray-900">
-                    Seasonal Offers
+                    {t("seafoodSelection.seasonalOffers")}
                   </a>
                 </li>
                 <li>
                   <a href="#" className="hover:text-gray-900">
-                    Cooking Tips
+                    {t("seafoodSelection.cookingTips")}
                   </a>
                 </li>
                 <li>
                   <a href="#" className="hover:text-gray-900">
-                    Customer Testimonials
+                    {t("seafoodSelection.testimonials")}
                   </a>
                 </li>
               </ul>
@@ -223,32 +224,32 @@ export default function NewsletterFooter() {
             {/* Sustainability */}
             <div>
               <h3 className="font-semibold text-gray-900 mb-3 lg:mb-4 text-sm lg:text-base">
-                Sustainability
+                {t("sustainability.title")}
               </h3>
               <ul className="space-y-2 text-xs lg:text-sm text-gray-600">
                 <li>
                   <a href="#" className="hover:text-gray-900">
-                    Eco-friendly sourcing
+                    {t("sustainability.ecoSourcing")}
                   </a>
                 </li>
                 <li>
                   <a href="#" className="hover:text-gray-900">
-                    Community support
+                    {t("sustainability.community")}
                   </a>
                 </li>
                 <li>
                   <a href="#" className="hover:text-gray-900">
-                    Ocean conservation
+                    {t("sustainability.ocean")}
                   </a>
                 </li>
                 <li>
                   <a href="#" className="hover:text-gray-900">
-                    Local fishing
+                    {t("sustainability.localFishing")}
                   </a>
                 </li>
                 <li>
                   <a href="#" className="hover:text-gray-900">
-                    Partnerships
+                    {t("sustainability.partnerships")}
                   </a>
                 </li>
               </ul>
@@ -257,32 +258,32 @@ export default function NewsletterFooter() {
             {/* Ordering Process */}
             <div>
               <h3 className="font-semibold text-gray-900 mb-3 lg:mb-4 text-sm lg:text-base">
-                Ordering Process
+                {t("ordering.title")}
               </h3>
               <ul className="space-y-2 text-xs lg:text-sm text-gray-600">
                 <li>
                   <a href="#" className="hover:text-gray-900">
-                    How to Order
+                    {t("ordering.howToOrder")}
                   </a>
                 </li>
                 <li>
                   <a href="#" className="hover:text-gray-900">
-                    Payment Options
+                    {t("ordering.paymentOptions")}
                   </a>
                 </li>
                 <li>
                   <a href="#" className="hover:text-gray-900">
-                    Shipping Information
+                    {t("ordering.shippingInfo")}
                   </a>
                 </li>
                 <li>
                   <a href="#" className="hover:text-gray-900">
-                    Order Confirmation
+                    {t("ordering.orderConfirmation")}
                   </a>
                 </li>
                 <li>
                   <a href="#" className="hover:text-gray-900">
-                    Contact Support
+                    {t("ordering.contactSupport")}
                   </a>
                 </li>
               </ul>
@@ -291,32 +292,32 @@ export default function NewsletterFooter() {
             {/* Fresh Deliveries */}
             <div>
               <h3 className="font-semibold text-gray-900 mb-3 lg:mb-4 text-sm lg:text-base">
-                Fresh Deliveries
+                {t("deliveries.title")}
               </h3>
               <ul className="space-y-2 text-xs lg:text-sm text-gray-600">
                 <li>
                   <a href="#" className="hover:text-gray-900">
-                    Same-Day Shipping
+                    {t("deliveries.sameDay")}
                   </a>
                 </li>
                 <li>
                   <a href="#" className="hover:text-gray-900">
-                    Subscription Service
+                    {t("deliveries.subscription")}
                   </a>
                 </li>
                 <li>
                   <a href="#" className="hover:text-gray-900">
-                    Quality Assurance
+                    {t("deliveries.quality")}
                   </a>
                 </li>
                 <li>
                   <a href="#" className="hover:text-gray-900">
-                    Seafood Recipes
+                    {t("deliveries.recipes")}
                   </a>
                 </li>
                 <li>
                   <a href="#" className="hover:text-gray-900">
-                    Cooking Classes
+                    {t("deliveries.classes")}
                   </a>
                 </li>
               </ul>
@@ -325,7 +326,7 @@ export default function NewsletterFooter() {
 
           {/* Bottom Footer */}
           <div className="border-t border-gray-200 pt-4 lg:pt-6 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 text-xs lg:text-sm text-gray-600">
-            <p>© 2025 - Alright reserved by Bartar</p>
+            <p>{t("copyright")}</p>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 lg:gap-6">
               <a
                 href="mailto:bartar.official@gmail.com"
