@@ -130,5 +130,232 @@
       "classes": "Cooking Classes"
     },
     "copyright": "© 2025 - All rights reserved by Bartar"
+  },
+  "HomeRedesign": {
+    "header": {
+      "brandSubtitle": "Frozen Food · Wholesale & Retail",
+      "logoAlt": "LB Frozen Food logo",
+      "nav": {
+        "products": "Products",
+        "process": "Cold chain",
+        "customers": "Who we serve",
+        "ordering": "How to order",
+        "about": "About us",
+        "contact": "Contact"
+      },
+      "cart": "Cart",
+      "login": "Login",
+      "account": "My account",
+      "openMenu": "Open menu",
+      "closeMenu": "Close menu"
+    },
+    "hero": {
+      "wholesale": "Wholesale",
+      "wholesaleText": "for food businesses",
+      "retail": "Retail",
+      "retailText": "walk-in customers welcome",
+      "titleLine1": "Frozen food wholesale & delivery",
+      "titleLine2": "so your kitchen never runs out",
+      "intro": "We supply restaurants, steamboat shops and grocers across the Klang Valley with fish balls and steamboat items, dim sum, fried snacks, seafood and meat. Order on WhatsApp and we deliver by refrigerated truck. Walk-in customers are welcome to collect from our warehouse at retail prices.",
+      "ctaQuote": "Request a quote",
+      "ctaProducts": "View product range",
+      "notes": {
+        "minOrder": "Wholesale delivery from RM300",
+        "noMinimum": "No minimum for retail pickup",
+        "sameDay": "Same-day confirmation"
+      },
+      "features": {
+        "coldChain": {
+          "title": "Cold chain end to end",
+          "description": "−25°C to +4°C, temperature logged at every step"
+        },
+        "onTime": {
+          "title": "On-time delivery",
+          "description": "Order before 4pm, delivered the next working day"
+        },
+        "both": {
+          "title": "Wholesale or retail",
+          "description": "Bulk supply for businesses, pickup for walk-in customers"
+        },
+        "certified": {
+          "title": "Certified & compliant",
+          "description": "HALAL / MeSTI certified products"
+        }
+      }
+    },
+    "products": {
+      "title": "Product range",
+      "description": "Around 400 items in regular stock. Ask us for the full price list and tell us which categories you need.",
+      "add": "Add to list",
+      "added": "Added",
+      "items": {
+        "steamboat": {
+          "name": "Steamboat & surimi",
+          "subtitle": "火锅料 / 鱼丸类",
+          "examples": "Fish balls, beancurd rolls, cheese tofu, lobster balls, fried wonton, meatballs."
+        },
+        "dimsum": {
+          "name": "Dim sum",
+          "subtitle": "点心类",
+          "examples": "Siu mai, har gow, char siu bao, spring rolls, curry puffs."
+        },
+        "fries": {
+          "name": "Fries & snacks",
+          "subtitle": "薯类炸物",
+          "examples": "Straight-cut fries, shoestring fries, hash browns, chicken nuggets, onion rings."
+        },
+        "seafood": {
+          "name": "Seafood",
+          "subtitle": "冷冻海鲜",
+          "examples": "White prawns, squid rings, dory fillets, basa fillets, mussels, crab sticks."
+        },
+        "meat": {
+          "name": "Meat & poultry",
+          "subtitle": "肉类家禽",
+          "examples": "Whole and cut chicken, sliced beef and lamb, sausages, marinated meats."
+        },
+        "chilled": {
+          "name": "Chilled & dry goods",
+          "subtitle": "冷藏与干货",
+          "examples": "Sauces, steamboat dips, cooking oil, packaging and disposable tableware."
+        }
+      }
+    },
+    "process": {
+      "title": "How does an order get delivered?",
+      "description": "Four stages, cold chain all the way, and the driver calls before arriving. (Order before 4pm for next-working-day delivery.)",
+      "steps": {
+        "received": {
+          "title": "Order received",
+          "body": "Once we receive your order we start preparing it right away. Our team picks every item, then sorts, checks and packs it so nothing is missing."
+        },
+        "hub": {
+          "title": "Sent to the transport hub",
+          "body": "Every package travels by refrigerated truck to our transport hub, which has cold-room storage to keep products in top condition."
+        },
+        "routed": {
+          "title": "Routed by area",
+          "body": "The hub sorts orders by delivery area and assigns drivers. Before setting off, the driver contacts the receiving person so someone is ready to accept the goods."
+        },
+        "delivered": {
+          "title": "Delivered safely",
+          "body": "When the goods arrive, please check them on the spot. If anything is damaged, missing or the quantity is wrong, WhatsApp our customer service right away and we'll sort it out."
+        }
+      }
+    },
+    "customers": {
+      "title": "Who we serve",
+      "description": "From single outlets to small chains, and home cooks too.",
+      "types": {
+        "restaurants": "Restaurants & kopitiams",
+        "steamboat": "Steamboat restaurants",
+        "cafes": "Cafés & snack bars",
+        "minimarts": "Mini markets",
+        "canteens": "School & factory canteens",
+        "catering": "Caterers",
+        "resellers": "Sub-wholesalers",
+        "retail": "Retail walk-in customers"
+      },
+      "stats": {
+        "founded": "Year founded",
+        "items": "Items in stock",
+        "years": "Years in the trade",
+        "clients": "Long-term customers"
+      }
+    },
+    "about": {
+      "title": "About us",
+      "lead": "LB Frozen Food Marketing is a family-run frozen food wholesaler in Sri Damansara, Kuala Lumpur, specialising in frozen seafood and food-service ingredients.",
+      "story1": "We registered in 2005 and started with two people and one van, delivering fish balls to kopitiams. Twenty years on we have our own cold rooms and fleet, but the way we work hasn't changed: a real person answers the phone, we remember what our customers cook, and we deliver before they open.",
+      "story2": "If something is out of stock, we tell you the same day and suggest a substitute. We'd rather sell one item less than have your kitchen find out at 6pm."
+    },
+    "ordering": {
+      "title": "How to order",
+      "description": "Businesses can order on WhatsApp for delivery; walk-in customers can buy at retail prices at our warehouse.",
+      "columns": {
+        "order": {
+          "title": "Ordering",
+          "items": {
+            "b1": "Send us your order by WhatsApp or phone.",
+            "b2": "For your first order we'll send our price list and set your delivery day.",
+            "b3": "Order before 4pm for delivery the next working day.",
+            "b4": "Minimum RM300 for delivery; no minimum for pickup.",
+            "b5": "Walk-in customers: just come by during opening hours, no need to order ahead."
+          }
+        },
+        "payment": {
+          "title": "Payment",
+          "items": {
+            "b1": "Cash or DuitNow on delivery.",
+            "b2": "Bank transfer to our company account.",
+            "b3": "Regular customers can apply for 30-day credit terms.",
+            "b4": "An invoice comes with every delivery."
+          }
+        },
+        "delivery": {
+          "title": "Delivery & returns",
+          "items": {
+            "b1": "Fixed routes across the Klang Valley with regular weekly deliveries.",
+            "b2": "Refrigerated trucks all the way, so goods arrive frozen.",
+            "b3": "Please check goods on delivery and tell the driver about any problem.",
+            "b4": "Damaged or thawed goods are replaced free of charge."
+          }
+        }
+      }
+    },
+    "quote": {
+      "title": "Request a quote",
+      "description": "Fill in the form and press the button. WhatsApp opens with your message already written.",
+      "name": "Contact person",
+      "namePlaceholder": "e.g. Mr. Liew",
+      "company": "Shop / company",
+      "companyPlaceholder": "e.g. Good Taste Steamboat",
+      "phone": "Phone number",
+      "phonePlaceholder": "012-345 6789",
+      "categories": "Categories needed",
+      "addCategory": "Add a category…",
+      "noCategories": "No categories selected yet",
+      "removeCategory": "Remove {name}",
+      "notes": "Notes",
+      "notesPlaceholder": "e.g. Deliveries on Tue & Fri; send prices for prawns and fish balls first.",
+      "submit": "Send via WhatsApp",
+      "privacy": "This form doesn't store any data; the details go straight into a WhatsApp message.",
+      "nameRequired": "Please enter a contact person",
+      "phoneRequired": "Please enter a phone number",
+      "listSeparator": ", ",
+      "message": {
+        "greeting": "Hi LB Frozen Food, I'd like to request a quote.",
+        "name": "Contact person: {value}",
+        "company": "Shop / company: {value}",
+        "phone": "Phone: {value}",
+        "categories": "Categories needed: {value}",
+        "notes": "Notes: {value}"
+      }
+    },
+    "contact": {
+      "title": "Contact us",
+      "description": "Call, WhatsApp or visit our warehouse.",
+      "phone": "WhatsApp / Phone",
+      "email": "Email",
+      "warehouse": "Warehouse",
+      "hours": "Ordering & pickup hours",
+      "hoursOpen": "Monday – Saturday, 8:00am – 5:30pm",
+      "hoursClosed": "Closed on Sundays and public holidays",
+      "info": {
+        "registeredName": "Registered name",
+        "registrationNo": "Company reg. no.",
+        "warehouse": "Warehouse",
+        "warehouseValue": "Sri Damansara, Kuala Lumpur",
+        "deliveryArea": "Delivery area",
+        "deliveryAreaValue": "Klang Valley",
+        "payment": "Payment",
+        "paymentValue": "Cash, DuitNow, 30-day credit"
+      },
+      "copyright": "© {year} LB Frozen Food Marketing Sdn Bhd",
+      "tagline": "廖兄弟冷藏食品有限公司 · Kuala Lumpur, Malaysia"
+    },
+    "quoteButton": {
+      "label": "Quote list ({count})"
+    }
   }
 }

@@ -130,5 +130,232 @@
       "classes": "烹饪课程"
     },
     "copyright": "© 2025 - Bartar 版权所有"
+  },
+  "HomeRedesign": {
+    "header": {
+      "brandSubtitle": "廖兄弟冷藏食品 · 批发零售",
+      "logoAlt": "LB Frozen Food 标志",
+      "nav": {
+        "products": "产品系列",
+        "process": "冷链流程",
+        "customers": "服务对象",
+        "ordering": "订货方式",
+        "about": "关于我们",
+        "contact": "联系询价"
+      },
+      "cart": "购物车",
+      "login": "登录",
+      "account": "我的账户",
+      "openMenu": "打开菜单",
+      "closeMenu": "关闭菜单"
+    },
+    "hero": {
+      "wholesale": "批发",
+      "wholesaleText": "供应餐饮商家",
+      "retail": "零售",
+      "retailText": "也欢迎散客自取",
+      "titleLine1": "冷冻食品批发配送",
+      "titleLine2": "让厨房不再担心断货",
+      "intro": "我们为巴生谷一带的餐厅、火锅店与杂货店供应鱼丸火锅料、点心、炸物、海鲜与肉类。WhatsApp 下单，冷藏车送货。散客也欢迎以零售价到仓库自取。",
+      "ctaQuote": "索取报价单",
+      "ctaProducts": "查看产品系列",
+      "notes": {
+        "minOrder": "批发送货最低 RM300",
+        "noMinimum": "零售自取不设最低消费",
+        "sameDay": "当天确认"
+      },
+      "features": {
+        "coldChain": {
+          "title": "全程冷链",
+          "description": "−25°C 至 +4°C，每一步都测温记录"
+        },
+        "onTime": {
+          "title": "准时配送",
+          "description": "下午 4 点前下单，隔个工作日送达"
+        },
+        "both": {
+          "title": "批发零售皆可",
+          "description": "商家批量供货，散客也可自取"
+        },
+        "certified": {
+          "title": "认证合规",
+          "description": "HALAL / MeSTI 认证货品"
+        }
+      }
+    },
+    "products": {
+      "title": "产品系列",
+      "description": "常备品项约 400 种，完整价目表可向我们索取，注明需要的类别即可。",
+      "add": "加入清单",
+      "added": "已加入",
+      "items": {
+        "steamboat": {
+          "name": "火锅料 / 鱼丸类",
+          "subtitle": "Steamboat & surimi",
+          "examples": "鱼丸、腐竹卷、芝士豆腐、龙虾丸、炸云吞、贡丸。"
+        },
+        "dimsum": {
+          "name": "点心类",
+          "subtitle": "Dim sum",
+          "examples": "烧卖、虾饺、叉烧包、春卷、咖喱角。"
+        },
+        "fries": {
+          "name": "薯类炸物",
+          "subtitle": "Fries & snacks",
+          "examples": "直切薯条、细薯条、薯饼、鸡块、洋葱圈。"
+        },
+        "seafood": {
+          "name": "冷冻海鲜",
+          "subtitle": "Seafood",
+          "examples": "白虾、苏东圈、多利鱼柳、巴沙鱼片、青口、蟹柳。"
+        },
+        "meat": {
+          "name": "肉类家禽",
+          "subtitle": "Meat & poultry",
+          "examples": "全鸡与分割鸡、牛羊肉片、香肠、腌制肉品。"
+        },
+        "chilled": {
+          "name": "冷藏与干货",
+          "subtitle": "Chilled & dry goods",
+          "examples": "酱料、火锅蘸酱、食用油、包装与一次性餐具。"
+        }
+      }
+    },
+    "process": {
+      "title": "一张订单怎么配送？",
+      "description": "四个环节，全程冷链配送，司机送达前会先联系你。（下午 4 点前下单，隔个工作日送达）",
+      "steps": {
+        "received": {
+          "title": "收到订单",
+          "body": "收到订单后，我们将立即安排备货。工作人员根据订单内容准备所有产品，并完成分类、检查及包装，确保货品完整。"
+        },
+        "hub": {
+          "title": "准备送往运输中心",
+          "body": "所有包裹将由冷藏车运送至运输中心。运输中心配备冷库存放设施，确保产品在配送过程中保持最佳状态。"
+        },
+        "routed": {
+          "title": "运输中心按地区安排配送",
+          "body": "运输中心根据配送区域进行分拣，并安排司机进行配送。司机出发前将提前联系收货联系人，方便安排接收货品。"
+        },
+        "delivered": {
+          "title": "包裹安全送达",
+          "body": "货物送达后，请立即现场检查产品。如发现货品损坏、遗漏或数量不符，请第一时间通过 WhatsApp 联系客服，我们将及时协助处理。"
+        }
+      }
+    },
+    "customers": {
+      "title": "服务对象",
+      "description": "从单店到小型连锁，也欢迎自家厨房的散客。",
+      "types": {
+        "restaurants": "餐厅与茶餐室",
+        "steamboat": "火锅店",
+        "cafes": "咖啡厅与小食馆",
+        "minimarts": "迷你市场",
+        "canteens": "学校与工厂食堂",
+        "catering": "宴会承办",
+        "resellers": "二级批发商",
+        "retail": "零售自取散客"
+      },
+      "stats": {
+        "founded": "创立年份",
+        "items": "常备品项",
+        "years": "入行年数",
+        "clients": "长期客户"
+      }
+    },
+    "about": {
+      "title": "关于我们",
+      "lead": "廖兄弟冷藏食品有限公司是一家位于吉隆坡 Sri Damansara 的家族式冷冻食品批发商，专做冷冻海鲜与餐饮食材。",
+      "story1": "公司在 2005 年注册，从两个人、一辆车、给茶餐室送鱼丸开始做起。二十年后我们有自己的冷库和车队，但做法没变：电话接得到人，记得客户在煮什么，赶在开档前把货送到。",
+      "story2": "缺货我们当天就通知，并建议替代品。宁可少卖一样，也不让你的厨房在傍晚六点才发现。"
+    },
+    "ordering": {
+      "title": "订货方式",
+      "description": "商家可 WhatsApp 下单送货，散客也可以直接上门以零售价购买。",
+      "columns": {
+        "order": {
+          "title": "下单",
+          "items": {
+            "b1": "WhatsApp 或电话报货单给我们。",
+            "b2": "首次订货我们会发价目表，并定下你的送货日。",
+            "b3": "下午 4 点前下单，下一个工作日送达。",
+            "b4": "送货最低 RM300，自取不设最低消费。",
+            "b5": "散客：营业时间内直接上门即可，不必预先下单。"
+          }
+        },
+        "payment": {
+          "title": "付款",
+          "items": {
+            "b1": "送货时现金或 DuitNow。",
+            "b2": "银行转账至公司户口。",
+            "b3": "长期客户可申请月结 30 天。",
+            "b4": "每次送货附上发票。"
+          }
+        },
+        "delivery": {
+          "title": "送货与退换",
+          "items": {
+            "b1": "巴生谷一带固定路线，每周定期配送。",
+            "b2": "全程冷藏车，货到仍是冻的。",
+            "b3": "请当场验货，有问题直接告诉司机。",
+            "b4": "破损或解冻的货品免费换货。"
+          }
+        }
+      }
+    },
+    "quote": {
+      "title": "索取报价单",
+      "description": "填好后按下按钮，会直接打开 WhatsApp，内容已经帮你写好。",
+      "name": "联络人",
+      "namePlaceholder": "例：廖先生",
+      "company": "店号／公司",
+      "companyPlaceholder": "例：好味火锅",
+      "phone": "联络电话",
+      "phonePlaceholder": "012-345 6789",
+      "categories": "需要的类别",
+      "addCategory": "添加类别…",
+      "noCategories": "尚未选择类别",
+      "removeCategory": "移除{name}",
+      "notes": "备注",
+      "notesPlaceholder": "例：每周二、五送货，先要虾和鱼丸的价钱。",
+      "submit": "用 WhatsApp 发送",
+      "privacy": "此表格不会储存资料，内容直接带入 WhatsApp 讯息。",
+      "nameRequired": "请填写联络人",
+      "phoneRequired": "请填写联络电话",
+      "listSeparator": "、",
+      "message": {
+        "greeting": "您好，我想索取报价单。",
+        "name": "联络人：{value}",
+        "company": "店号／公司：{value}",
+        "phone": "联络电话：{value}",
+        "categories": "需要的类别：{value}",
+        "notes": "备注：{value}"
+      }
+    },
+    "contact": {
+      "title": "联系询价",
+      "description": "欢迎来电、WhatsApp 或直接到仓库。",
+      "phone": "WhatsApp ／ 电话",
+      "email": "电邮",
+      "warehouse": "仓库",
+      "hours": "下单与自取时间",
+      "hoursOpen": "星期一至六 8:00am – 5:30pm",
+      "hoursClosed": "星期日与公共假期休息",
+      "info": {
+        "registeredName": "注册名称",
+        "registrationNo": "公司注册号",
+        "warehouse": "仓库地址",
+        "warehouseValue": "吉隆坡 斯里白沙罗",
+        "deliveryArea": "配送范围",
+        "deliveryAreaValue": "巴生谷一带",
+        "payment": "付款方式",
+        "paymentValue": "现金、DuitNow、月结 30 天"
+      },
+      "copyright": "© {year} LB Frozen Food Marketing Sdn Bhd",
+      "tagline": "廖兄弟冷藏食品有限公司 · 马来西亚吉隆坡"
+    },
+    "quoteButton": {
+      "label": "报价清单（{count}）"
+    }
   }
 }
