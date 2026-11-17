@@ -17,7 +17,16 @@ const shortLabels: Record<Locale, string> = {
   zh: "中文",
 };
 
-export default function LanguageSwitcher() {
+interface LanguageSwitcherProps {
+  // "dropdown": globe + menu (default). "toggle": square button showing the other language.
+  variant?: "dropdown" | "toggle";
+  className?: string;
+}
+
+export default function LanguageSwitcher({
+  variant = "dropdown",
+  className = "",
+}: LanguageSwitcherProps) {
   const t = useTranslations("LanguageSwitcher");
   const locale = useLocale();
   const router = useRouter();
@@ -31,6 +40,24 @@ export default function LanguageSwitcher() {
       router.refresh();
     });
   };
+
+  if (variant === "toggle") {
+    const nextLocale = locales.find((item) => item !== locale) ?? locale;
+    return (
+      <button
+        type="button"
+        aria-label={t("label")}
+        disabled={isPending}
+        onClick={() => handleChange(nextLocale)}
+        lang={nextLocale === "zh" ? "zh-CN" : "en"}
+        className={`min-w-11 h-9 px-2.5 border border-lb-line bg-white text-sm font-medium text-lb-navy hover:border-lb-navy transition-colors cursor-pointer ${
+          isPending ? "opacity-50" : ""
+        } ${className}`}
+      >
+        {shortLabels[nextLocale]}
+      </button>
+    );
+  }
 
   return (
     <DropdownMenu>

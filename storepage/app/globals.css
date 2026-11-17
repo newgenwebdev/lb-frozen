@@ -3,6 +3,24 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Homepage redesign tokens (see REDESIGN_HOMEPAGE_PLAN.md) */
+@theme {
+  --color-lb-cream: #f5f0e6;
+  --color-lb-paper: #fbf8f2;
+  --color-lb-navy: #0e1f4d;
+  --color-lb-navy-deep: #0a1838;
+  --color-lb-navy-line: #24396f;
+  --color-lb-red: #d2332a;
+  --color-lb-red-dark: #b32820;
+  --color-lb-line: #e2dccd;
+  --color-lb-muted: #5b6685;
+  --color-lb-sky: #a9bbea;
+}
+
+@theme inline {
+  --font-home: var(--font-noto-sc), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
