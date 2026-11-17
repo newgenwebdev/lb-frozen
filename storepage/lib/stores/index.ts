@@ -29,6 +29,3 @@ export type { CustomerAddress } from "./addressStore";
 // Payment Store - payment flow state
 export { usePaymentStore } from "./paymentStore";
 export type { GuestBillingAddress as PaymentGuestBillingAddress, CompletedOrder } from "./paymentStore";
-
-// Quote List Store - homepage quote request categories
-export { useQuoteListStore, useQuoteListCount } from "./quoteListStore";
