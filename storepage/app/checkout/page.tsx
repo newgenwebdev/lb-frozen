@@ -14,7 +14,7 @@ import {
 } from "@/lib/queries";
 import { useCheckoutStore } from "@/lib/stores";
 import type { Address } from "@/lib/api/types";
-import { DELIVERY_AREAS, findDeliveryArea } from "@/lib/data/deliveryZones";
+import { DELIVERY_AREAS, findDeliveryArea, ZONE_OPTION_CODE } from "@/lib/data/deliveryZones";
 import type { DeliveryArea } from "@/lib/data/deliveryZones";
 
 export default function CheckoutPage() {
@@ -92,7 +92,7 @@ export default function CheckoutPage() {
     if (!area) return;
     const areaData = findDeliveryArea(area);
     if (!areaData) return;
-    const matched = shippingOptions.find((o) => o.amount === areaData.amountCents);
+    const matched = shippingOptions.find((o) => o.type?.code === ZONE_OPTION_CODE[areaData.zone]);
     if (!matched) return;
     autoZoneRef.current = true;
     setSelectedArea(area);
@@ -114,7 +114,17 @@ export default function CheckoutPage() {
   const discountTotal = (cart?.discount_total ? cart.discount_total / 100 : 0) + membershipPromoDiscount;
   
   const selectedAreaData = selectedArea ? findDeliveryArea(selectedArea) : undefined;
-  const shippingCost = selectedAreaData ? selectedAreaData.amountCents / 100 : 0;
+  // Prefer the live shipping option's own amount (matched by its stable
+  // type.code) over the static amountCents reference value, so the
+  // displayed cost always reflects what checkout will actually charge.
+  const selectedShippingOption = selectedAreaData
+    ? shippingOptions.find((o) => o.type?.code === ZONE_OPTION_CODE[selectedAreaData.zone])
+    : undefined;
+  const shippingCost = selectedShippingOption
+    ? selectedShippingOption.amount / 100
+    : selectedAreaData
+      ? selectedAreaData.amountCents / 100
+      : 0;
 
   const total = cart?.total
     ? (cart.total / 100) - membershipPromoDiscount
@@ -147,7 +157,7 @@ export default function CheckoutPage() {
       if (area) {
         const areaData = findDeliveryArea(area);
         if (areaData) {
-          const matched = shippingOptions.find((o) => o.amount === areaData.amountCents);
+          const matched = shippingOptions.find((o) => o.type?.code === ZONE_OPTION_CODE[areaData.zone]);
           if (matched) {
             setSelectedArea(area);
             setShippingTypeError("");
@@ -345,7 +355,7 @@ export default function CheckoutPage() {
                         const areaData = findDeliveryArea(e.target.value);
                         if (!areaData) return;
                         setGuestAddress({ area: e.target.value });
-                        const matched = shippingOptions.find((o) => o.amount === areaData.amountCents);
+                        const matched = shippingOptions.find((o) => o.type?.code === ZONE_OPTION_CODE[areaData.zone]);
                         handleAreaChange(areaData, matched?.id ?? null);
                       }}
                     >

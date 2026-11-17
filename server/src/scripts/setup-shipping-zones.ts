@@ -3,9 +3,9 @@ import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { createShippingOptionsWorkflow } from "@medusajs/medusa/core-flows"
 
 const ZONE_OPTIONS = [
-  { name: "Klang Valley Zone A", amount: 1800, code: "kv-zone-a", label: "Zone A" },
-  { name: "Klang Valley Zone B", amount: 2000, code: "kv-zone-b", label: "Zone B" },
-  { name: "Klang Valley Zone C", amount: 2300, code: "kv-zone-c", label: "Zone C" },
+  { name: "Klang Valley Zone A", amount: 1300, code: "kv-zone-a", label: "Zone A" },
+  { name: "Klang Valley Zone B", amount: 1500, code: "kv-zone-b", label: "Zone B" },
+  { name: "Klang Valley Zone C", amount: 1800, code: "kv-zone-c", label: "Zone C" },
 ]
 
 export default async function setupShippingZones({ container }: ExecArgs) {

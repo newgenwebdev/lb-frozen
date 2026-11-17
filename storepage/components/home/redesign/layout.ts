@@ -8,6 +8,7 @@ export const SECTION_IDS = {
   products: "products",
   flashSale: "flash-sale",
   process: "process",
+  deliveryCheck: "delivery-check",
   customers: "customers",
   about: "about",
   ordering: "ordering",

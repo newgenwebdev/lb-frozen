@@ -138,6 +138,7 @@
       "nav": {
         "products": "产品系列",
         "process": "冷链流程",
+        "deliveryCheck": "运费查询",
         "customers": "服务对象",
         "ordering": "订货方式",
         "about": "关于我们",
@@ -242,6 +243,29 @@
           "body": "货物送达后，请立即现场检查产品。如发现货品损坏、遗漏或数量不符，请第一时间通过 WhatsApp 联系客服，我们将及时协助处理。"
         }
       }
+    },
+    "deliveryCheck": {
+      "title": "查运费",
+      "description": "输入地区，立即知道配送费",
+      "intro": "巴生谷全境配送冷冻食品，运费依地区分为三个等级。在下方输入您的地区名称（英文），马上查看运费。",
+      "searchLabel": "地区",
+      "searchPlaceholder": "例如：Puchong、Shah Alam、Rawang…",
+      "searchButton": "查询",
+      "priceAmount": "RM{price}",
+      "priceLoading": "价格加载中…",
+      "result": {
+        "foundLabel": "{area} 的配送费",
+        "notFoundTitle": "找不到该地区",
+        "notFoundBody": "我们无法匹配到配送地区清单，请通过 WhatsApp 联系我们，我们会为您确认运费。",
+        "notFoundCta": "WhatsApp 询问",
+        "notFoundMessage": "您好，我想查询「{area}」的配送费。"
+      },
+      "tiers": {
+        "areaCount": "{count} 个地区",
+        "groupTitle": "（{count} 个地区）",
+        "estimatedNote": "（预估）"
+      },
+      "disclaimer": "配送地区及运费仅供参考，实际以确认地址为准。"
     },
     "customers": {
       "title": "服务对象",

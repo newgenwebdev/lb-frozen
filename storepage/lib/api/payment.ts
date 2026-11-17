@@ -18,6 +18,12 @@ export interface ShippingOption {
   is_return: boolean;
   provider_id: string;
   data?: Record<string, any>;
+  type?: {
+    id: string;
+    label: string;
+    description: string;
+    code: string;
+  };
 }
 
 /**

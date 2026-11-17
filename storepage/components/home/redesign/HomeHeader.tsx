@@ -14,6 +14,7 @@ import { CONTAINER, SECTION_IDS, scrollToSection } from "./layout";
 const NAV_ITEMS = [
   { key: "products", id: SECTION_IDS.products },
   { key: "process", id: SECTION_IDS.process },
+  { key: "deliveryCheck", id: SECTION_IDS.deliveryCheck },
   { key: "customers", id: SECTION_IDS.customers },
   { key: "ordering", id: SECTION_IDS.ordering },
   { key: "about", id: SECTION_IDS.about },
