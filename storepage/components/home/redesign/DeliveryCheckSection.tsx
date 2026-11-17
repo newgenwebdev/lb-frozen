@@ -9,10 +9,20 @@ import {
   findDeliveryArea,
   type ZoneKey,
 } from "@/lib/data/deliveryZones";
+import { useDeliveryZonePricesQuery } from "@/lib/queries";
 import SectionHeader from "./SectionHeader";
 import { CONTAINER, SECTION_IDS } from "./layout";
 
 const ZONES: ZoneKey[] = ["A", "B", "C"];
+
+// The live Medusa shipping options are named "Klang Valley Zone A/B/C" (see
+// server/src/scripts/setup-shipping-zones.ts) and carry no zone-letter field
+// of their own, so we match on this substring.
+const ZONE_NAME_FRAGMENT: Record<ZoneKey, string> = {
+  A: "Zone A",
+  B: "Zone B",
+  C: "Zone C",
+};
 
 // Visual accent per fee tier, built only from the project's existing color tokens
 // (lb-sky / lb-navy / lb-red) — no new colors introduced.
@@ -43,6 +53,64 @@ const TIER_STYLES: Record<
   },
 };
 
+type ZonePriceState = "loading" | "live" | "fallback";
+
+// Resolve what to show for a zone's price:
+// - still fetching -> "loading" (render a skeleton, never a stale/zero number)
+// - live shipping option found for this zone -> "live" (the real DB price)
+// - fetch failed, or this zone's name wasn't in the response -> "fallback"
+//   to the static ZONE_PRICES constant, visibly marked as an estimate, so
+//   the section degrades gracefully instead of breaking for a public page.
+function resolveZonePrice(
+  zone: ZoneKey,
+  livePrices: Partial<Record<ZoneKey, number>>,
+  isLoading: boolean
+): { amountCents: number; state: ZonePriceState } {
+  if (isLoading) return { amountCents: ZONE_PRICES[zone], state: "loading" };
+  const live = livePrices[zone];
+  if (live !== undefined) return { amountCents: live, state: "live" };
+  return { amountCents: ZONE_PRICES[zone], state: "fallback" };
+}
+
+function ZonePrice({
+  zone,
+  livePrices,
+  isLoading,
+  t,
+  className,
+}: {
+  zone: ZoneKey;
+  livePrices: Partial<Record<ZoneKey, number>>;
+  isLoading: boolean;
+  t: ReturnType<typeof useTranslations>;
+  className?: string;
+}) {
+  const { amountCents, state } = resolveZonePrice(zone, livePrices, isLoading);
+
+  if (state === "loading") {
+    return (
+      <span className={`inline-flex items-center ${className ?? ""}`}>
+        <span
+          className="inline-block h-[1em] w-14 animate-pulse rounded bg-lb-line align-middle"
+          aria-hidden
+        />
+        <span className="sr-only">{t("priceLoading")}</span>
+      </span>
+    );
+  }
+
+  return (
+    <span className={className}>
+      {t("priceAmount", { price: amountCents / 100 })}
+      {state === "fallback" && (
+        <span className="ml-1 text-xs font-normal text-lb-muted">
+          {t("tiers.estimatedNote")}
+        </span>
+      )}
+    </span>
+  );
+}
+
 export default function DeliveryCheckSection() {
   const t = useTranslations("HomeRedesign.deliveryCheck");
   const [query, setQuery] = useState("");
@@ -50,6 +118,19 @@ export default function DeliveryCheckSection() {
   // appears once the user actually submits, so we don't flash an error on
   // every keystroke before a full area name has been typed.
   const [hasSearched, setHasSearched] = useState(false);
+
+  // Live per-zone prices, fetched the same way checkout does (get-or-create
+  // cart + fetch shipping options), but through its own query/key so this
+  // homepage section never shares cache lifecycle with the real checkout flow.
+  const { data: shippingOptions, isLoading: pricesLoading } = useDeliveryZonePricesQuery();
+
+  const livePrices: Partial<Record<ZoneKey, number>> = {};
+  if (shippingOptions) {
+    for (const zone of ZONES) {
+      const option = shippingOptions.find((o) => o.name.includes(ZONE_NAME_FRAGMENT[zone]));
+      if (option) livePrices[zone] = option.amount;
+    }
+  }
 
   const trimmed = query.trim();
   const match = trimmed ? findDeliveryArea(trimmed) : undefined;
@@ -108,9 +189,13 @@ export default function DeliveryCheckSection() {
                 <p className="text-sm text-lb-muted">
                   {t("result.foundLabel", { area: match.name })}
                 </p>
-                <p className="mt-1 text-2xl font-black text-lb-navy">
-                  {t("result.foundPrice", { price: ZONE_PRICES[match.zone] / 100 })}
-                </p>
+                <ZonePrice
+                  zone={match.zone}
+                  livePrices={livePrices}
+                  isLoading={pricesLoading}
+                  t={t}
+                  className="mt-1 text-2xl font-black text-lb-navy"
+                />
               </div>
             ) : (
               <div className="border border-lb-line bg-white px-6 py-5">
@@ -136,7 +221,6 @@ export default function DeliveryCheckSection() {
         <div className="mb-12 grid gap-6 sm:grid-cols-3 lg:mb-16">
           {ZONES.map((zone) => {
             const count = DELIVERY_AREAS.filter((a) => a.zone === zone).length;
-            const price = ZONE_PRICES[zone] / 100;
             return (
               <div
                 key={zone}
@@ -146,7 +230,13 @@ export default function DeliveryCheckSection() {
                   className={`inline-block h-3 w-3 rounded-full ${TIER_STYLES[zone].dot}`}
                   aria-hidden
                 />
-                <p className="mt-4 text-3xl font-black text-lb-navy">RM{price}</p>
+                <ZonePrice
+                  zone={zone}
+                  livePrices={livePrices}
+                  isLoading={pricesLoading}
+                  t={t}
+                  className="mt-4 block text-3xl font-black text-lb-navy"
+                />
                 <p className="mt-2 text-sm text-lb-muted">
                   {t("tiers.areaCount", { count })}
                 </p>
@@ -158,11 +248,13 @@ export default function DeliveryCheckSection() {
         <div className="space-y-8">
           {ZONES.map((zone) => {
             const areas = DELIVERY_AREAS.filter((a) => a.zone === zone);
-            const price = ZONE_PRICES[zone] / 100;
             return (
               <div key={zone}>
-                <h3 className="mb-4 text-base font-bold text-lb-navy">
-                  {t("tiers.groupTitle", { price, count: areas.length })}
+                <h3 className="mb-4 flex items-baseline gap-1.5 text-base font-bold text-lb-navy">
+                  <ZonePrice zone={zone} livePrices={livePrices} isLoading={pricesLoading} t={t} />
+                  <span className="font-normal text-lb-muted">
+                    {t("tiers.groupTitle", { count: areas.length })}
+                  </span>
                 </h3>
                 <ul className="flex flex-wrap gap-2">
                   {areas.map((area) => (

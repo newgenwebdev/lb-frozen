@@ -46,6 +46,11 @@ export const queryKeys = {
   
   // Shipping
   shippingOptions: (cartId: string) => ["shippingOptions", cartId] as const,
+
+  // Delivery zone prices (homepage fee checker — own key, decoupled from
+  // the real ['checkout'] cache so it doesn't share lifecycle/invalidations
+  // with the actual checkout flow)
+  deliveryZonePrices: ["deliveryZonePrices"] as const,
   
   // Addresses
   addresses: ["addresses"] as const,
@@ -689,6 +694,31 @@ export function useCheckoutQuery() {
       };
     },
     staleTime: 30 * 1000, // 30 seconds
+  });
+}
+
+// ============================================
+// DELIVERY ZONE PRICES (homepage fee checker)
+// ============================================
+
+/**
+ * Fetch the live per-zone shipping amounts for the homepage delivery-fee
+ * checker. Deliberately a separate query/key from useCheckoutQuery even
+ * though it does the same get-or-create-cart + fetch-shipping-options work:
+ * this runs for anonymous homepage visitors (not people in the checkout
+ * flow), and we don't want checkout's cache invalidations/mutations to
+ * refetch this, or vice versa. Callers match option.name against
+ * "Zone A" / "Zone B" / "Zone C" themselves (no zone field on the API shape).
+ */
+export function useDeliveryZonePricesQuery() {
+  return useQuery({
+    queryKey: queryKeys.deliveryZonePrices,
+    queryFn: async () => {
+      const cart = await api.getOrCreateCart();
+      const { shipping_options } = await api.getShippingOptions(cart.id);
+      return shipping_options;
+    },
+    staleTime: 5 * 60 * 1000, // display-only, not transaction-critical — cache longer than checkout's 30s
   });
 }
 

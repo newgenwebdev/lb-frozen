@@ -251,9 +251,10 @@
       "searchLabel": "Area",
       "searchPlaceholder": "e.g.: Puchong, Shah Alam, Rawang…",
       "searchButton": "Check",
+      "priceAmount": "RM{price}",
+      "priceLoading": "Loading price…",
       "result": {
         "foundLabel": "Delivery fee for {area}",
-        "foundPrice": "RM{price}",
         "notFoundTitle": "Area not found",
         "notFoundBody": "We couldn't match that to one of our delivery areas. Message us on WhatsApp and we'll confirm the fee for you.",
         "notFoundCta": "Ask on WhatsApp",
@@ -261,7 +262,8 @@
       },
       "tiers": {
         "areaCount": "{count} areas",
-        "groupTitle": "RM{price} ({count} areas)"
+        "groupTitle": "({count} areas)",
+        "estimatedNote": "(estimated)"
       },
       "disclaimer": "Delivery areas and fees are for reference only; the final confirmed address governs."
     },
