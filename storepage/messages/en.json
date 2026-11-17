@@ -1,0 +1,134 @@
+{
+  "LanguageSwitcher": {
+    "label": "Change language",
+    "en": "English",
+    "zh": "中文"
+  },
+  "Navbar": {
+    "logoAlt": "LB Frozen Logo",
+    "searchPlaceholder": "Search products",
+    "categories": "CATEGORIES",
+    "flashSale": "FLASH SALE",
+    "topSales": "TOP SALES",
+    "aboutUs": "ABOUT US",
+    "contactUs": "CONTACT US",
+    "allProducts": "ALL PRODUCTS",
+    "menu": "Menu",
+    "login": "Login",
+    "guest": "Guest",
+    "user": "User",
+    "myAccount": "My account",
+    "myOrders": "My orders",
+    "paymentMethod": "Payment method",
+    "myAddress": "My address",
+    "helpSupport": "Help and Support",
+    "logout": "Logout",
+    "loadingCategories": "Loading categories...",
+    "noCategories": "No categories available",
+    "discoverTrends": "Discover Seafood on Trends",
+    "trends": {
+      "salmon": "Salmon Fillets",
+      "tuna": "Tuna Fillets",
+      "barramundi": "Barramundi Fillets",
+      "cod": "Cod Fillets",
+      "snapper": "Snapper Fillets"
+    },
+    "logoutDialog": {
+      "title": "Leaving so soon?",
+      "description": "You're about to log out. Don't worry, your items will stay in the cart for later!",
+      "confirm": "Yes, log-out",
+      "cancel": "No, keep here"
+    }
+  },
+  "Home": {
+    "bannerAlt": "Banner {number}",
+    "browseCategories": "Browse categories",
+    "viewAll": "View all",
+    "flashDeals": "Today's flash deals",
+    "percentOff": "{percent}% OFF",
+    "noImage": "No Image",
+    "reviewCount": "{count, plural, one {# review} other {# reviews}}",
+    "vipPrice": "VIP Price",
+    "supplierPrice": "Supplier Price",
+    "retailPrice": "Retail Price",
+    "noFlashDeals": "No flash deals available at the moment.",
+    "browseAllProducts": "Browse all products",
+    "trendingTitle": "Products on trend this month",
+    "trendsTag": "Trends",
+    "noTrending": "No trending products available",
+    "noTrendingHint": "Check back later for trending items",
+    "topByCategories": "Top products by categories",
+    "promoBadge": "FRESH SEAFOOD, EXCLUSIVE OFFERS",
+    "promoTitle": "Enjoy up to 40%<br></br>OFF on our<br></br>selection of fresh<br></br>seafood!",
+    "promoSubtitle": "Explore the flavors that catch attention<br></br>before the deal disappears!",
+    "lobsterAlt": "Lobster",
+    "topCategory": "Top {category}",
+    "topProductsFallback": "Top Products",
+    "noCategoryProducts": "No products found in this category.",
+    "reviewsTitle": "Check out the seafood buyer, then dive into purchasing online.",
+    "noPhotoReviews": "No photo reviews yet",
+    "noPhotoReviewsHint": "Be the first to share your seafood experience!",
+    "addedToWishlist": "Added to wishlist",
+    "removedFromWishlist": "Removed from wishlist"
+  },
+  "PhotoReview": {
+    "noPhoto": "No photo",
+    "imageAlt": "Customer review"
+  },
+  "AddToCart": {
+    "illustrationAlt": "Shopping bag",
+    "title": "Success add to cart",
+    "description": "Check now and buy immediately, beware that the stock will run out soon!",
+    "goToCart": "Go to cart",
+    "continueExplore": "Continue explore"
+  },
+  "Footer": {
+    "octopusAlt": "Octopus",
+    "logoAlt": "LB Logo",
+    "stayConnected": "Stay connected",
+    "newsletterText": "Sign up for our newsletter to receive the latest news, updates, and insights on new products, flash sale, discount and more great things from us",
+    "emailPlaceholder": "Enter your email",
+    "subscribe": "Subscribe",
+    "discover": {
+      "title": "Discover",
+      "faq": "FAQ Section",
+      "orderTracking": "Order Tracking",
+      "refundPolicy": "Refund Policy",
+      "deliveryDetails": "Delivery Details",
+      "customerService": "Customer Service"
+    },
+    "seafoodSelection": {
+      "title": "Seafood Selection",
+      "productCategories": "Product Categories",
+      "weeklySpecials": "Weekly Specials",
+      "seasonalOffers": "Seasonal Offers",
+      "cookingTips": "Cooking Tips",
+      "testimonials": "Customer Testimonials"
+    },
+    "sustainability": {
+      "title": "Sustainability",
+      "ecoSourcing": "Eco-friendly sourcing",
+      "community": "Community support",
+      "ocean": "Ocean conservation",
+      "localFishing": "Local fishing",
+      "partnerships": "Partnerships"
+    },
+    "ordering": {
+      "title": "Ordering Process",
+      "howToOrder": "How to Order",
+      "paymentOptions": "Payment Options",
+      "shippingInfo": "Shipping Information",
+      "orderConfirmation": "Order Confirmation",
+      "contactSupport": "Contact Support"
+    },
+    "deliveries": {
+      "title": "Fresh Deliveries",
+      "sameDay": "Same-Day Shipping",
+      "subscription": "Subscription Service",
+      "quality": "Quality Assurance",
+      "recipes": "Seafood Recipes",
+      "classes": "Cooking Classes"
+    },
+    "copyright": "© 2025 - All rights reserved by Bartar"
+  }
+}

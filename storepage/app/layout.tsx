@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale } from "next-intl/server";
 import "./globals.css";
+import { htmlLang } from "@/i18n/config";
 import { AuthProvider } from "@/lib/AuthContext";
 import { CartProvider } from "@/lib/CartContext";
 import { WishlistProvider } from "@/lib/WishlistContext";
@@ -21,27 +24,31 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
+
   return (
-    <html lang="en">
+    <html lang={htmlLang[locale]}>
       <body
         className={`${inter.variable} font-sans antialiased`}
       >
-        <QueryProvider>
-          <AuthProvider>
-            <CartProvider>
-              <WishlistProvider>
-                <ToastProvider>
-                  {children}
-                </ToastProvider>
-              </WishlistProvider>
-            </CartProvider>
-          </AuthProvider>
-        </QueryProvider>
+        <NextIntlClientProvider>
+          <QueryProvider>
+            <AuthProvider>
+              <CartProvider>
+                <WishlistProvider>
+                  <ToastProvider>
+                    {children}
+                  </ToastProvider>
+                </WishlistProvider>
+              </CartProvider>
+            </AuthProvider>
+          </QueryProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

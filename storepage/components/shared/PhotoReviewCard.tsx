@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Heart, Star, ChevronLeft, ChevronRight } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useWishlist } from "@/lib/WishlistContext";
 
 export interface PhotoReview {
@@ -32,6 +33,7 @@ interface PhotoReviewCardProps {
 }
 
 export default function PhotoReviewCard({ review }: PhotoReviewCardProps) {
+  const t = useTranslations("PhotoReview");
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
 
@@ -87,13 +89,13 @@ export default function PhotoReviewCard({ review }: PhotoReviewCardProps) {
         {photos.length > 0 ? (
           <Image
             src={photos[currentPhotoIndex]}
-            alt={review.title || "Customer review"}
+            alt={review.title || t("imageAlt")}
             fill
             className="object-cover"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gray-200">
-            <span className="text-gray-400">No photo</span>
+            <span className="text-gray-400">{t("noPhoto")}</span>
           </div>
         )}
 

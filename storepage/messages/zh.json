@@ -1,0 +1,134 @@
+{
+  "LanguageSwitcher": {
+    "label": "切换语言",
+    "en": "English",
+    "zh": "中文"
+  },
+  "Navbar": {
+    "logoAlt": "LB Frozen 标志",
+    "searchPlaceholder": "搜索产品",
+    "categories": "产品分类",
+    "flashSale": "限时抢购",
+    "topSales": "热销产品",
+    "aboutUs": "关于我们",
+    "contactUs": "联系我们",
+    "allProducts": "全部产品",
+    "menu": "菜单",
+    "login": "登录",
+    "guest": "访客",
+    "user": "用户",
+    "myAccount": "我的账户",
+    "myOrders": "我的订单",
+    "paymentMethod": "付款方式",
+    "myAddress": "我的地址",
+    "helpSupport": "帮助与支持",
+    "logout": "退出登录",
+    "loadingCategories": "正在加载分类...",
+    "noCategories": "暂无分类",
+    "discoverTrends": "发现热门海鲜",
+    "trends": {
+      "salmon": "三文鱼片",
+      "tuna": "金枪鱼片",
+      "barramundi": "金目鲈鱼片",
+      "cod": "鳕鱼片",
+      "snapper": "鲷鱼片"
+    },
+    "logoutDialog": {
+      "title": "这么快就要走了吗？",
+      "description": "您即将退出登录。别担心，购物车里的商品会为您保留！",
+      "confirm": "是的，退出登录",
+      "cancel": "不，留在这里"
+    }
+  },
+  "Home": {
+    "bannerAlt": "横幅 {number}",
+    "browseCategories": "浏览分类",
+    "viewAll": "查看全部",
+    "flashDeals": "今日限时优惠",
+    "percentOff": "{percent}% 折扣",
+    "noImage": "暂无图片",
+    "reviewCount": "{count} 条评价",
+    "vipPrice": "VIP 价格",
+    "supplierPrice": "供应商价格",
+    "retailPrice": "零售价",
+    "noFlashDeals": "目前暂无限时优惠。",
+    "browseAllProducts": "浏览全部产品",
+    "trendingTitle": "本月热门产品",
+    "trendsTag": "热门",
+    "noTrending": "暂无热门产品",
+    "noTrendingHint": "请稍后再来查看热门商品",
+    "topByCategories": "各分类热门产品",
+    "promoBadge": "新鲜海鲜，独家优惠",
+    "promoTitle": "精选新鲜海鲜<br></br>最高享<br></br>40% 折扣！",
+    "promoSubtitle": "趁优惠结束前<br></br>品尝令人惊艳的美味！",
+    "lobsterAlt": "龙虾",
+    "topCategory": "热门{category}",
+    "topProductsFallback": "热门产品",
+    "noCategoryProducts": "此分类暂无产品。",
+    "reviewsTitle": "看看海鲜买家的分享，然后马上在线选购吧。",
+    "noPhotoReviews": "暂无图片评价",
+    "noPhotoReviewsHint": "成为第一个分享海鲜体验的人吧！",
+    "addedToWishlist": "已加入心愿单",
+    "removedFromWishlist": "已从心愿单移除"
+  },
+  "PhotoReview": {
+    "noPhoto": "暂无照片",
+    "imageAlt": "顾客评价"
+  },
+  "AddToCart": {
+    "illustrationAlt": "购物袋",
+    "title": "成功加入购物车",
+    "description": "立即查看并购买，库存即将售罄！",
+    "goToCart": "前往购物车",
+    "continueExplore": "继续浏览"
+  },
+  "Footer": {
+    "octopusAlt": "章鱼",
+    "logoAlt": "LB 标志",
+    "stayConnected": "保持联系",
+    "newsletterText": "订阅我们的电子报，获取最新消息、新品资讯、限时抢购、折扣优惠以及更多精彩内容",
+    "emailPlaceholder": "请输入您的电子邮箱",
+    "subscribe": "订阅",
+    "discover": {
+      "title": "探索",
+      "faq": "常见问题",
+      "orderTracking": "订单追踪",
+      "refundPolicy": "退款政策",
+      "deliveryDetails": "配送详情",
+      "customerService": "客户服务"
+    },
+    "seafoodSelection": {
+      "title": "海鲜精选",
+      "productCategories": "产品分类",
+      "weeklySpecials": "每周特惠",
+      "seasonalOffers": "季节优惠",
+      "cookingTips": "烹饪技巧",
+      "testimonials": "顾客好评"
+    },
+    "sustainability": {
+      "title": "可持续发展",
+      "ecoSourcing": "环保采购",
+      "community": "社区支持",
+      "ocean": "海洋保护",
+      "localFishing": "本地渔业",
+      "partnerships": "合作伙伴"
+    },
+    "ordering": {
+      "title": "订购流程",
+      "howToOrder": "如何下单",
+      "paymentOptions": "付款选项",
+      "shippingInfo": "配送信息",
+      "orderConfirmation": "订单确认",
+      "contactSupport": "联系客服"
+    },
+    "deliveries": {
+      "title": "新鲜配送",
+      "sameDay": "当日发货",
+      "subscription": "订阅服务",
+      "quality": "品质保证",
+      "recipes": "海鲜食谱",
+      "classes": "烹饪课程"
+    },
+    "copyright": "© 2025 - Bartar 版权所有"
+  }
+}
