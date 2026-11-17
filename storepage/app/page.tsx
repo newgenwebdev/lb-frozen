@@ -8,7 +8,6 @@ import { AddToCartSuccessDialog } from "@/components/shared/AddToCartSuccessDial
 import PhotoReviewCard from "@/components/shared/PhotoReviewCard";
 import { useProductsQuery, useCategoriesQuery, useFeaturedReviewsQuery } from "@/lib/queries";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useAuthContext } from "@/lib/AuthContext";
 import { useCartContext } from "@/lib/CartContext";
@@ -18,11 +17,10 @@ import { useToast } from "@/components/ui/toast";
 import type { FeaturedReview } from "@/lib/api/reviews";
 
 export default function LandingPage() {
-  const t = useTranslations("Home");
   const router = useRouter();
   const { role, isVIP, isSupplier } = useAuthContext();
   const showRolePrice = isVIP || isSupplier;
-  const rolePriceLabel = isVIP ? t("vipPrice") : isSupplier ? t("supplierPrice") : "";
+  const rolePriceLabel = isVIP ? "VIP Price" : isSupplier ? "Supplier Price" : "";
   const { data: featuredProductsData, isLoading: productsLoading } = useProductsQuery({ limit: 12 });
   const featuredProducts = featuredProductsData?.products || [];
   const { data: categoriesData, isLoading: categoriesLoading } = useCategoriesQuery();
@@ -218,7 +216,7 @@ export default function LandingPage() {
     
     if (isInWishlist(product.id)) {
       removeFromWishlist(product.id);
-      showToast(t("removedFromWishlist"), "info");
+      showToast("Removed from wishlist", "info");
     } else if (variant?.id) {
       addToWishlist({
         product_id: product.id,
@@ -231,7 +229,7 @@ export default function LandingPage() {
         variant_id: variant.id,
         variant_title: variant?.title,
       });
-      showToast(t("addedToWishlist"), "success");
+      showToast("Added to wishlist", "success");
     }
   };
 
@@ -253,7 +251,7 @@ export default function LandingPage() {
                 {/* Mobile */}
                 <Image
                   src={banner.srcMobile}
-                  alt={t("bannerAlt", { number: index + 1 })}
+                  alt={`Banner ${index + 1}`}
                   fill
                   priority={index === 0}
                   className="object-cover md:hidden"
@@ -261,7 +259,7 @@ export default function LandingPage() {
                 {/* Tablet */}
                 <Image
                   src={banner.srcTablet}
-                  alt={t("bannerAlt", { number: index + 1 })}
+                  alt={`Banner ${index + 1}`}
                   fill
                   priority={index === 0}
                   className="hidden md:block lg:hidden object-cover"
@@ -269,7 +267,7 @@ export default function LandingPage() {
                 {/* Desktop */}
                 <Image
                   src={banner.srcDesktop}
-                  alt={t("bannerAlt", { number: index + 1 })}
+                  alt={`Banner ${index + 1}`}
                   fill
                   priority={index === 0}
                   className="hidden lg:block object-cover"
@@ -314,13 +312,13 @@ export default function LandingPage() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4 sm:mb-6">
             <h2 className="text-2xl font-bold text-gray-900">
-              {t("browseCategories")}
+              Browse categories
             </h2>
             <Link
               href="/products"
               className="hidden lg:flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
             >
-              {t("viewAll")}
+              View all
               <svg
                 className="w-5 h-5"
                 fill="none"
@@ -425,7 +423,7 @@ export default function LandingPage() {
               href="#"
               className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
             >
-              {t("viewAll")}
+              View all
               <svg
                 className="w-5 h-5"
                 fill="none"
@@ -449,7 +447,7 @@ export default function LandingPage() {
         <div className="mx-auto px-4 lg:px-6">
           <div className="flex flex-col gap-4 mb-6 lg:flex-row lg:items-center lg:justify-between">
             <h2 className="text-2xl lg:text-3xl font-bold text-white">
-              {t("flashDeals")}
+              Today's flash deals
             </h2>
             <div className="flex gap-2 overflow-x-auto">
               <div className="bg-white rounded-lg px-3 py-2 text-center min-w-12.5 lg:min-w-15 lg:px-4">
@@ -503,7 +501,7 @@ export default function LandingPage() {
                       <div className="relative">
                         {discount > 0 && (
                           <div className="absolute top-3 left-3 bg-[#C52129] text-white text-xs font-semibold px-3 py-1 rounded-full z-10">
-                            {t("percentOff", { percent: discount })}
+                            {discount}% OFF
                           </div>
                         )}
                         <button 
@@ -545,7 +543,7 @@ export default function LandingPage() {
                             />
                           ) : (
                             <div className="w-48 h-48 bg-gray-200 flex items-center justify-center text-gray-400">
-                              {t("noImage")}
+                              No Image
                             </div>
                           )}
                         </div>
@@ -568,7 +566,7 @@ export default function LandingPage() {
                               ))}
                             </div>
                             <span className="text-sm text-gray-600">
-                              {rating ? rating.toFixed(1) : '0'} ({t("reviewCount", { count: reviewCount })})
+                              {rating ? rating.toFixed(1) : '0'} ({reviewCount} {reviewCount === 1 ? 'review' : 'reviews'})
                             </span>
                           </div>
                         )}
@@ -590,7 +588,7 @@ export default function LandingPage() {
                           </div>
                           {showRolePrice && originalPrice && salePrice && originalPrice !== salePrice && (
                             <div className="border-l border-gray-300 pl-4">
-                              <span className="text-xs text-gray-500 block">{t("retailPrice")}</span>
+                              <span className="text-xs text-gray-500 block">Retail Price</span>
                               <span className="text-sm text-gray-600">
                                 RM{(originalPrice / 100).toFixed(2)}
                               </span>
@@ -618,9 +616,9 @@ export default function LandingPage() {
               ) : (
                 // No flash sale products
                 <div className="col-span-4 text-center py-8 text-gray-500">
-                  <p>{t("noFlashDeals")}</p>
+                  <p>No flash deals available at the moment.</p>
                   <Link href="/search/results" className="text-[#C52129] underline hover:no-underline mt-2 inline-block">
-                    {t("browseAllProducts")}
+                    Browse all products
                   </Link>
                 </div>
               )}
@@ -676,7 +674,7 @@ export default function LandingPage() {
         <div className="mx-auto px-4 lg:px-6">
           <div className="flex flex-col gap-4 mb-6 lg:flex-row lg:items-center lg:justify-between lg:mb-8">
             <h2 className="text-2xl lg:text-4xl font-bold text-white">
-              {t("trendingTitle")}
+              Products on trend this month
             </h2>
             <div className="hidden lg:flex gap-2">
               <button className="w-12 h-12 bg-white rounded-full flex items-center justify-center hover:bg-gray-100">
@@ -765,7 +763,7 @@ export default function LandingPage() {
                       {/* Discount badge - top left */}
                       {discountPercent && discountPercent > 0 && (
                         <div className="absolute top-4 left-4 bg-[#23429B] text-white text-xs font-semibold px-3 py-1.5 rounded-full z-10">
-                          {t("percentOff", { percent: discountPercent })}
+                          {discountPercent}% OFF
                         </div>
                       )}
                       {/* Heart button - top right */}
@@ -802,7 +800,7 @@ export default function LandingPage() {
                     <div className="p-4 bg-white">
                       <div className="flex items-center gap-2 mb-3">
                         <span className="bg-[#23429B] text-white text-xs px-3 py-1.5 rounded-full flex items-center gap-1">
-                          <span>📈</span> {t("trendsTag")}
+                          <span>📈</span> Trends
                         </span>
                         <span className="bg-gray-100 text-gray-700 text-xs px-3 py-1.5 rounded-full flex items-center gap-1">
                           {hashtag}
@@ -827,7 +825,7 @@ export default function LandingPage() {
                               </svg>
                             ))}
                           </div>
-                          <span className="text-sm text-gray-500">{rating ? rating.toFixed(1) : '0'} ({t("reviewCount", { count: reviewCount })})</span>
+                          <span className="text-sm text-gray-500">{rating ? rating.toFixed(1) : '0'} ({reviewCount} {reviewCount === 1 ? 'review' : 'reviews'})</span>
                         </div>
                       )}
                       <div className="flex items-end justify-between">
@@ -881,8 +879,8 @@ export default function LandingPage() {
                 <svg className="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                 </svg>
-                <p className="text-lg font-medium">{t("noTrending")}</p>
-                <p className="text-sm opacity-75 mt-1">{t("noTrendingHint")}</p>
+                <p className="text-lg font-medium">No trending products available</p>
+                <p className="text-sm opacity-75 mt-1">Check back later for trending items</p>
               </div>
             )}
           </div>
@@ -928,13 +926,13 @@ export default function LandingPage() {
         <div className="mx-auto px-4 lg:px-6">
           <div className="flex flex-col gap-3 mb-6 lg:flex-row lg:items-center lg:justify-between lg:mb-8">
             <h2 className="text-2xl lg:text-4xl font-bold text-gray-900">
-              {t("topByCategories")}
+              Top products by categories
             </h2>
             <Link
               href="/products"
               className="hidden lg:flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
             >
-              {t("viewAll")}
+              View all
               <svg
                 className="w-5 h-5"
                 fill="none"
@@ -956,16 +954,24 @@ export default function LandingPage() {
             <div className="bg-linear-to-b from-[#C52129] to-[#203C8D] rounded-2xl lg:rounded-3xl p-6 lg:p-8 text-white relative overflow-hidden min-h-75 lg:min-h-0">
               <div className="relative z-10">
                 <div className="inline-block bg-[#23429B] px-3 lg:px-4 py-1.5 lg:py-2 rounded-lg text-[10px] lg:text-xs font-medium mb-3 lg:mb-4">
-                  {t("promoBadge")}
+                  FRESH SEAFOOD, EXCLUSIVE OFFERS
                 </div>
                 <h3 className="text-2xl lg:text-3xl font-bold mb-2 lg:mb-3 leading-tight">
-                  {t.rich("promoTitle", { br: () => <br /> })}
+                  Enjoy up to 40%
+                  <br />
+                  OFF on our
+                  <br />
+                  selection of fresh
+                  <br />
+                  seafood!
                 </h3>
                 <p className="text-xs lg:text-sm mb-3 lg:mb-4 opacity-90">
-                  {t.rich("promoSubtitle", { br: () => <br /> })}
+                  Explore the flavors that catch attention
+                  <br />
+                  before the deal disappears!
                 </p>
                 <button className="bg-white text-[#23429B] px-4 lg:px-5 py-2 lg:py-2.5 rounded-full text-xs lg:text-sm font-semibold hover:bg-gray-100 flex items-center gap-2">
-                  {t("viewAll")}
+                  View all
                   <svg
                     className="w-3 h-3 lg:w-4 lg:h-4"
                     fill="none"
@@ -1043,7 +1049,7 @@ export default function LandingPage() {
               >
                 <Image
                   src="/lobster-bg-removed.png"
-                  alt={t("lobsterAlt")}
+                  alt="Lobster"
                   width={400}
                   height={400}
                   className="object-contain"
@@ -1064,7 +1070,7 @@ export default function LandingPage() {
               >
                 <Image
                   src="/lobster-bg-removed.png"
-                  alt={t("lobsterAlt")}
+                  alt="Lobster"
                   width={200}
                   height={200}
                   className="object-contain"
@@ -1100,9 +1106,7 @@ export default function LandingPage() {
 
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-2xl font-bold text-gray-900">
-                  {selectedCategory?.name
-                    ? t("topCategory", { category: selectedCategory.name })
-                    : t("topProductsFallback")}
+                  Top {selectedCategory?.name || 'Products'}
                 </h3>
                 <div className="flex gap-2">
                   <button 
@@ -1189,7 +1193,7 @@ export default function LandingPage() {
                         <div className="relative">
                           {discount > 0 && (
                             <div className="absolute top-3 left-3 bg-[#C52129] text-white text-xs font-semibold px-3 py-1 rounded-full z-10">
-                              {t("percentOff", { percent: discount })}
+                              {discount}% OFF
                             </div>
                           )}
                           <button 
@@ -1247,7 +1251,7 @@ export default function LandingPage() {
                                 ))}
                               </div>
                               <span className="text-xs text-gray-600">
-                                {rating ? rating.toFixed(1) : '0'} ({t("reviewCount", { count: reviewCount })})
+                                {rating ? rating.toFixed(1) : '0'} ({reviewCount} {reviewCount === 1 ? 'review' : 'reviews'})
                               </span>
                             </div>
                           )}
@@ -1298,7 +1302,7 @@ export default function LandingPage() {
                 ) : (
                   // Empty state
                   <div className="col-span-3 text-center py-8 text-gray-500">
-                    <p>{t("noCategoryProducts")}</p>
+                    <p>No products found in this category.</p>
                   </div>
                 )}
               </div>
@@ -1326,7 +1330,7 @@ export default function LandingPage() {
       <div className="mx-auto px-4 lg:px-6 py-8 lg:py-12 bg-[#F9F9F9]">
         <div className="flex flex-col gap-3 mb-6 lg:flex-row lg:items-center lg:justify-between lg:mb-6">
           <h2 className="text-xl lg:text-3xl font-bold text-gray-900">
-            {t("reviewsTitle")}
+            Check out the seafood buyer, then dive into purchasing online.
           </h2>
           <div className="hidden lg:flex gap-2">
             <button 
@@ -1402,8 +1406,8 @@ export default function LandingPage() {
               <svg className="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              <p className="text-lg font-medium">{t("noPhotoReviews")}</p>
-              <p className="text-sm mt-1">{t("noPhotoReviewsHint")}</p>
+              <p className="text-lg font-medium">No photo reviews yet</p>
+              <p className="text-sm mt-1">Be the first to share your seafood experience!</p>
             </div>
           )}
         </div>

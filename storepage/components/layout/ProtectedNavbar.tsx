@@ -4,7 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { useTranslations } from "next-intl";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,10 +23,8 @@ import { useCategoriesQuery, useOrdersQuery } from "@/lib/queries";
 import { useAuthContext } from "@/lib/AuthContext";
 import { useCartContext } from "@/lib/CartContext";
 import { useWishlist } from "@/lib/WishlistContext";
-import LanguageSwitcher from "@/components/layout/LanguageSwitcher";
 
 export default function ProtectedNavbar() {
-  const t = useTranslations("Navbar");
   const router = useRouter();
   const pathname = usePathname();
   const [searchQuery, setSearchQuery] = useState("");
@@ -45,11 +42,11 @@ export default function ProtectedNavbar() {
   const ordersCount = orders?.length || 0;
 
   // Get user info from customer data
-  const userName = customer?.first_name || t("user");
+  const userName = customer?.first_name || "User";
   const userFullName = customer
     ? [customer.first_name, customer.last_name].filter(Boolean).join(" ") ||
-      t("user")
-    : t("guest");
+      "User"
+    : "Guest";
   const userEmail = customer?.email || "";
   const userInitials = customer
     ? `${customer.first_name?.charAt(0) || ""}${
@@ -65,11 +62,11 @@ export default function ProtectedNavbar() {
   const categories = categoriesData || [];
 
   const seafoodTrends = [
-    { name: t("trends.salmon"), image: "/salmon&fish.png" },
-    { name: t("trends.tuna"), image: "/fish-fillets.png" },
-    { name: t("trends.barramundi"), image: "/whole-fish.png" },
-    { name: t("trends.cod"), image: "/fish.png" },
-    { name: t("trends.snapper"), image: "/shellfish-scallops.png" },
+    { name: "Salmon Fillets", image: "/salmon&fish.png" },
+    { name: "Tuna Fillets", image: "/fish-fillets.png" },
+    { name: "Barramundi Fillets", image: "/whole-fish.png" },
+    { name: "Cod Fillets", image: "/fish.png" },
+    { name: "Snapper Fillets", image: "/shellfish-scallops.png" },
   ];
 
   const handleSearchFocus = () => {
@@ -149,11 +146,6 @@ export default function ProtectedNavbar() {
             </svg>
           </button>
 
-          {/* Language Switcher - Mobile (left side, clear of the centered logo) */}
-          <div className="lg:hidden">
-            <LanguageSwitcher />
-          </div>
-
           {/* Logo - far left on desktop, centered on mobile */}
           <Link
             href="/"
@@ -161,7 +153,7 @@ export default function ProtectedNavbar() {
           >
             <Image
               src="/lb-logo.png"
-              alt={t("logoAlt")}
+              alt="LB Frozen Logo"
               width={60}
               height={60}
               priority
@@ -176,7 +168,7 @@ export default function ProtectedNavbar() {
                 value={searchQuery}
                 onChange={handleSearchChange}
                 onFocus={handleSearchFocus}
-                placeholder={t("searchPlaceholder")}
+                placeholder="Search products"
                 className="w-full pl-4 pr-10 py-2 bg-white border border-gray-200 rounded-full text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
               />
               <button className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
@@ -203,7 +195,7 @@ export default function ProtectedNavbar() {
               onClick={() => setIsCategoriesOpen(!isCategoriesOpen)}
               className="flex items-center gap-1.5 text-xs xl:text-sm font-medium text-gray-700 hover:text-gray-900 hover:cursor-pointer whitespace-nowrap"
             >
-              {t("categories")}
+              CATEGORIES
               <svg
                 className={`w-3.5 h-3.5 transition-transform ${
                   isCategoriesOpen ? "rotate-180" : ""
@@ -232,7 +224,7 @@ export default function ProtectedNavbar() {
               }}
               className="text-xs xl:text-sm font-medium text-gray-700 hover:text-gray-900 cursor-pointer whitespace-nowrap"
             >
-              {t("flashSale")}
+              FLASH SALE
             </button>
             <button
               onClick={() => {
@@ -246,19 +238,19 @@ export default function ProtectedNavbar() {
               }}
               className="text-xs xl:text-sm font-medium text-gray-700 hover:text-gray-900 cursor-pointer whitespace-nowrap"
             >
-              {t("topSales")}
+              TOP SALES
             </button>
             <Link
               href="/about-us"
               className="text-xs xl:text-sm font-medium text-gray-700 hover:text-gray-900 cursor-pointer whitespace-nowrap"
             >
-              {t("aboutUs")}
+              ABOUT US
             </Link>
             <Link
               href="/contact-us"
               className="text-xs xl:text-sm font-medium text-gray-700 hover:text-gray-900 cursor-pointer whitespace-nowrap"
             >
-              {t("contactUs")}
+              CONTACT US
             </Link>
           </div>
 
@@ -283,11 +275,6 @@ export default function ProtectedNavbar() {
                 />
               </svg>
             </button>
-
-            {/* Language Switcher - Desktop */}
-            <div className="hidden lg:block">
-              <LanguageSwitcher />
-            </div>
 
             {/* Wishlist */}
             <Link
@@ -423,7 +410,7 @@ export default function ProtectedNavbar() {
                           d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
                         />
                       </svg>
-                      <span>{t("myAccount")}</span>
+                      <span>My account</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => router.push("/orders")}>
                       <svg
@@ -439,7 +426,7 @@ export default function ProtectedNavbar() {
                           d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
                         />
                       </svg>
-                      <span className="flex-1">{t("myOrders")}</span>
+                      <span className="flex-1">My orders</span>
                       <Badge
                         variant="default"
                         className="bg-[#23429B] hover:bg-[#23429B]/90 text-white ml-2"
@@ -463,7 +450,7 @@ export default function ProtectedNavbar() {
                           d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
                         />
                       </svg>
-                      <span>{t("paymentMethod")}</span>
+                      <span>Payment method</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => router.push("/my-address")}
@@ -487,7 +474,7 @@ export default function ProtectedNavbar() {
                           d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
                         />
                       </svg>
-                      <span>{t("myAddress")}</span>
+                      <span>My address</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => router.push("/help-support")}
@@ -505,7 +492,7 @@ export default function ProtectedNavbar() {
                           d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"
                         />
                       </svg>
-                      <span>{t("helpSupport")}</span>
+                      <span>Help and Support</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
@@ -525,7 +512,7 @@ export default function ProtectedNavbar() {
                           d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
                         />
                       </svg>
-                      {t("logout")}
+                      Logout
                     </DropdownMenuItem>
                   </div>
                 </DropdownMenuContent>
@@ -551,7 +538,7 @@ export default function ProtectedNavbar() {
                     d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
                   />
                 </svg>
-                <span className="text-xs lg:text-sm font-medium">{t("login")}</span>
+                <span className="text-xs lg:text-sm font-medium">Login</span>
               </Link>
             )}
           </div>
@@ -570,7 +557,7 @@ export default function ProtectedNavbar() {
           >
             <div className="p-4 border-b">
               <div className="flex items-center justify-between">
-                <h2 className="font-semibold text-gray-900">{t("menu")}</h2>
+                <h2 className="font-semibold text-gray-900">Menu</h2>
                 <button
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="text-gray-600 hover:text-gray-900"
@@ -597,7 +584,7 @@ export default function ProtectedNavbar() {
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="block px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg"
               >
-                {t("allProducts")}
+                ALL PRODUCTS
               </Link>
               <button
                 onClick={() => {
@@ -606,7 +593,7 @@ export default function ProtectedNavbar() {
                 }}
                 className="w-full text-left px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg"
               >
-                {t("categories")}
+                CATEGORIES
               </button>
               <button
                 onClick={() => {
@@ -621,7 +608,7 @@ export default function ProtectedNavbar() {
                 }}
                 className="block w-full text-left px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg cursor-pointer"
               >
-                {t("flashSale")}
+                FLASH SALE
               </button>
               <button
                 onClick={() => {
@@ -636,21 +623,21 @@ export default function ProtectedNavbar() {
                 }}
                 className="block w-full text-left px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg cursor-pointer"
               >
-                {t("topSales")}
+                TOP SALES
               </button>
               <Link
                 href="/about-us"
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="block px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg"
               >
-                {t("aboutUs")}
+                ABOUT US
               </Link>
               <Link
                 href="/contact-us"
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="block px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg"
               >
-                {t("contactUs")}
+                CONTACT US
               </Link>
             </div>
           </div>
@@ -684,11 +671,11 @@ export default function ProtectedNavbar() {
               <div className="w-full lg:w-64 bg-gray-50 border-b lg:border-b-0 lg:border-r border-gray-200 shrink-0 overflow-y-auto max-h-[30vh] lg:max-h-full">
                 {categoriesLoading ? (
                   <div className="px-6 py-4 text-sm text-gray-500">
-                    {t("loadingCategories")}
+                    Loading categories...
                   </div>
                 ) : categories.length === 0 ? (
                   <div className="px-6 py-4 text-sm text-gray-500">
-                    {t("noCategories")}
+                    No categories available
                   </div>
                 ) : (
                   categories.map((category) => (
@@ -707,7 +694,7 @@ export default function ProtectedNavbar() {
               {/* Right Content - Seafood Showcase */}
               <div className="flex-1 p-6 lg:p-12 overflow-y-auto">
                 <h2 className="text-xl lg:text-2xl font-semibold mb-6 lg:mb-8">
-                  {t("discoverTrends")}
+                  Discover Seafood on Trends
                 </h2>
                 <div className="grid grid-cols-2 lg:grid-cols-5 gap-6 lg:gap-8">
                   {seafoodTrends.map((item, index) => (
@@ -752,10 +739,10 @@ export default function ProtectedNavbar() {
             {/* Title */}
             <DialogHeader className="text-center">
               <DialogTitle className="text-xl font-bold text-gray-900 mb-2">
-                {t("logoutDialog.title")}
+                Leaving so soon?
               </DialogTitle>
               <DialogDescription className="text-gray-500 text-sm">
-                {t("logoutDialog.description")}
+                You&apos;re about to log out. Don&apos;t worry, your items will stay in the cart for later!
               </DialogDescription>
             </DialogHeader>
 
@@ -772,13 +759,13 @@ export default function ProtectedNavbar() {
                   background: "linear-gradient(to right, #23429B, #C52129)",
                 }}
               >
-                {t("logoutDialog.confirm")}
+                Yes, log-out
               </button>
               <button
                 onClick={() => setShowLogoutDialog(false)}
                 className="w-full py-3 text-gray-700 font-medium hover:text-gray-900 transition-colors"
               >
-                {t("logoutDialog.cancel")}
+                No, keep here
               </button>
             </div>
           </div>
