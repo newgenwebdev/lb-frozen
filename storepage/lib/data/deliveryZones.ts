@@ -6,6 +6,15 @@ export const ZONE_PRICES: Record<ZoneKey, number> = {
   C: 1800,
 }
 
+// Stable identifiers for each zone's live Medusa shipping option (see
+// server/src/scripts/setup-shipping-zones.ts's ZONE_OPTIONS[].code). These
+// never change even when the price does, unlike matching on amount/name.
+export const ZONE_OPTION_CODE: Record<ZoneKey, string> = {
+  A: 'kv-zone-a',
+  B: 'kv-zone-b',
+  C: 'kv-zone-c',
+}
+
 export interface DeliveryArea {
   name: string
   zone: ZoneKey

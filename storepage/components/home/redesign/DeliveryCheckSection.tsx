@@ -6,6 +6,7 @@ import { whatsappUrl } from "@/lib/data/company";
 import {
   DELIVERY_AREAS,
   ZONE_PRICES,
+  ZONE_OPTION_CODE,
   findDeliveryArea,
   type ZoneKey,
 } from "@/lib/data/deliveryZones";
@@ -14,15 +15,6 @@ import SectionHeader from "./SectionHeader";
 import { CONTAINER, SECTION_IDS } from "./layout";
 
 const ZONES: ZoneKey[] = ["A", "B", "C"];
-
-// The live Medusa shipping options are named "Klang Valley Zone A/B/C" (see
-// server/src/scripts/setup-shipping-zones.ts) and carry no zone-letter field
-// of their own, so we match on this substring.
-const ZONE_NAME_FRAGMENT: Record<ZoneKey, string> = {
-  A: "Zone A",
-  B: "Zone B",
-  C: "Zone C",
-};
 
 // Visual accent per fee tier, built only from the project's existing color tokens
 // (lb-sky / lb-navy / lb-red) — no new colors introduced.
@@ -127,7 +119,7 @@ export default function DeliveryCheckSection() {
   const livePrices: Partial<Record<ZoneKey, number>> = {};
   if (shippingOptions) {
     for (const zone of ZONES) {
-      const option = shippingOptions.find((o) => o.name.includes(ZONE_NAME_FRAGMENT[zone]));
+      const option = shippingOptions.find((o) => o.type?.code === ZONE_OPTION_CODE[zone]);
       if (option) livePrices[zone] = option.amount;
     }
   }
