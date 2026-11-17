@@ -1,9 +1,9 @@
 export type ZoneKey = 'A' | 'B' | 'C'
 
 export const ZONE_PRICES: Record<ZoneKey, number> = {
-  A: 1800,
-  B: 2000,
-  C: 2300,
+  A: 1300,
+  B: 1500,
+  C: 1800,
 }
 
 export interface DeliveryArea {
@@ -13,7 +13,7 @@ export interface DeliveryArea {
 }
 
 export const DELIVERY_AREAS: DeliveryArea[] = [
-  // Zone A — RM18
+  // Zone A — RM13
   { name: 'KL', zone: 'A', amountCents: 1800 },
   { name: 'AMPANG', zone: 'A', amountCents: 1800 },
   { name: 'ARA DAMANSARA', zone: 'A', amountCents: 1800 },
@@ -48,7 +48,7 @@ export const DELIVERY_AREAS: DeliveryArea[] = [
   { name: 'SUBANG JAYA', zone: 'A', amountCents: 1800 },
   { name: 'TTDI', zone: 'A', amountCents: 1800 },
   { name: 'WANGSA MAJU', zone: 'A', amountCents: 1800 },
-  // Zone B — RM20
+  // Zone B — RM15
   { name: 'ELMINA', zone: 'B', amountCents: 2000 },
   { name: 'BANGI', zone: 'B', amountCents: 2000 },
   { name: 'CYBERJAYA', zone: 'B', amountCents: 2000 },
@@ -67,7 +67,7 @@ export const DELIVERY_AREAS: DeliveryArea[] = [
   { name: 'SEPANG', zone: 'B', amountCents: 2000 },
   { name: 'SG MERAB', zone: 'B', amountCents: 2000 },
   { name: 'T.P GARANG', zone: 'B', amountCents: 2000 },
-  // Zone C — RM23
+  // Zone C — RM18
   { name: 'BDR SERI COALFIELDS', zone: 'C', amountCents: 2300 },
   { name: 'BANTING', zone: 'C', amountCents: 2300 },
   { name: 'BATU ARANG', zone: 'C', amountCents: 2300 },

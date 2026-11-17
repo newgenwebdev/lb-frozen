@@ -4,6 +4,7 @@ import HeroSection from "./HeroSection";
 import ProductRangeSection from "./ProductRangeSection";
 import FlashDealsSection from "./FlashDealsSection";
 import ProcessSection from "./ProcessSection";
+import DeliveryCheckSection from "./DeliveryCheckSection";
 import CustomersSection from "./CustomersSection";
 import AboutSection from "./AboutSection";
 import OrderingSection from "./OrderingSection";
@@ -23,6 +24,7 @@ export default function RedesignHomePage() {
         <ProductRangeSection />
         <FlashDealsSection />
         <ProcessSection />
+        <DeliveryCheckSection />
         <CustomersSection />
         <AboutSection />
         <OrderingSection />

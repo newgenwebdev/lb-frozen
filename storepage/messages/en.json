@@ -138,6 +138,7 @@
       "nav": {
         "products": "Products",
         "process": "Cold chain",
+        "deliveryCheck": "Delivery fee",
         "customers": "Who we serve",
         "ordering": "How to order",
         "about": "About us",
@@ -242,6 +243,27 @@
           "body": "When the goods arrive, please check them on the spot. If anything is damaged, missing or the quantity is wrong, WhatsApp our customer service right away and we'll sort it out."
         }
       }
+    },
+    "deliveryCheck": {
+      "title": "Check Delivery Fee",
+      "description": "Enter your area, instantly know the delivery fee",
+      "intro": "We deliver frozen food across the whole Klang Valley. Delivery fees are split into three tiers by area — enter your area name (in English) below to check the fee right away.",
+      "searchLabel": "Area",
+      "searchPlaceholder": "e.g.: Puchong, Shah Alam, Rawang…",
+      "searchButton": "Check",
+      "result": {
+        "foundLabel": "Delivery fee for {area}",
+        "foundPrice": "RM{price}",
+        "notFoundTitle": "Area not found",
+        "notFoundBody": "We couldn't match that to one of our delivery areas. Message us on WhatsApp and we'll confirm the fee for you.",
+        "notFoundCta": "Ask on WhatsApp",
+        "notFoundMessage": "Hi, I'd like to check the delivery fee for \"{area}\"."
+      },
+      "tiers": {
+        "areaCount": "{count} areas",
+        "groupTitle": "RM{price} ({count} areas)"
+      },
+      "disclaimer": "Delivery areas and fees are for reference only; the final confirmed address governs."
     },
     "customers": {
       "title": "Who we serve",
